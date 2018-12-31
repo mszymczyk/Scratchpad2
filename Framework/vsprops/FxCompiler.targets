@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml" />
+	<!-- don't know why, but this needs to be here to make 'Compile' option in context menu enabled -->
+    <AvailableItemName Include="FxCompilerFile">
+      <Targets>Build</Targets>
+    </AvailableItemName>
+  </ItemGroup>
+  
+  <!-- XamlTaskFactory will generate custom task based on Rule given in respective *.xml file -->
+  <UsingTask TaskName="FxCompile" TaskFactory="XamlTaskFactory"
+    AssemblyName="Microsoft.Build.Tasks.v4.0">
+    <Task>$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml</Task>
+  </UsingTask>
+  
+<!--   <Target Name="FxCompiler" AfterTargets="Build" Condition="'@(FxCompilerFile)' != ''">
+    <Message Importance="High" Text="Converting docx files to html . . ." />
+    <FxCompiler Condition="'@(FxCompilerFile)' != '' and '%(FxCompilerFile.ExcludedFromBuild)' != 'true'"
+      CommandLineTemplate="%(FxCompilerFile.CommandLineTemplate)"
+      OutputDirectory="%(FxCompilerFile.OutputDirectory)"
+      ValidateHtml="%(FxCompilerFile.ValidateHtml)"
+      WhichHtmlFileType="%(FxCompilerFile.WhichHtmlFileType)"
+      Inputs="@(FxCompilerFile)" />
+  </Target>
+ -->
+ 
+  <!-- DependsOnTargets="_SelectedFiles" is required to support compiling individual files within Visual Studio (Ctrl-F7 for active document) -->
+  <!--Target Name="FxCompiler" AfterTargets="Build" Condition="'@(FxCompilerFile)' != ''"-->
+  <Target
+    Name="Build"
+	Condition="'@(FxCompilerFile)' != ''"
+	DependsOnTargets="_SelectedFiles"
+	>
+  
+    <Message Importance="High" Text="Compiling Fx file ..." />
+	
+	<!--Message Importance="High" Text="All Files @(FxCompilerFile)" />
+	<Message Importance="High" Text="Selected Files @(SelectedFiles)" /-->
+
+	<ItemGroup
+      Condition="'@(SelectedFiles)' != ''">
+
+      <FxCompilerFile
+        Remove="@(FxCompilerFile)"
+        Condition="'%(Identity)' != '@(SelectedFiles)'" />
+    </ItemGroup>
+
+	<!--Message Importance="High" Text="Files: @(FxCompilerFile)" /-->
+	
+    <FxCompile
+	  Condition="'@(FxCompilerFile)' != '' and '%(FxCompilerFile.ExcludedFromBuild)' != 'true'"
+      CommandLineTemplate="%(FxCompilerFile.CommandLineTemplate)"
+	  OutputDirectory="%(FxCompilerFile.OutputDirectory)"
+	  IntermediateDirectory="%(FxCompilerFile.IntermediateDirectory)"
+      Inputs="@(FxCompilerFile)"
+	  AdditionalOptions="%(FxCompilerFile.AdditionalOptions)"
+	  />
+	  
+  </Target>
+
+  <PropertyGroup>
+    <CleanDependsOn> $(CleanDependsOn); FxCompilerClean </CleanDependsOn>
+  </PropertyGroup>
+
+  <!--Target
+    Name="FxCompilerClean"
+	Condition="'@(FxCompilerFile)' != ''"
+	DependsOnTargets="_SelectedFiles"
+	>
+	
+    <Message Importance="High" Text="Cleaning Fx output files ..." />
+	  
+	<ItemGroup
+      Condition="'@(SelectedFiles)' != ''">
+
+      <FxCompilerFile
+        Remove="@(FxCompilerFile)"
+        Condition="'%(Identity)' != '@(SelectedFiles)'" />
+    </ItemGroup>
+	  
+    <FxCompile
+	  Condition="'@(FxCompilerFile)' != '' and '%(FxCompilerFile.ExcludedFromBuild)' != 'true'"
+      CommandLineTemplate="&quot;$(FxCompilerBin)&quot; -c [Inputs]"
+      Inputs="@(FxCompilerFile)"
+	  />
+
+  </Target-->
+  
+  <!--
+	Default behaviour is to delete output directories, so files from multiple directories are deleted
+	Solution|Clean Project|Clean has the same behaviour (Project|Clean is equivalent of Solution|Clean)
+  -->
+  <Target
+    Name="FxCompilerClean"
+	>
+	
+    <Message Importance="High" Text="Cleaning Fx output files ..." />
+	    
+    <FxCompile
+      CommandLineTemplate="&quot;$(FxCompilerBin)&quot; -c"
+	  />
+
+  </Target>
+  
+
+</Project>

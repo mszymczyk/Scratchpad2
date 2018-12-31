@@ -1,0 +1,20 @@
+#ifndef DECAL_VOLUME_RENDERING_CSHARED_H
+#define DECAL_VOLUME_RENDERING_CSHARED_H
+
+#include "decal_volume_cshared.h"
+
+#define DECAL_VOLUME_CONSTANTS_BINDING				2
+
+#define DIFFUSE_TEXTURE_REGISTER_BINDING			2
+#define DIFFUSE_SAMPLER_REGISTER_BINDING			2
+
+MAKE_FLAT_CBUFFER( CbDecalVolumeRenderingConstants, DECAL_VOLUME_CONSTANTS_BINDING )
+{
+	CBUFFER_FLOAT4( renderTargetSize ); // rcp in zw
+	CBUFFER_UINT4( cellCountA );
+	//CBUFFER_UINT4( decalCountInFrustum );
+	CBUFFER_FLOAT4( colorMultiplier );
+	CBUFFER_FLOAT4( nearFarPlane );
+};
+
+#endif // DECAL_VOLUME_RENDERING_CSHARED_H

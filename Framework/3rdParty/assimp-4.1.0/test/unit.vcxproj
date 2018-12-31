@@ -1,0 +1,487 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{0FAEE831-BC8E-3153-8FB1-F86EC42C2A9B}</ProjectGuid>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>x64</Platform>
+    <ProjectName>unit</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\bin\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">unit.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">unit</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\bin\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">unit.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">unit</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\bin\MinSizeRel\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">unit.dir\MinSizeRel\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">unit</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\bin\RelWithDebInfo\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">unit.dir\RelWithDebInfo\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">unit</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</LinkIncremental>
+    <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</GenerateManifest>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Debug/</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR="F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR=\"F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models\";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <Message></Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/Debug/assimp-vc140-mt.dll F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/Debug
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalDependencies>..\lib\Debug\assimp-vc140-mt.lib;..\lib\Debug\zlibstaticd.lib;..\lib\Debug\IrrXML.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0;F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/$(Configuration);/lib;/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/lib/Debug/unit.lib</ImportLibrary>
+      <ProgramDataBaseFile>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/Debug/unit.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Release/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR="F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR=\"F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models\";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <Message></Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/Release/assimp-vc140-mt.dll F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/Release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalDependencies>..\lib\Release\assimp-vc140-mt.lib;..\lib\Release\zlibstatic.lib;..\lib\Release\IrrXML.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0;F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/$(Configuration);/lib;/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/lib/Release/unit.lib</ImportLibrary>
+      <ProgramDataBaseFile>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/Release/unit.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>MinSizeRel/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MinSpace</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR="F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="MinSizeRel";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR=\"F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models\";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"MinSizeRel\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <Message></Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/MinSizeRel/assimp-vc140-mt.dll F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/MinSizeRel
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalDependencies>..\lib\MinSizeRel\assimp-vc140-mt.lib;..\lib\MinSizeRel\zlibstatic.lib;..\lib\MinSizeRel\IrrXML.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0;F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/$(Configuration);/lib;/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/lib/MinSizeRel/unit.lib</ImportLibrary>
+      <ProgramDataBaseFile>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/MinSizeRel/unit.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>RelWithDebInfo/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR="F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR="RelWithDebInfo";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;WIN32_LEAN_AND_MEAN;OPENDDL_NO_USE_CPP11;ASSIMP_BUILD_NO_C4D_IMPORTER;ASSIMP_TEST_MODELS_DIR=\"F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/models\";_CRT_SECURE_NO_WARNINGS;CMAKE_INTDIR=\"RelWithDebInfo\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\.;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest\include;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\..\contrib\gtest;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <Message></Message>
+      <Command>setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/RelWithDebInfo/assimp-vc140-mt.dll F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/RelWithDebInfo
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalDependencies>..\lib\RelWithDebInfo\assimp-vc140-mt.lib;..\lib\RelWithDebInfo\zlibstatic.lib;..\lib\RelWithDebInfo\IrrXML.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0;F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/$(Configuration);/lib;/lib/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <ImportLibrary>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/lib/RelWithDebInfo/unit.lib</ImportLibrary>
+      <ProgramDataBaseFile>F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/bin/RelWithDebInfo/unit.pdb</ProgramDataBaseFile>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 -BF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 --check-stamp-file F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt;C:\Program Files\CMake\share\cmake-3.13\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\DartConfiguration.tcl.in;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 -BF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 --check-stamp-file F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt;C:\Program Files\CMake\share\cmake-3.13\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\DartConfiguration.tcl.in;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 -BF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 --check-stamp-file F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt;C:\Program Files\CMake\share\cmake-3.13\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\DartConfiguration.tcl.in;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 -BF:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0 --check-stamp-file F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">F:/_Scratchpad2/Framework/3rdParty/assimp-4.1.0/test/CMakeLists.txt;C:\Program Files\CMake\share\cmake-3.13\Modules\CTest.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestTargets.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\CTestUseLaunchers.cmake;C:\Program Files\CMake\share\cmake-3.13\Modules\DartConfiguration.tcl.in;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\gtest\src\gtest-all.cc" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\CCompilerTest.c">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">CompileAsC</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\Main.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code\Version.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utIOSystem.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utIOStreamBuffer.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utIssues.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utAnim.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\AssimpAPITest.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utBatchLoader.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utDefaultIOStream.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utFastAtof.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utMetadata.cpp" />
+    <ClInclude Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\SceneDiffer.h" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\SceneDiffer.cpp" />
+    <ClInclude Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\UTLogStream.h" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\AbstractImportExportBase.cpp" />
+    <ClInclude Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\TestIOSystem.h" />
+    <ClInclude Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\TestModelFactory.h" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utTypes.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utVersion.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utProfiler.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utSharedPPData.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utStringUtils.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utLWSImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utSMDImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utglTFImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utglTF2ImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utHMPImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utIFCImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utFBXImporterExporter.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utImporter.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\ut3DImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\ut3DSImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utACImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utAMFImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utASEImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utD3MFImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utQ3DImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utSTLImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utXImporterExporter.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utX3DImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utDXFImporterExporter.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utPMXImporter.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utPLYImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utObjImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utObjTools.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utOpenGEXImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utSIBImporter.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utBlenderIntermediate.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utBlendImportAreaLight.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utBlenderImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utBlendImportMaterials.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utBVHImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utColladaExportCamera.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utColladaExportLight.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utColladaImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utCSMImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utB3DImportExport.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utMaterialSystem.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utMatrix3x3.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utMatrix4x4.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utVector3.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utImproveCacheLocality.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utFixInfacingNormals.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utGenNormals.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utTriangulate.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utTextureTransform.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utRemoveRedundantMaterials.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utRemoveVCProcess.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utScaleProcess.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utJoinVertices.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utRemoveComments.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utRemoveComponent.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utVertexTriangleAdjacency.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utSplitLargeMeshes.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utFindDegenerates.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utFindInvalidData.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utLimitBoneWeights.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utPretransformVertices.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utScenePreprocessor.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utTargetAnimation.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utSortByPType.cpp" />
+    <ClCompile Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\test\unit\utSceneCombiner.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\ZERO_CHECK.vcxproj">
+      <Project>{63E84D7F-097D-3B5B-8CEB-992D1394D7E3}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\irrXML\IrrXML.vcxproj">
+      <Project>{6BD24FDD-78BD-358A-B078-3979CB7D64CE}</Project>
+      <Name>IrrXML</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\code\assimp.vcxproj">
+      <Project>{46DAA790-00B3-3CBA-8DB2-36E5818AA3CC}</Project>
+      <Name>assimp</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="F:\_Scratchpad2\Framework\3rdParty\assimp-4.1.0\contrib\zlib\zlibstatic.vcxproj">
+      <Project>{BA12E082-266F-3161-B2F5-EAB19D48DCFB}</Project>
+      <Name>zlibstatic</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
