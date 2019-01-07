@@ -62,7 +62,9 @@ bool Dx11::StartUp( const Param& param )
 	{
 		ZeroMemory( &adapterDesc, sizeof( adapterDesc ) );
 		pAdapter->GetDesc( &adapterDesc );
-		if ( i == 1 )
+		//if ( i == 1 )
+
+		if ( StrStrW( adapterDesc.Description, L"NVIDIA" ) )
 		{
 			break;
 		}

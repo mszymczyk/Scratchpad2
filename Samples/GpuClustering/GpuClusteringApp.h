@@ -85,6 +85,8 @@ namespace spad
 
 		RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSizeCur_ = RTW_1920_1080;
+		//RenderTargetSize rtSize_ = RTW_64_64;
+		//RenderTargetSize rtSize_ = RTW_128_128;
 
 		//HlslShaderPtr gpuClusteringShader_;
 		HlslShaderPtr decalVolumeRenderingShader_;
@@ -99,7 +101,7 @@ namespace spad
 		ConstantBuffer<CbDecalVolumeRenderingConstants> decalVolumeRenderingConstants_;
 
 		// Decal volumes
-		int maxDecalVolumes_ = 16;// *1024;// 1024 * 4;
+		int maxDecalVolumes_ = 1024;// 1024 * 4;
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
@@ -107,6 +109,7 @@ namespace spad
 		DecalVolume *decalVolumesCPU_ = nullptr;
 		StructuredBuffer<DecalVolume> decalVolumesGPU_;
 		StructuredBuffer<DecalVolume> decalVolumesCulledGPU_;
+		StructuredBuffer<DecalVolumeTest> decalVolumesTestCulledGPU_;
 		StructuredBuffer<uint> decalVolumesCulledCountGPU_;
 		ConstantBuffer<DecalVolumeCsCullConstants> decalVolumeCullConstants_;
 		uint decalVolumesCulledCount_ = 0;
@@ -139,6 +142,7 @@ namespace spad
 			StructuredBuffer<uint> cellIndirectionCount;
 			StructuredBuffer<uint> indirectArgs;
 			StructuredBuffer<uint> memAlloc;
+			StructuredBuffer<GroupToBucket> groupToBucket;
 			GpuTimerQuery timer;
 
 			Stats stats;
@@ -148,9 +152,13 @@ namespace spad
 		{
 			uint totalMemUsed_ = 0;
 			IntersectionMethod intersectionMethod_ = Standard;
+			bool enableBuckets_ = false;
+			bool dynamicBuckets_ = false;
+			bool dynamicBucketsMerge_ = false;
+			bool enablePassTiming_ = true;
 		};
 
-		void PopulateStats( Dx11DeviceContext& deviceContext, std::vector<DecalVolumeClusteringPass> &passes );
+		void PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeShared &shared, std::vector<DecalVolumeClusteringPass> &passes );
 		void ImGuiPrintClusteringInfo( DecalVolumeShared &shared, const std::vector<DecalVolumeClusteringPass> &passes, const GpuTimerQuery &totalTimer );
 
 		struct DecalVolumeTilingData

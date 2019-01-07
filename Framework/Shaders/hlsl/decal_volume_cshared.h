@@ -18,6 +18,21 @@ struct DecalVolume
 };
 
 
+// Positions in clip space
+struct DecalVolumeTest
+{
+	float4 v0;
+	float4 v4;
+	float4 v5;
+	float4 v7;
+
+	//float4  v1;
+	//float4  v2;
+	//float4  v3;
+	//float4  v6;
+};
+
+
 #ifndef __cplusplus
 uint DecalVolume_PackHeader( uint decalCount, uint offsetToFirstDecalIndex )
 {

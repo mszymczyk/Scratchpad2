@@ -9,6 +9,8 @@
 
 namespace spad
 {
+	constexpr uint maxBuckets = 6;
+
 	//Matrix4 testFrustumView;
 	//Matrix4 testFrustumProj;
 	const float testFrustumNearPlane = 4.0f;
@@ -91,6 +93,10 @@ namespace spad
 	
 	bool SettingsTestApp::StartUp()
 	{
+		uint numThreadsPerCell = 32;
+		uint32_t cellMask = ( (uint32_t)1 << numThreadsPerCell );
+		cellMask -= 1;
+
 		//for ( uint i = 0; i < 4; ++i )
 		//{
 		//	uint row = i / 2;
@@ -132,14 +138,31 @@ namespace spad
 
 		//float nearPlane = testFrustumNearPlane;
 		//float farPlane = testFrustumFarPlane;
-		float nearPlane = 4.0f;
-		float farPlane = 10000.0f;
+		float nearPlane = testFrustumNearPlane;
+		float farPlane = decalVolumeFarPlane_;
+
+		const float aspect = (float)dx11_->getBackBufferWidth() / (float)dx11_->getBackBufferHeight();
+		//viewMatrixForCamera_ = ( Matrix4::lookAt( Point3( 5, 5, 0 ), Point3( 0, 0, -5 ), Vector3::yAxis() ) );
+		//view_ = Matrix4::lookAt( Point3( 0, 0, -5 ), Point3( 0, 0, 0 ), Vector3::yAxis() );
+		projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 4.0f, decalVolumeFarPlane_ );
+
+		float n = testFrustumNearPlane;
+		float f = decalVolumeFarPlane_;
+		float nmf = 1.0f / ( n - f );
+		float a = f * nmf;
+		float b = n * f * nmf;
 
 		for ( uint i = 0; i < 24; ++i )
 		{
 			float zLog = calcZ( nearPlane, farPlane, i, 24 );
 			float zUniform = calcZ2( nearPlane, farPlane, i, 24 );
-			std::cout << "z log: " << zLog << "   z uni: " << zUniform << std::endl;
+
+			Vector4 v = projMatrixForCamera_ * Vector4( 0, 0, -zLog, 1.0f );
+			float z01 = v.getZ().getAsFloat() / v.getW().getAsFloat();
+
+			float z01_2 = ( -zLog * a + b ) / zLog;
+
+			std::cout << "z log: " << zLog << "   z uni: " << zUniform << "    z log 01: " << z01 << ", " << z01_2 << std::endl;
 		}
 
 		for ( uint i = 0; i < 6; ++i )
@@ -232,11 +255,6 @@ namespace spad
 		decalVolumeCullConstants_.Initialize( dx11_->getDevice() );
 
 		vertices_.Initialize( dxDevice, 64 * 1024 );
-
-		const float aspect = (float)dx11_->getBackBufferWidth() / (float)dx11_->getBackBufferHeight();
-		//viewMatrixForCamera_ = ( Matrix4::lookAt( Point3( 5, 5, 0 ), Point3( 0, 0, -5 ), Vector3::yAxis() ) );
-		//view_ = Matrix4::lookAt( Point3( 0, 0, -5 ), Point3( 0, 0, 0 ), Vector3::yAxis() );
-		projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 4.0f, decalVolumeFarPlane_ );
 
 		//testFrustumView = Matrix4::identity();
 		//testFrustumProj = perspectiveProjectionDxStyle( deg2rad( 60.0f ), (float)testRtWidth / (float)testRtHeight, testFrustumNearPlane, testFrustumFarPlane );
@@ -1178,6 +1196,7 @@ namespace spad
 		Matrix4 viewProj = projMatrixForDecalVolumes_ * viewMatrixForDecalVolumes_;
 		extractFrustumPlanes( frustumPlanes, viewProj );
 
+		decalVolumeCullConstants_.data.ViewProjMatrix = viewProj;
 		decalVolumeCullConstants_.data.frustumPlane0 = frustumPlanes[0];
 		decalVolumeCullConstants_.data.frustumPlane1 = frustumPlanes[1];
 		decalVolumeCullConstants_.data.frustumPlane2 = frustumPlanes[2];
@@ -1194,6 +1213,7 @@ namespace spad
 		decalVolumesGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
 		decalVolumesCulledGPU_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_BINDING );
 		decalVolumesCulledCountGPU_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_COUNT_BINDING );
+		decalVolumesTestCulledGPU_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_TEST_BINDING );
 
 		uint nGroupsX = ( numDecalVolumes_ + DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP - 1 ) / DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP;
 		deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -1215,6 +1235,36 @@ namespace spad
 		return A;
 	}
 
+	void GetBoxCorners( const Vector4& center, const Vector4 &xs, const Vector4 &ys, const Vector4 &zs, Vector4 outVertices[8] )
+	{
+		outVertices[0] = center - xs - ys + zs;
+		outVertices[1] = center + xs - ys + zs;
+		outVertices[2] = center + xs + ys + zs;
+		outVertices[3] = center - xs + ys + zs;
+
+		outVertices[4] = center - xs - ys - zs;
+		outVertices[5] = center + xs - ys - zs;
+		outVertices[6] = center + xs + ys - zs;
+		outVertices[7] = center - xs + ys - zs;
+	}
+
+	void GetBoxCorners2( const Vector4& v4, const Vector4 &v5, const Vector4 &v7, const Vector4 &v0, Vector4 outVertices[8] )
+	{
+		Vector4 ex = v5 - v4;
+		Vector4 ey = v7 - v4;
+
+		Vector4 v1 = v0 + ex;
+
+		outVertices[0] = v0;
+		outVertices[1] = v1;
+		outVertices[2] = v1 + ey;
+		outVertices[3] = v0 + ey;
+
+		outVertices[4] = v4;
+		outVertices[5] = v5;
+		outVertices[6] = v5 + ey;
+		outVertices[7] = v7;
+	}
 
 	void SettingsTestApp::GenDecalVolumesRandom()
 	{
@@ -1236,6 +1286,10 @@ namespace spad
 
 		decalVolumesCPU_ = reinterpret_cast<DecalVolume*>( spadMallocAligned( sizeof( DecalVolume ) * maxDecalVolumes_, alignof( DecalVolume ) ) );
 		numDecalVolumes_ = maxDecalVolumes_;
+
+		Vector4 clipPoints[24];
+
+		GetBoxCorners( Vector4( 0 ), Vector4::xAxis(), Vector4::yAxis(), Vector4::zAxis(), clipPoints );
 
 		for ( int i = 0; i < maxDecalVolumes_; ++i )
 		{
@@ -1264,10 +1318,40 @@ namespace spad
 			dv.x = rot.getCol0();
 			dv.y = rot.getCol1();
 			dv.z = rot.getCol2();
+
+			//Vector4 boxVertices[8];
+			//Vector4 xs = Vector4( dv.x.x * dv.halfSize.x, dv.x.y * dv.halfSize.x, dv.x.z * dv.halfSize.x, 1.0f );
+			//Vector4 ys = Vector4( dv.y.x * dv.halfSize.y, dv.y.y * dv.halfSize.y, dv.y.z * dv.halfSize.y, 1.0f );
+			//Vector4 zs = Vector4( dv.z.x * dv.halfSize.z, dv.z.y * dv.halfSize.z, dv.z.z * dv.halfSize.z, 1.0f );
+			//GetBoxCorners( Vector4( pos, 1.0f ), xs, ys, zs, boxVertices );
+
+			//for ( uint ib = 0; ib < 8; ++ib )
+			//{
+			//	clipPoints[ib] = viewProj * Vector4( boxVertices[ib].getXYZ(), 1.0f );
+			//}
+
+			////GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
+
+			//Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
+			//Vector4 xsClip = viewProj * xs;
+			//Vector4 ysClip = viewProj * ys;
+			//Vector4 zsClip = viewProj * zs;
+
+			//GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 8 );
+			//GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 8 );
+
+			//Vector4 v0 = viewProj * Vector4( boxVertices[0].getXYZ(), 1.0f );
+			//Vector4 v4 = viewProj * Vector4( boxVertices[4].getXYZ(), 1.0f );
+			//Vector4 v5 = viewProj * Vector4( boxVertices[5].getXYZ(), 1.0f );
+			//Vector4 v7 = viewProj * Vector4( boxVertices[7].getXYZ(), 1.0f );
+
+			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 16 );
+			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 16 );
 		}
 
 		decalVolumesGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, decalVolumesCPU_, true, false, false );
 		decalVolumesCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
+		decalVolumesTestCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
 	}
 
 	void SettingsTestApp::GenDecalVolumesModel()
@@ -1456,6 +1540,7 @@ namespace spad
 
 		decalVolumesGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, decalVolumesCPU_, true, false, false );
 		decalVolumesCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
+		decalVolumesTestCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
 	}
 
 	void SettingsTestApp::ClearDecalVolumes()
@@ -1465,6 +1550,7 @@ namespace spad
 		numDecalVolumes_ = 0;
 		decalVolumesGPU_.DeInitialize();
 		decalVolumesCulledGPU_.DeInitialize();
+		decalVolumesTestCulledGPU_.DeInitialize();
 		decalVolumesCulledCountGPU_.DeInitialize();
 	}
 
@@ -1494,7 +1580,7 @@ namespace spad
 	//	}
 	//}
 
-	void SettingsTestApp::PopulateStats( Dx11DeviceContext& deviceContext, std::vector<DecalVolumeClusteringPass> &passes )
+	void SettingsTestApp::PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeShared &shared, std::vector<DecalVolumeClusteringPass> &passes )
 	{
 		for ( size_t iPass = 0; iPass < passes.size(); ++iPass )
 		{
@@ -1543,6 +1629,11 @@ namespace spad
 				const CellIndirection *cellIndirection = p.cellIndirection.CPUReadbackStart( deviceContext.context );
 				const u32 *cellIndirectionCount = p.cellIndirectionCount.CPUReadbackStart( deviceContext.context );
 				const u32 *args = p.indirectArgs.CPUReadbackStart( deviceContext.context );
+				const GroupToBucket *groupToBucket = nullptr;
+				if ( !firstPass )
+				{
+					groupToBucket = p.groupToBucket.CPUReadbackStart( deviceContext.context );
+				}
 
 				for ( float & i : p.stats.countPerCellHistogram )
 				{
@@ -1552,28 +1643,67 @@ namespace spad
 				uint sum = 0;
 				uint maxCount = 0;
 				uint minCount = 0xffffffff;
+				uint totalCellCount = 0;
 				//const uint cellCount = p.nCellsX * p.nCellsY * p.nCellsZ;
-				const uint cellCount = cellIndirectionCount[0];
-				for ( uint i = 0; i < cellCount; ++i )
+				if ( shared.enableBuckets_ )
 				{
-					//uint c = countPerCell[i] & 0xff;
-					uint c = cellIndirection[i].decalCount;
+					p.stats.numWaves = 0;
 
-					sum += c;
-					maxCount = std::max( maxCount, c );
-					minCount = std::min( minCount, c );
+					for ( uint iBucket = 0; iBucket < maxBuckets; ++iBucket )
+					{
+						const uint cellOffset = iBucket * p.nCellsX * p.nCellsY * p.nCellsZ * 8;
+						const CellIndirection *cellIndirectionBucket = cellIndirection + cellOffset;
 
-					SPAD_ASSERT( c < p.maxDecalsPerCell );
-					p.stats.countPerCellHistogram[c] += 1;
+						const uint cellCount = cellIndirectionCount[iBucket];
+						totalCellCount += cellCount;
+						for ( uint i = 0; i < cellCount; ++i )
+						{
+							//uint c = countPerCell[i] & 0xff;
+							uint c = cellIndirectionBucket[i].decalCount;
+
+							sum += c;
+							maxCount = std::max( maxCount, c );
+							minCount = std::min( minCount, c );
+
+							SPAD_ASSERT( c < p.maxDecalsPerCell );
+							p.stats.countPerCellHistogram[c] += 1;
+						}
+
+						p.stats.numWaves += args[iBucket*3];
+					}
+				}
+				else
+				{
+					const uint cellCount = cellIndirectionCount[0];
+					totalCellCount += cellCount;
+					for ( uint i = 0; i < cellCount; ++i )
+					{
+						//uint c = countPerCell[i] & 0xff;
+						uint c = cellIndirection[i].decalCount;
+
+						sum += c;
+						maxCount = std::max( maxCount, c );
+						minCount = std::min( minCount, c );
+
+						SPAD_ASSERT( c < p.maxDecalsPerCell );
+						p.stats.countPerCellHistogram[c] += 1;
+					}
+
+					p.stats.numWaves = args[0];
 				}
 
-				p.stats.numDecalsInAllCells = sum;
-				p.stats.avgDecalsPerCell = (float)sum / (float)cellCount;
+				//SPAD_ASSERT( ( sum % 8 ) == 0 );
+
+				p.stats.numDecalsInAllCells = sum; // / 8;
+				p.stats.avgDecalsPerCell = (float)sum / (float)totalCellCount;
 				p.stats.maxDecalsPerCell = maxCount;
 				p.stats.minDecalsPerCell = minCount;
-				p.stats.numCellIndirections = cellIndirectionCount[0];
-				p.stats.numWaves = args[0];
+				p.stats.numCellIndirections = totalCellCount;
 
+				if ( !firstPass )
+				{
+					p.groupToBucket.CPUReadbackEnd( deviceContext.context );
+				}
 				p.indirectArgs.CPUReadbackEnd( deviceContext.context );
 				p.cellIndirectionCount.CPUReadbackEnd( deviceContext.context );
 				//p.countPerCell.CPUReadbackEnd( deviceContext.context );
@@ -1620,6 +1750,11 @@ namespace spad
 			const char* items[] = { "Simple", "Two pass Inigo" };
 			ImGui::Combo( "Intersection method", reinterpret_cast<int*>( &shared.intersectionMethod_ ), items, IM_ARRAYSIZE( items ) );
 		}
+
+		ImGui::Checkbox( "Buckets", &shared.enableBuckets_ );
+		ImGui::Checkbox( "Dynamic buckets", &shared.dynamicBuckets_ );
+		ImGui::Checkbox( "Dynamic buckets merge", &shared.dynamicBucketsMerge_ );
+		ImGui::Checkbox( "Pass timing", &shared.enablePassTiming_ );
 
 		showExtendedStats_ = false;
 
@@ -1873,7 +2008,14 @@ namespace spad
 			tiling_->tilingConstants_.setCS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
 
 			//decalVolumesGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
-			decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
+			if ( tiling_->tiling_.intersectionMethod_ )
+			{
+				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_TEST_BINDING );
+			}
+			else
+			{
+				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
+			}
 			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
 
 			if ( !lastPass )
@@ -1948,7 +2090,7 @@ namespace spad
 
 		if ( showExtendedStats_ )
 		{
-			PopulateStats( deviceContext, tiling_->tilingPasses_ );
+			PopulateStats( deviceContext, tiling_->tiling_, tiling_->tilingPasses_ );
 		}
 	}
 
@@ -1987,7 +2129,7 @@ namespace spad
 		uint nCellsX = nCellsXBase;
 		uint nCellsY = nCellsYBase;
 		uint nCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
-		uint nDecalsPerCell = 256;
+		uint nDecalsPerCell = 64;
 
 		uint totalMemoryUsed = 0;
 
@@ -2007,10 +2149,14 @@ namespace spad
 			//passTotalMemory += p.countPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ, nullptr, false, true, true );
 			p.stats.decalsPerCellMem = p.decalPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * p.maxDecalsPerCell, nullptr, false, true, true );
 			passTotalMemory += p.stats.decalsPerCellMem;
-			passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * 8, nullptr, false, true, true );
-			passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, 1, nullptr, false, true, true );
-			passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3, nullptr, false, true, true, true );
+			passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * 8 * maxBuckets, nullptr, false, true, true );
+			passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, maxBuckets, nullptr, false, true, true );
+			passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3 * maxBuckets, nullptr, false, true, true, true );
 			passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );
+			if ( !firstPass )
+			{
+				passTotalMemory += p.groupToBucket.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ, nullptr, false, true, true );
+			}
 
 			p.timer.Initialize( dxDevice );
 
@@ -2037,12 +2183,15 @@ namespace spad
 
 	void SettingsTestApp::DecalVolumeClusteringRun( Dx11DeviceContext& deviceContext )
 	{
+		deviceContext.BeginMarker( "DecalVolumeClusteringRun" );
+
 		clustering_->decalVolumesClusteringTimer_.begin( deviceContext.context );
 
 		for ( size_t iPass = 0; iPass < clustering_->clusteringPasses_.size() - 1; ++iPass )
 		{
 			DecalVolumeClusteringPass &p = clustering_->clusteringPasses_[iPass];
 			p.cellIndirectionCount.clearUAVUint( deviceContext.context, 0 );
+			//p.cellIndirection.clearUAVUint( deviceContext.context, 0 );
 			//p.countPerCell.clearUAVUint( deviceContext.context, 0 );
 			p.memAlloc.clearUAVUint( deviceContext.context, 0 );
 		}
@@ -2052,12 +2201,17 @@ namespace spad
 		
 		for ( size_t iPass = 0; iPass < clustering_->clusteringPasses_.size(); ++iPass )
 		{
+			deviceContext.BeginMarker( "Pass" );
+
 			DecalVolumeClusteringPass &p = clustering_->clusteringPasses_[iPass];
 
 			const bool firstPass = iPass == 0;
 			const bool lastPass = iPass == ( clustering_->clusteringPasses_.size() - 1 );
 
-			p.timer.begin( deviceContext.context );
+			if ( clustering_->clustering_.enablePassTiming_ )
+			{
+				p.timer.begin( deviceContext.context );
+			}
 
 			if ( lastPass )
 			{
@@ -2076,20 +2230,48 @@ namespace spad
 			//snprintf( passName, sizeof( passName ), "DecalVolumeClusteringPass%u", (uint)iPass );
 			//const HlslShaderPass& fxPass = *decalVolumesClusteringShader_->getPass( passName );
 			//fxPass.setCS( deviceContext.context );
+			const uint bucketsEnabled = clustering_->clustering_.enableBuckets_ ? 1 : 0;
+			const uint bucketsMergeEnabled = bucketsEnabled & ( clustering_->clustering_.dynamicBucketsMerge_ ? 1 : 0 );
+			//const uint maxBuckets = 6;
+
 			if ( firstPass )
 			{
-				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringFirstPass", { (uint)clustering_->clustering_.intersectionMethod_ } );
+				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringFirstPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled } );
 				fxPass.setCS( deviceContext.context );
 			}
 			else if ( lastPass )
 			{
-				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_ } );
-				fxPass.setCS( deviceContext.context );
+				if ( bucketsMergeEnabled )
+				{
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 7 } );
+					fxPass.setCS( deviceContext.context );
+				}
+				else if ( bucketsEnabled )
+				{
+					//const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_ } );
+					//fxPass.setCS( deviceContext.context );
+				}
+				else
+				{
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 0 } );
+					fxPass.setCS( deviceContext.context );
+				}
 			}
 			else
 			{
-				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_ } );
-				fxPass.setCS( deviceContext.context );
+				if ( bucketsMergeEnabled )
+				{
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 7 } );
+					fxPass.setCS( deviceContext.context );
+				}
+				else if ( bucketsEnabled )
+				{
+				}
+				else
+				{
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, maxBuckets - 1 } );
+					fxPass.setCS( deviceContext.context );
+				}
 			}
 
 			clustering_->clusteringConstants_.data.ViewMatrix = viewMatrixForDecalVolumes_;
@@ -2121,6 +2303,11 @@ namespace spad
 				//pp.countPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_COUNT_PER_CELL_BINDING );
 				pp.decalPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
+				if ( bucketsMergeEnabled )
+				{
+					//pp.groupToBucket.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
+					p.groupToBucket.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
+				}
 			}
 
 			if ( lastPass )
@@ -2133,7 +2320,14 @@ namespace spad
 			clustering_->clusteringConstants_.setCS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
 
 			//decalVolumesGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
-			decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
+			if ( clustering_->clustering_.intersectionMethod_ )
+			{
+				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_TEST_BINDING );
+			}
+			else
+			{
+				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
+			}
 			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
 
 			if ( !lastPass )
@@ -2153,7 +2347,56 @@ namespace spad
 			else
 			{
 				DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
-				deviceContext.context->DispatchIndirect( pp.indirectArgs.getDxBuffer(), 0 );
+
+				if ( bucketsMergeEnabled )
+				{
+					deviceContext.context->DispatchIndirect( pp.indirectArgs.getDxBuffer(), 0 );
+				}
+				else if ( bucketsEnabled )
+				{
+					for ( uint i = 0; i < maxBuckets; ++i )
+					//for ( uint i = 0; i < 2; ++i )
+					{
+						if ( clustering_->clustering_.dynamicBuckets_ )
+						{
+							if ( i == 0 )
+							{
+								if ( lastPass )
+								{
+									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
+									fxPass.setCS( deviceContext.context );
+								}
+								else
+								{
+									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
+									fxPass.setCS( deviceContext.context );
+								}
+							}
+
+							clustering_->clusteringConstants_.data.maxCountPerCell[1] = i;
+							clustering_->clusteringConstants_.updateGpu( deviceContext.context );
+						}
+						else
+						{
+							if ( lastPass )
+							{
+								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
+								fxPass.setCS( deviceContext.context );
+							}
+							else
+							{
+								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
+								fxPass.setCS( deviceContext.context );
+							}
+						}
+
+						deviceContext.context->DispatchIndirect( pp.indirectArgs.getDxBuffer(), 12 * i );
+					}
+				}
+				else
+				{
+					deviceContext.context->DispatchIndirect( pp.indirectArgs.getDxBuffer(), 0 );
+				}
 			}
 
 			deviceContext.UnbindCSUAVs();
@@ -2162,15 +2405,28 @@ namespace spad
 			{
 				// Fill indirect args
 
-				if ( iPass == clustering_->clusteringPasses_.size() - 2 )
+				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgsLastPass" );
+					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgsBucketsMerge" );
+					fxPassCopy.setCS( deviceContext.context );
+				}
+				else if ( bucketsEnabled )
+				{
+					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgsBuckets" );
 					fxPassCopy.setCS( deviceContext.context );
 				}
 				else
 				{
-					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgs" );
-					fxPassCopy.setCS( deviceContext.context );
+					if ( iPass == clustering_->clusteringPasses_.size() - 2 )
+					{
+						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgsLastPass" );
+						fxPassCopy.setCS( deviceContext.context );
+					}
+					else
+					{
+						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgs" );
+						fxPassCopy.setCS( deviceContext.context );
+					}
 				}
 
 				p.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
@@ -2179,10 +2435,32 @@ namespace spad
 				deviceContext.context->Dispatch( 1, 1, 1 );
 
 				deviceContext.UnbindCSUAVs();
+
+				//if ( bucketsMergeEnabled )
+				//{
+				//	deviceContext.BeginMarker( "cs_decal_volume_assign_slot" );
+				//
+				//	DecalVolumeClusteringPass &np = clustering_->clusteringPasses_[iPass + 1];
+
+				//	const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_assign_slot" );
+				//	fxPassCopy.setCS( deviceContext.context );
+
+				//	p.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
+				//	np.groupToBucket.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_GROUP_TO_BUCKET_BINDING );
+
+				//	deviceContext.context->DispatchIndirect( p.indirectArgs.getDxBuffer(), 12 );
+
+				//	deviceContext.UnbindCSUAVs();
+
+				//	deviceContext.EndMarker();
+				//}
 			}
 
-			p.timer.end( deviceContext.context );
-			p.timer.calculateDuration( deviceContext );
+			if ( clustering_->clustering_.enablePassTiming_ )
+			{
+				p.timer.end( deviceContext.context );
+				p.timer.calculateDuration( deviceContext );
+			}
 
 			//const u32 *decalsPerCell = p.decalPerCell.CPUReadbackStart( deviceContext.context );
 			//const u32 *decalCountPerCell = p.countPerCell.CPUReadbackStart( deviceContext.context );
@@ -2195,14 +2473,18 @@ namespace spad
 			//p.cellIndirection.CPUReadbackEnd( deviceContext.context );
 			//p.countPerCell.CPUReadbackEnd( deviceContext.context );
 			//p.decalPerCell.CPUReadbackEnd( deviceContext.context );
+
+			deviceContext.EndMarker();
 		}
 
 		clustering_->decalVolumesClusteringTimer_.end( deviceContext.context );
 		clustering_->decalVolumesClusteringTimer_.calculateDuration( deviceContext );
 
+		deviceContext.EndMarker();
+
 		if ( showExtendedStats_ )
 		{
-			PopulateStats( deviceContext, clustering_->clusteringPasses_ );
+			PopulateStats( deviceContext, clustering_->clustering_, clustering_->clusteringPasses_ );
 		}
 	}
 
