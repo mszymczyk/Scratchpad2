@@ -69,15 +69,15 @@ passes :
 #endif // FX_PASSES
 #endif // FX_HEADER
 
+#define DECAL_VOLUME_CLUSTERING_3D								1
+#define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
+//#define INTERSECTION_METHOD										0
+
 #include "cs_decal_volume_common.hlsl"
 
-#define DECAL_VOLUME_CLUSTERING_3D								1
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_FIRST_PASS		128
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_MID_PASS			32
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS		32
-
-#define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
-//#define INTERSECTION_METHOD										0
 
 [numthreads( 256, 1, 1 )]
 void DecalTilingClearHeader( uint3 dtid : SV_DispatchThreadID )
@@ -105,12 +105,17 @@ void DecalTilingCopyIndirectArgsLastPass()
 [numthreads( 1, 1, 1 )]
 void DecalTilingCopyIndirectArgsBuckets()
 {
-	uint b1 = inCellIndirectionCount[0];
-	uint b2 = inCellIndirectionCount[1];
-	uint b4 = inCellIndirectionCount[2];
-	uint b8 = inCellIndirectionCount[3];
-	uint b16 = inCellIndirectionCount[4];
-	uint b32 = inCellIndirectionCount[5];
+#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint mult = 1;
+#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint mult = 1;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint b1  = inCellIndirectionCount[0] * mult;
+	uint b2  = inCellIndirectionCount[1] * mult;
+	uint b4  = inCellIndirectionCount[2] * mult;
+	uint b8  = inCellIndirectionCount[3] * mult;
+	uint b16 = inCellIndirectionCount[4] * mult;
+	uint b32 = inCellIndirectionCount[5] * mult;
 
 	uint n1  = b1  ? ( b1  + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 1  - 1 ) / ( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 1  ) : 0;
 	uint n2  = b2  ? ( b2  + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 2  - 1 ) / ( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 2  ) : 0;
@@ -131,12 +136,17 @@ void DecalTilingCopyIndirectArgsBuckets()
 [numthreads( 1, 1, 1 )]
 void DecalTilingCopyIndirectArgsBucketsMerge()
 {
-	uint b1 = inCellIndirectionCount[0];
-	uint b2 = inCellIndirectionCount[1];
-	uint b4 = inCellIndirectionCount[2];
-	uint b8 = inCellIndirectionCount[3];
-	uint b16 = inCellIndirectionCount[4];
-	uint b32 = inCellIndirectionCount[5];
+#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint mult = 1;
+#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint mult = 1;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint b1  = inCellIndirectionCount[0] * mult;
+	uint b2  = inCellIndirectionCount[1] * mult;
+	uint b4  = inCellIndirectionCount[2] * mult;
+	uint b8  = inCellIndirectionCount[3] * mult;
+	uint b16 = inCellIndirectionCount[4] * mult;
+	uint b32 = inCellIndirectionCount[5] * mult;
 
 	uint n1  = b1  ? ( b1  + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 1  - 1 ) / ( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 1  ) : 0;
 	uint n2  = b2  ? ( b2  + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 2  - 1 ) / ( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 2  ) : 0;
@@ -158,12 +168,17 @@ void DecalTilingCopyIndirectArgsBucketsMerge()
 
 void DecalVolume_GetBucket( uint groupIndex, out uint bucket, out uint firstGroup )
 {
-	uint b1 = inCellIndirectionCount[0];
-	uint b2 = inCellIndirectionCount[1];
-	uint b4 = inCellIndirectionCount[2];
-	uint b8 = inCellIndirectionCount[3];
-	uint b16 = inCellIndirectionCount[4];
-	uint b32 = inCellIndirectionCount[5];
+#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint mult = 1;
+#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint mult = 1;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+	uint b1  = inCellIndirectionCount[0] * mult;
+	uint b2  = inCellIndirectionCount[1] * mult;
+	uint b4  = inCellIndirectionCount[2] * mult;
+	uint b8  = inCellIndirectionCount[3] * mult;
+	uint b16 = inCellIndirectionCount[4] * mult;
+	uint b32 = inCellIndirectionCount[5] * mult;
 
 	uint n1  = b1  ? ( b1  + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 1  - 1 ) / ( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 1  ) : 0;
 	uint n2  = b2  ? ( b2  + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 2  - 1 ) / ( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS / 2  ) : 0;
@@ -254,16 +269,14 @@ void cs_decal_volume_assign_slot( uint3 dtid : SV_DispatchThreadID )
 
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_FIRST_PASS
 
-
 #include "cs_decal_volume_impl.hlsl"
 
 [numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
 void DecalVolumeClusteringFirstPass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID )
 {
-	//uint flatCellIndex = DecalVolume_GetCellFlatIndex( uint3( cellID.xyz ), uint3( cellCountA.xyz ) );
-	uint flatCellIndex = DecalVolume_EncodeCell( cellID.xyz );
+	uint flatCellIndex = DecalVolume_EncodeCell3D( cellID.xyz );
 	uint decalCountInFrustum = inDecalVolumesCount[0];
-	DecalVisibilityGeneric( cellThreadID, flatCellIndex, decalCountInFrustum, decalCountInFrustum, maxCountPerCell.x, 0, INTERSECTION_METHOD );// , maxCountPerCell.y );
+	DecalVisibilityGeneric( cellThreadID, flatCellIndex, decalCountInFrustum, decalCountInFrustum, maxCountPerCell.x, 0 );
 }
 #endif // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
@@ -275,30 +288,15 @@ void DecalVolumeClusteringFirstPass( uint3 cellThreadID : SV_GroupThreadID, uint
 #if DECAL_VOLUME_CLUSTER_SUB_WORD == 1
 #include "cs_decal_volume_impl_one_thread_per_cell.hlsl"
 #elif DECAL_VOLUME_CLUSTER_SUB_WORD == -1 || DECAL_VOLUME_CLUSTER_SUB_WORD == -2
-//#define DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL	DECAL_VOLUME_CLUSTER_SUB_WORD
-//#define DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP	(32 / DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL)
 #include "cs_decal_volume_impl_one_thread_per_cell.hlsl"
 #define DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP
 #include "cs_decal_volume_impl_subword.hlsl"
 #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32 // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 1
 #include "cs_decal_volume_impl.hlsl"
 #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 32
-//#define DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL	DECAL_VOLUME_CLUSTER_SUB_WORD
-//#define DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP	(32 / DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL)
-#define DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP //DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP
+#define DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP
 #include "cs_decal_volume_impl_subword.hlsl"
 #endif // #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
-
-uint3 DecalVolume_GetCell3DIndex( uint flatCellIndex, uint3 numCellsXYZ )
-{
-	uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
-	uint cellZ = flatCellIndex / sliceSize;
-	uint tileIndex = flatCellIndex % sliceSize;
-	uint cellX = tileIndex % numCellsXYZ.x;
-	uint cellY = tileIndex / numCellsXYZ.x;
-
-	return uint3( cellX, cellY, cellZ );
-}
 
 
 CellIndirection DecalVolumeGetCellIndirection( uint cellIndex, uint cellBucket )
@@ -308,19 +306,16 @@ CellIndirection DecalVolumeGetCellIndirection( uint cellIndex, uint cellBucket )
 	uint dataIndex = cellIndex / 8;
 	uint childIndex = cellIndex % 8;
 
-	CellIndirection ci = inCellIndirection[dataIndex + cellBucket * DecalVolume_CellCountCurrentPass()];
+	CellIndirection ci = inCellIndirection[dataIndex + cellBucket * DecalVolume_CellCountPrevPass()];
 
-	//uint3 parentCellXYZ = DecalVolume_GetCell3DIndex( ci.cellIndex, cellCountA.xyz / 2 );
-	//uint3 parentCellXYZ = DecalVolume_GetCell3DIndex( ci.cellIndex, uint3(7, 4, 4) );
-	uint3 parentCellXYZ = DecalVolume_DecodeCell( ci.cellIndex );
+	uint3 parentCellXYZ = DecalVolume_DecodeCell3D( ci.cellIndex );
 
 	uint slice = childIndex / 4;
 	uint sliceSize = cellCountA.x * cellCountA.y;
 	uint tile = childIndex % 4;
 	uint row = tile / 2;
 	uint col = tile % 2;
-	//ci.cellIndex = ( parentCellXYZ.z * 2 + slice ) * sliceSize /** 4*/ + ( parentCellXYZ.y * 2 + row ) * cellCountA.x /** 2*/ + parentCellXYZ.x * 2 + col;
-	ci.cellIndex = DecalVolume_EncodeCell( uint3( parentCellXYZ.x * 2 + col, parentCellXYZ.y * 2 + row, parentCellXYZ.z * 2 + slice ) );
+	ci.cellIndex = DecalVolume_EncodeCell3D( uint3( parentCellXYZ.x * 2 + col, parentCellXYZ.y * 2 + row, parentCellXYZ.z * 2 + slice ) );
 
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
@@ -343,9 +338,8 @@ void DecalVolumeClusteringMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 
 	if ( cellIndex < nCells )
 	{
 		uint decalCountInFrustum = inDecalVolumesCount[0];
-		//CellIndirection ci = inCellIndirection[cellIndex];
 		CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, 0 );
-		DecalVisibilityOnThreadPerCell( ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );// , maxCountPerCell.y );
+		DecalVisibilityOnThreadPerCell( ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 	}
 
 #elif DECAL_VOLUME_CLUSTER_SUB_WORD == -1
@@ -359,16 +353,14 @@ void DecalVolumeClusteringMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 
 	if ( cellSlot == 5 )
 	{
 		uint cellIndex = cellID.x;
-		//CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
 		CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, cellSlot );
-		DecalVisibilitySubWordLoop( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
+		DecalVisibilitySubWordLoop( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 	}
 	else
 	{
 		uint cellIndex = dtid.x / numThreadsPerCell;
-		//CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
 		CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, cellSlot );
-		DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
+		DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 	}
 
 #elif DECAL_VOLUME_CLUSTER_SUB_WORD == -2
@@ -388,23 +380,21 @@ void DecalVolumeClusteringMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 
 	//	if ( cellIndex < nCells )
 	//	{
 	//		CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, 0 );
-	//		DecalVisibilityOnThreadPerCell( ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );// , maxCountPerCell.y );
+	//		DecalVisibilityOnThreadPerCell( ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 	//	}
 	//}
 	//else
 		if ( cellSlot == 5 )
 	{
 		uint cellIndex = cellID.x - firstGroup;
-		//CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
 		CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, cellSlot );
-		DecalVisibilitySubWordLoop( 32, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
+		DecalVisibilitySubWordLoop( 32, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 	}
 	else
 	{
 		uint cellIndex = (dtid.x - firstGroup * 32) / numThreadsPerCell;
-		//CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
 		CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, cellSlot );
-		DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
+		DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 	}
 
 #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32
@@ -413,14 +403,12 @@ void DecalVolumeClusteringMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 
 	uint cellIndex = cellID.x;
 #if DECAL_VOLUME_CLUSTER_BUCKETS
 	uint cellSlot = 5;
-	//CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
 	CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, cellSlot );
 #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-	//CellIndirection ci = inCellIndirection[cellIndex];
 	CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, 0 );
 #endif // #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
 	uint decalCountInFrustum = inDecalVolumesCount[0];
-	DecalVisibilityGeneric( cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );// , maxCountPerCell.y );
+	DecalVisibilityGeneric( cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 
 #else // #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32
 
@@ -434,146 +422,12 @@ void DecalVolumeClusteringMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 
 
 	uint decalCountInFrustum = inDecalVolumesCount[0];
 #if DECAL_VOLUME_CLUSTER_BUCKETS
-	//CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
 	CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, cellSlot );
 #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-	//CellIndirection ci = inCellIndirection[cellIndex];
 	CellIndirection ci = DecalVolumeGetCellIndirection( cellIndex, 0 );
 #endif // #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-	DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
+	DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex );
 
 #endif // #else // #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32
 }
 #endif // #if DECAL_VOLUME_CLUSTER_MID_PASS || DECAL_VOLUME_CLUSTER_LAST_PASS
-
-
-//#if DECAL_VOLUME_CLUSTER_LAST_PASS
-//
-//#define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS
-//
-//#if DECAL_VOLUME_CLUSTER_SUB_WORD == 1
-//
-//#include "cs_decal_volume_impl_one_thread_per_cell.hlsl"
-//
-//#elif DECAL_VOLUME_CLUSTER_SUB_WORD == -1 || DECAL_VOLUME_CLUSTER_SUB_WORD == -2
-//
-////#define DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL	DECAL_VOLUME_CLUSTER_SUB_WORD
-////#define DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP	(32 / DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL)
-//#define DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP
-//#include "cs_decal_volume_impl_subword.hlsl"
-//
-//#elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32 // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 1
-//
-//#include "cs_decal_volume_impl.hlsl"
-//
-//#else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 32
-//
-////#define DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL	DECAL_VOLUME_CLUSTER_SUB_WORD
-////#define DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP	(32 / DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL)
-//#define DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP // DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP
-//#include "cs_decal_volume_impl_subword.hlsl"
-//
-//#endif // #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
-//
-//[numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
-//void DecalVolumeClusteringLastPass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID, uint3 dtid : SV_DispatchThreadID )
-//{
-//#if DECAL_VOLUME_CLUSTER_SUB_WORD == 1
-//	
-//	// Every thread processes one cell
-//	uint cellIndex = dtid.x;
-//	uint nCells = inCellIndirectionCount[0];
-//	if ( cellIndex < nCells )
-//	{
-//		uint decalCountInFrustum = inDecalVolumesCount[0];
-//		CellIndirection ci = inCellIndirection[cellIndex];
-//		DecalVisibilityOnThreadPerCell( ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );// , maxCountPerCell.y );
-//	}
-//
-//#elif DECAL_VOLUME_CLUSTER_SUB_WORD == -1
-//
-//	//uint cellSlot = maxCountPerCell.y;
-//	//uint numThreadsPerCell = 1 << cellSlot;
-//
-//	//uint nCells = inCellIndirectionCount[cellSlot];
-//	//uint cellIndex = dtid.x / numThreadsPerCell;
-//
-//	//uint decalCountInFrustum = inDecalVolumesCount[0];
-//	//CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
-//	//DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
-//
-//	uint cellSlot = maxCountPerCell.y;
-//	uint numThreadsPerCell = 1 << cellSlot;
-//
-//	uint nCells = inCellIndirectionCount[cellSlot];
-//	uint decalCountInFrustum = inDecalVolumesCount[0];
-//
-//	if ( cellSlot == 5 )
-//	{
-//		uint cellIndex = cellID.x;
-//		CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
-//		DecalVisibilitySubWordLoop( 32, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
-//	}
-//	else
-//	{
-//		uint cellIndex = dtid.x / numThreadsPerCell;
-//		CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
-//		DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
-//	}
-//
-//#elif DECAL_VOLUME_CLUSTER_SUB_WORD == -2
-//
-//	//uint cellSlot = DecalVolume_GetBucket( dtid.x / DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP );
-//	uint cellSlot;
-//	uint firstGroup;
-//	DecalVolume_GetBucket( cellID.x, cellSlot, firstGroup );
-//	uint numThreadsPerCell = 1 << cellSlot;
-//
-//	uint nCells = inCellIndirectionCount[cellSlot];
-//	uint decalCountInFrustum = inDecalVolumesCount[0];
-//
-//	if ( cellSlot == 5 )
-//	{
-//		uint cellIndex = cellID.x - firstGroup;
-//		CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
-//		DecalVisibilitySubWordLoop( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
-//	}
-//	else
-//	{
-//		uint cellIndex = ( dtid.x - firstGroup * 32 ) / numThreadsPerCell;
-//		CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
-//		DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
-//	}
-//#elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32
-//
-//	// 32 threads process one cell
-//	uint cellIndex = cellID.x;
-//	uint cellSlot = 5;
-//#if DECAL_VOLUME_CLUSTER_BUCKETS
-//	CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
-//#else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-//	CellIndirection ci = inCellIndirection[cellIndex];
-//#endif // #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-//	uint decalCountInFrustum = inDecalVolumesCount[0];
-//	DecalVisibilityGeneric( cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );// , maxCountPerCell.y );
-//
-//#else // #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32
-//
-//	// DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL threads process one cell
-//	// DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP processed in parallel
-//	const uint numThreadsPerCell = DECAL_VOLUME_CLUSTER_SUB_WORD;
-//
-//	uint cellSlot = firstbitlow( numThreadsPerCell );
-//	uint nCells = inCellIndirectionCount[cellSlot];
-//	uint cellIndex = dtid.x / numThreadsPerCell;
-//	uint decalCountInFrustum = inDecalVolumesCount[0];
-//#if DECAL_VOLUME_CLUSTER_BUCKETS
-//	CellIndirection ci = inCellIndirection[cellIndex + cellSlot * DecalVolume_CellCountCurrentPass()];
-//#else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-//	CellIndirection ci = inCellIndirection[cellIndex];
-//#endif // #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-//	DecalVisibilitySubWord( numThreadsPerCell, cellIndex < nCells, cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, INTERSECTION_METHOD );
-//
-//#endif // #else // #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32
-//}
-//#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS

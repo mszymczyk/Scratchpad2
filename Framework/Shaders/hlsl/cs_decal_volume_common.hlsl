@@ -33,14 +33,16 @@ struct Frustum
 	float3 frustumCorners[8];
 
 	bool twoTests;
+
+	float clipSpacePlanes[6];
 };
 
 
-struct FrustumClipSpace
-{
-	// left, right, bottom, top, near, far
-	float planes[6];
-};
+//struct FrustumClipSpace
+//{
+//	// left, right, bottom, top, near, far
+//	float planes[6];
+//};
 
 
 void extractFrustumPlanes( out float4 planes[6], float4x4 vp )
@@ -110,6 +112,8 @@ void extractFrustumCorners( out float3 frustumCorners[8], float4 frustumPlanes[6
 
 void buildFrustum( out Frustum frustum, const uint3 cellCount, uint3 cellIndex, float2 tanHalfFovRcp, float4x4 viewMatrix, float nearPlane, float farPlaneOverNearPlane )
 {
+	frustum = (Frustum)0;
+
 	float n = nearPlane * pow( abs(farPlaneOverNearPlane), (float)cellIndex.z / cellCount.z );
 	float f = nearPlane * pow( abs(farPlaneOverNearPlane), (float)( cellIndex.z + 1 ) / cellCount.z );
 	//float n = 1;
@@ -139,33 +143,6 @@ void buildFrustum( out Frustum frustum, const uint3 cellCount, uint3 cellIndex, 
 	extractFrustumCorners( frustum.frustumCorners, frustum.planes );
 
 	frustum.twoTests = true;
-}
-
-#define USE_Z_01 0
-
-void buildFrustumClip( out FrustumClipSpace frustum, const uint3 cellCount, uint3 cellIndex, float nearPlane, float farPlaneOverNearPlane )
-{
-	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) / cellCount.z );
-	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) / cellCount.z );
-
-	frustum.planes[0] = -1 + ( 2.0f / cellCount.x ) * ( cellIndex.x     );
-	frustum.planes[1] = -1 + ( 2.0f / cellCount.x ) * ( cellIndex.x + 1 );
-	frustum.planes[2] =  1 - ( 2.0f / cellCount.y ) * ( cellIndex.y + 1 );
-	frustum.planes[3] =  1 - ( 2.0f / cellCount.y ) * ( cellIndex.y     );
-	frustum.planes[4] = n;
-	frustum.planes[5] = f;
-
-#if USE_Z_01
-	nearPlane = 4;
-	float farPlane = 1000;
-	float nmf = 1.0f / ( nearPlane - farPlane );
-	float a = farPlane * nmf;
-	float b = nearPlane * farPlane * nmf;
-
-	//float z01_2 = ( -zLog * a + b ) / zLog;
-	frustum.planes[4] = ( -n * a + b ) / n;
-	frustum.planes[5] = ( -f * a + b ) / f;
-#endif // #if USE_Z_01
 }
 
 
@@ -306,35 +283,48 @@ void DecalVolume_GetCornersClipSpace( DecalVolumeTest dv, out float4 dvCornersXY
 }
 
 
-uint TestDecalVolumeFrustumClipSpace( in DecalVolumeTest dv, in FrustumClipSpace frustum )
+
+#define USE_Z_01 0
+
+void buildFrustumClip( out Frustum frustum, const uint3 cellCount, uint3 cellIndex, float nearPlane, float farPlaneOverNearPlane )
+{
+	frustum = (Frustum)0;
+
+	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) / cellCount.z );
+	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) / cellCount.z );
+
+	frustum.clipSpacePlanes[0] = -1 + ( 2.0f / cellCount.x ) * ( cellIndex.x );
+	frustum.clipSpacePlanes[1] = -1 + ( 2.0f / cellCount.x ) * ( cellIndex.x + 1 );
+	frustum.clipSpacePlanes[2] = 1 - ( 2.0f / cellCount.y ) * ( cellIndex.y + 1 );
+	frustum.clipSpacePlanes[3] = 1 - ( 2.0f / cellCount.y ) * ( cellIndex.y );
+	frustum.clipSpacePlanes[4] = n;
+	frustum.clipSpacePlanes[5] = f;
+
+#if USE_Z_01
+	nearPlane = 4;
+	float farPlane = 1000;
+	float nmf = 1.0f / ( nearPlane - farPlane );
+	float a = farPlane * nmf;
+	float b = nearPlane * farPlane * nmf;
+
+	//float z01_2 = ( -zLog * a + b ) / zLog;
+	frustum.clipSpacePlanes[4] = ( -n * a + b ) / n;
+	frustum.clipSpacePlanes[5] = ( -f * a + b ) / f;
+#endif // #if USE_Z_01
+}
+
+
+uint TestDecalVolumeFrustumClipSpace( in DecalVolumeTest dv, in Frustum frustum )
 {
 	float4 corners[8];
 	DecalVolume_GetCornersClipSpace( dv, corners );
 
-	float left = frustum.planes[0];
-	float right = frustum.planes[1];
-	float bottom = frustum.planes[2];
-	float top = frustum.planes[3];
-	float near = frustum.planes[4];
-	float far = frustum.planes[5];
-
-	//uint iCorner;
-
-	//bool anyInsideLeft = false;
-	//[unroll]
-	//for ( iCorner = 0; iCorner < 8; ++iCorner )
-	//	anyInsideLeft = anyInsideLeft || ( corners[iCorner].x >= left * corners[iCorner].z );
-
-	//if ( !anyInsideLeft )
-	//	return 0;
-
-	//bool anyInsideRight = false;
-	//[unroll]
-	//for ( iCorner = 0; iCorner < 8; ++iCorner )
-	//	anyInsideRight = anyInsideRight || ( corners[iCorner].x <= right * corners[iCorner].z );
-
-	//if ( !anyInsideRight )
-	//	return 0;
+	float left   = frustum.clipSpacePlanes[0];
+	float right  = frustum.clipSpacePlanes[1];
+	float bottom = frustum.clipSpacePlanes[2];
+	float top    = frustum.clipSpacePlanes[3];
+	float near   = frustum.clipSpacePlanes[4];
+	float far    = frustum.clipSpacePlanes[5];
 
 	bool allOutsideLeft = true;
 	bool allOutsideRight = true;
@@ -376,7 +366,6 @@ uint TestDecalVolumeFrustumClipSpace( in DecalVolumeTest dv, in FrustumClipSpace
 		;
 
 	return anyOutside ? 0 : 1;
-	//return 1;
 }
 
 
@@ -401,12 +390,198 @@ uint RoundUpToPowerOfTwo( uint v )
 }
 
 
-uint DecalVolume_EncodeCell( uint3 cellXYZ )
+//uint3 DecalVolume_GetCell3DIndex( uint flatCellIndex, uint3 numCellsXYZ )
+//{
+//	uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
+//	uint cellZ = flatCellIndex / sliceSize;
+//	uint tileIndex = flatCellIndex % sliceSize;
+//	uint cellX = tileIndex % numCellsXYZ.x;
+//	uint cellY = tileIndex / numCellsXYZ.x;
+//
+//	return uint3( cellX, cellY, cellZ );
+//}
+
+
+uint3 DecalVolume_CellCountXYZ()
+{
+#if DECAL_VOLUME_CLUSTERING_3D
+	return cellCountA.xyz;
+#else // #if DECAL_VOLUME_CLUSTERING_3D
+	return uint3( cellCountA.xy, 1 );
+#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+}
+
+
+uint DecalVolume_CellCountCurrentPass()
+{
+#if DECAL_VOLUME_CLUSTERING_3D
+	return mul24( mul24( cellCountA.x, cellCountA.y ), cellCountA.z );
+#else // #if DECAL_VOLUME_CLUSTERING_3D
+	return mul24( cellCountA.x, cellCountA.y );
+#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+}
+
+
+uint DecalVolume_CellCountPrevPass()
+{
+#if DECAL_VOLUME_CLUSTERING_3D
+	return DecalVolume_CellCountCurrentPass() / 8;
+#else // #if DECAL_VOLUME_CLUSTERING_3D
+	return DecalVolume_CellCountCurrentPass() / 4;
+#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+}
+
+
+uint DecalVolume_EncodeCell3D( uint3 cellXYZ )
 {
 	return ( cellXYZ.x << 20 ) | ( cellXYZ.y << 8 ) | cellXYZ.z;
 }
 
-uint3 DecalVolume_DecodeCell( uint flatCellIndex )
+
+uint3 DecalVolume_DecodeCell3D( uint flatCellIndex )
 {
 	return uint3( flatCellIndex >> 20, (flatCellIndex >> 8) & 0xfff, flatCellIndex & 0xff );
+}
+
+
+uint DecalVolume_EncodeCell2D( uint2 cellXYZ )
+{
+	return ( cellXYZ.x << 16 ) | cellXYZ.y;
+}
+
+
+uint2 DecalVolume_DecodeCell2D( uint flatCellIndex )
+{
+	return uint2( flatCellIndex >> 16, flatCellIndex & 0xffff );
+}
+
+
+uint3 DecalVolume_DecodeCellCoord( uint flatCellIndex )
+{
+#if DECAL_VOLUME_CLUSTERING_3D
+	uint3 numCellsXYZ = cellCountA.xyz;
+	uint3 cellXYZ = DecalVolume_DecodeCell3D( flatCellIndex );
+	return cellXYZ;
+#else // #if DECAL_VOLUME_CLUSTERING_3D
+	uint3 numCellsXYZ = uint3( cellCountA.xy, 1 );
+	uint2 cellXY = DecalVolume_DecodeCell2D( flatCellIndex );
+	return uint3( cellXY, 0 );
+#endif // #if DECAL_VOLUME_CLUSTERING_3D
+}
+
+
+void DecalVolume_OutputCellIndirection( uint cellThreadIndex, uint3 cellXYZ, uint encodedCellXYZ, uint cellDecalCount, uint offsetToFirstDecalIndex, uint3 numCellsXYZ )
+{
+	if ( cellThreadIndex == 0 )
+	{
+		uint maxDecalsPerCell = maxCountPerCell.x;
+		uint flatCellCount = DecalVolume_CellCountCurrentPass();
+
+#if DECAL_VOLUME_CLUSTER_LAST_PASS
+
+		uint flatCellIndex2 = DecalVolume_GetCellFlatIndex( cellXYZ, cellCountA.xyz );
+		outDecalsPerCell[flatCellIndex2] = DecalVolume_PackHeader( min( cellDecalCount, maxDecalsPerCell ), offsetToFirstDecalIndex );
+
+#else // DECAL_VOLUME_CLUSTER_LAST_PASS
+
+		if ( cellDecalCount > 0 )
+		{
+			CellIndirection ci;
+			ci.offsetToFirstDecalIndex = offsetToFirstDecalIndex;
+			ci.decalCount = min( cellDecalCount, maxDecalsPerCell );
+
+#if DECAL_VOLUME_CLUSTER_BUCKETS
+			uint np2 = RoundUpToPowerOfTwo( min( cellDecalCount, 32 ) );
+			uint cellSlot = firstbitlow( np2 );
+#else // #if DECAL_VOLUME_CLUSTER_BUCKETS
+			uint cellSlot = 0;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
+
+#if DECAL_VOLUME_CLUSTERING_3D
+
+			// Could use append buffer
+			uint cellIndirectionIndex;
+			InterlockedAdd( outCellIndirectionCount[cellSlot], 8, cellIndirectionIndex );
+
+#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+			ci.cellIndex = encodedCellXYZ;
+			outDecalCellIndirection[cellIndirectionIndex / 8 + cellSlot * flatCellCount] = ci;
+#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+			for ( uint i = 0; i < 8; ++i )
+			{
+				uint slice = i / 4;
+				uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
+				uint tile = i % 4;
+				uint row = tile / 2;
+				uint col = tile % 2;
+				ci.cellIndex = ( cellXYZ.z * 2 + slice ) * sliceSize * 4 + ( cellXYZ.y * 2 + row ) * numCellsXYZ.x * 2 + cellXYZ.x * 2 + col;
+				//ci.cellIndex = flatCellIndex;
+				ci.cellIndex = DecalVolume_EncodeCell3D( uint3( cellXYZ.x * 2 + col, cellXYZ.y * 2 + row, cellXYZ.z * 2 + slice ) );
+
+				outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 8] = ci;
+			}
+#endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+
+#else // #if DECAL_VOLUME_CLUSTERING_3D
+
+			// Could use append buffer
+			uint cellIndirectionIndex;
+			InterlockedAdd( outCellIndirectionCount[cellSlot], 4, cellIndirectionIndex );
+
+#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+			ci.cellIndex = encodedCellXYZ;
+			outDecalCellIndirection[cellIndirectionIndex / 4 + cellSlot * flatCellCount] = ci;
+#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+
+			for ( uint i = 0; i < 4; ++i )
+			{
+				uint row = i / 2;
+				uint col = i % 2;
+				ci.cellIndex = ( cellXYZ.y * 2 + row ) * numCellsXYZ.x * 2 + cellXYZ.x * 2 + col;
+
+				outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
+			}
+
+#endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+
+#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+		}
+#endif // #else // DECAL_VOLUME_CLUSTER_LAST_PASS
+	}
+}
+
+
+Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, uint3 cellXYZ )
+{
+	Frustum outFrustum = (Frustum)0;
+
+#if INTERSECTION_METHOD == 0
+	buildFrustum( outFrustum, numCellsXYZ, cellXYZ, tanHalfFov.zw, ViewMatrix, nearFar.x, nearFar.z );
+
+	//if ( intersectionMethod == 0 )
+	outFrustum.twoTests = false;
+	//else
+	//	outFrustum.twoTests = true;
+
+#else // INTERSECTION_METHOD == 0
+	buildFrustumClip( outFrustum, numCellsXYZ, cellXYZ, nearFar.x, nearFar.z );
+#endif // #else // INTERSECTION_METHOD == 0
+
+	return outFrustum;
+}
+
+
+uint DecalVolume_TestFrustum( const Frustum frustum, uint decalIndex )
+{
+	uint intersects;
+
+#if INTERSECTION_METHOD == 0
+	const DecalVolume dv = inDecalVolumes[decalIndex];
+	intersects = TestDecalVolumeFrustum( dv, frustum );
+#else // #if INTERSECTION_METHOD == 0
+	const DecalVolumeTest dv = inDecalVolumesTest[decalIndex];
+	intersects = TestDecalVolumeFrustumClipSpace( dv, frustum );
+#endif // #if INTERSECTION_METHOD == 0
+
+	return intersects;
 }

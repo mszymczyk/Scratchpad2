@@ -882,7 +882,7 @@ namespace spad
 			//gpuClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\gpuClustering.hlslc_packed" );
 			decalVolumeRenderingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\decal_volume_rendering.hlslc_packed" );
 			decalVolumeCullShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_culling.hlslc_packed" );
-			tiling_->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
+			//tiling_->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
 			clustering_->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
 		}
 	}
@@ -1651,12 +1651,12 @@ namespace spad
 
 					for ( uint iBucket = 0; iBucket < maxBuckets; ++iBucket )
 					{
-						const uint cellOffset = iBucket * p.nCellsX * p.nCellsY * p.nCellsZ * 8;
+						const uint cellOffset = iBucket * p.nCellsX * p.nCellsY * p.nCellsZ;
 						const CellIndirection *cellIndirectionBucket = cellIndirection + cellOffset;
 
 						const uint cellCount = cellIndirectionCount[iBucket];
 						totalCellCount += cellCount;
-						for ( uint i = 0; i < cellCount; ++i )
+						for ( uint i = 0; i < cellCount / 8; ++i )
 						{
 							//uint c = countPerCell[i] & 0xff;
 							uint c = cellIndirectionBucket[i].decalCount;
@@ -1675,8 +1675,9 @@ namespace spad
 				else
 				{
 					const uint cellCount = cellIndirectionCount[0];
+					SPAD_ASSERT( cellCount % 8 == 0 );
 					totalCellCount += cellCount;
-					for ( uint i = 0; i < cellCount; ++i )
+					for ( uint i = 0; i < cellCount / 8; ++i )
 					{
 						//uint c = countPerCell[i] & 0xff;
 						uint c = cellIndirection[i].decalCount;
@@ -1827,78 +1828,78 @@ namespace spad
 
 		DecalVolumeTilingDataPtr tilingPtr = std::make_unique<DecalVolumeTilingData>();
 
-		tilingPtr->tilingConstants_.Initialize( dxDevice );
-		tilingPtr->decalVolumesTilingTimer_.Initialize( dxDevice );
-		tilingPtr->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
+		//tilingPtr->tilingConstants_.Initialize( dxDevice );
+		//tilingPtr->decalVolumesTilingTimer_.Initialize( dxDevice );
+		//tilingPtr->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
 
-		tilingPtr->tilingPasses_.resize( DECAL_VOLUME_TILING_NUM_PASSES );
+		//tilingPtr->tilingPasses_.resize( DECAL_VOLUME_TILING_NUM_PASSES );
 
-		uint rtWidth, rtHeight;
-		GetRenderTargetSize( rtWidth, rtHeight );
+		//uint rtWidth, rtHeight;
+		//GetRenderTargetSize( rtWidth, rtHeight );
 
-		uint nTilesXBase = ( rtWidth + DECAL_VOLUME_TILE_SIZE_X - 1 ) / DECAL_VOLUME_TILE_SIZE_X;
-		uint nTilesYBase = ( rtHeight + DECAL_VOLUME_TILE_SIZE_Y - 1 ) / DECAL_VOLUME_TILE_SIZE_Y;
+		//uint nTilesXBase = ( rtWidth + DECAL_VOLUME_TILE_SIZE_X - 1 ) / DECAL_VOLUME_TILE_SIZE_X;
+		//uint nTilesYBase = ( rtHeight + DECAL_VOLUME_TILE_SIZE_Y - 1 ) / DECAL_VOLUME_TILE_SIZE_Y;
 
-		const uint maxDivider = 1 << (DECAL_VOLUME_TILING_NUM_PASSES - 1);
-		const uint a = nTilesYBase / maxDivider;
-		if ( a * maxDivider != nTilesYBase )
-		{
-			nTilesYBase = spadAlignU32_2( nTilesYBase - maxDivider - 1, maxDivider );
-		}
+		//const uint maxDivider = 1 << (DECAL_VOLUME_TILING_NUM_PASSES - 1);
+		//const uint a = nTilesYBase / maxDivider;
+		//if ( a * maxDivider != nTilesYBase )
+		//{
+		//	nTilesYBase = spadAlignU32_2( nTilesYBase - maxDivider - 1, maxDivider );
+		//}
 
-		const uint b = nTilesXBase / maxDivider;
-		if ( b * maxDivider != nTilesXBase )
-		{
-			nTilesXBase = spadAlignU32_2( nTilesXBase - maxDivider - 1, maxDivider );
-		}
+		//const uint b = nTilesXBase / maxDivider;
+		//if ( b * maxDivider != nTilesXBase )
+		//{
+		//	nTilesXBase = spadAlignU32_2( nTilesXBase - maxDivider - 1, maxDivider );
+		//}
 
-		uint nTilesX = nTilesXBase;
-		uint nTilesY = nTilesYBase;
-		uint nDecalsPerTile = 32;
+		//uint nTilesX = nTilesXBase;
+		//uint nTilesY = nTilesYBase;
+		//uint nDecalsPerTile = 32;
 
-		uint totalMemoryUsed = 0;
+		//uint totalMemoryUsed = 0;
 
-		for ( int iPass = (int)tilingPtr->tilingPasses_.size()-1; iPass >= 0; --iPass )
-		{
-			DecalVolumeClusteringPass &p = tilingPtr->tilingPasses_[iPass];
-			p.nCellsX = nTilesX;
-			p.nCellsY = nTilesY;
-			p.nCellsZ = 1;
-			p.maxDecalsPerCell = nDecalsPerTile;
-			//p.maxDecalsPerCell = (iPass == tilingPasses_.size()-1) ? 32 : nDecalsPerTile;
+		//for ( int iPass = (int)tilingPtr->tilingPasses_.size()-1; iPass >= 0; --iPass )
+		//{
+		//	DecalVolumeClusteringPass &p = tilingPtr->tilingPasses_[iPass];
+		//	p.nCellsX = nTilesX;
+		//	p.nCellsY = nTilesY;
+		//	p.nCellsZ = 1;
+		//	p.maxDecalsPerCell = nDecalsPerTile;
+		//	//p.maxDecalsPerCell = (iPass == tilingPasses_.size()-1) ? 32 : nDecalsPerTile;
 
-			uint passTotalMemory = 0;
+		//	uint passTotalMemory = 0;
 
-			//totalMemoryUsed += p.countPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY, nullptr, false, true, true );
-			p.stats.decalsPerCellMem = p.decalPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.maxDecalsPerCell, nullptr, false, true, true );
-			passTotalMemory += p.stats.decalsPerCellMem;
-			passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * 4, nullptr, false, true, true );
-			passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, 1, nullptr, false, true, true );
-			passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3, nullptr, false, true, true, true );
-			passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );
+		//	//totalMemoryUsed += p.countPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY, nullptr, false, true, true );
+		//	p.stats.decalsPerCellMem = p.decalPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.maxDecalsPerCell, nullptr, false, true, true );
+		//	passTotalMemory += p.stats.decalsPerCellMem;
+		//	passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * 4, nullptr, false, true, true );
+		//	passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, 1, nullptr, false, true, true );
+		//	passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3, nullptr, false, true, true, true );
+		//	passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );
 
-			p.timer.Initialize( dxDevice );
+		//	p.timer.Initialize( dxDevice );
 
-			p.stats.totalMem = passTotalMemory;
+		//	p.stats.totalMem = passTotalMemory;
 
-			totalMemoryUsed += passTotalMemory;
+		//	totalMemoryUsed += passTotalMemory;
 
-			p.stats.totalMem = passTotalMemory;
-			//p.stats.headerMem = p.nCellsX * p.nCellsY * p.nCellsZ * sizeof( uint );
+		//	p.stats.totalMem = passTotalMemory;
+		//	//p.stats.headerMem = p.nCellsX * p.nCellsY * p.nCellsZ * sizeof( uint );
 
-			p.stats.countPerCellHistogram.resize( p.maxDecalsPerCell );
+		//	p.stats.countPerCellHistogram.resize( p.maxDecalsPerCell );
 
-			nTilesX = (nTilesX + 1) / 2;
-			nTilesY = (nTilesY + 1) / 2;
-			//nTilesX /= 2;
-			//nTilesY /= 2;
-			//nTilesX = spadAlignU32_2( nTilesX / 2, 2 );
-			//nTilesY = spadAlignU32_2( nTilesY / 2, 2 );
-			nDecalsPerTile *= 2;
-		}
+		//	nTilesX = (nTilesX + 1) / 2;
+		//	nTilesY = (nTilesY + 1) / 2;
+		//	//nTilesX /= 2;
+		//	//nTilesY /= 2;
+		//	//nTilesX = spadAlignU32_2( nTilesX / 2, 2 );
+		//	//nTilesY = spadAlignU32_2( nTilesY / 2, 2 );
+		//	nDecalsPerTile *= 2;
+		//}
 
-		//std::cout << "Total mem used tiling: " << totalMemoryUsed << " B, " << totalMemoryUsed / ( 1024 * 1024 ) << " MB" << std::endl;
-		tilingPtr->tiling_.totalMemUsed_ = totalMemoryUsed;
+		////std::cout << "Total mem used tiling: " << totalMemoryUsed << " B, " << totalMemoryUsed / ( 1024 * 1024 ) << " MB" << std::endl;
+		//tilingPtr->tiling_.totalMemUsed_ = totalMemoryUsed;
 
 		return tilingPtr;
 	}
@@ -2149,7 +2150,7 @@ namespace spad
 			//passTotalMemory += p.countPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ, nullptr, false, true, true );
 			p.stats.decalsPerCellMem = p.decalPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * p.maxDecalsPerCell, nullptr, false, true, true );
 			passTotalMemory += p.stats.decalsPerCellMem;
-			passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * 8 * maxBuckets, nullptr, false, true, true );
+			passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * maxBuckets, nullptr, false, true, true );
 			passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, maxBuckets, nullptr, false, true, true );
 			passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3 * maxBuckets, nullptr, false, true, true, true );
 			passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );

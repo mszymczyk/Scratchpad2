@@ -84,16 +84,6 @@ struct IndirectDispatchArgs
 
 #define mul24( x, y ) (x * y )
 
-uint DecalVolume_CellCountCurrentPass()
-{
-	return mul24( mul24( cellCountA.x, cellCountA.y ), cellCountA.z );
-}
-
-uint DecalVolume_CellCountPrevPass()
-{
-	return DecalVolume_CellCountCurrentPass() / 8;
-}
-
 void DecalVolume_UnpackGroupToBucket( GroupToBucket gtb, out uint bucket, out uint firstGroup )
 {
 	bucket = gtb.packedBucketAndFirstGroup & 0xf;
