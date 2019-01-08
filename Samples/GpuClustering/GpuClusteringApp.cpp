@@ -1674,7 +1674,7 @@ namespace spad
 
 				for ( uint i = 0; i < cellCount; ++i )
 				{
-					uint c = decalsPerCell[i] & 0xff;
+					uint c = decalsPerCell[i] & 0x3ff;
 					sum += c;
 					maxCount = std::max( maxCount, c );
 					minCount = std::min( minCount, c );
@@ -2334,9 +2334,13 @@ namespace spad
 			{
 				p.maxCellIndirectionsPerBucket = 0;
 			}
-			else
+			else if ( firstPass )
 			{
 				p.maxCellIndirectionsPerBucket = cellCount;
+			}
+			else
+			{
+				p.maxCellIndirectionsPerBucket = cellCount / 2;
 			}
 
 			uint passTotalMemory = 0;

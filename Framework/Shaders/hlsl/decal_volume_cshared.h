@@ -36,14 +36,14 @@ struct DecalVolumeTest
 #ifndef __cplusplus
 uint DecalVolume_PackHeader( uint decalCount, uint offsetToFirstDecalIndex )
 {
-	return ( decalCount & 0xff ) | ( ( offsetToFirstDecalIndex & 0xffffff ) << 8 );
+	return ( decalCount & 0x3ff ) | ( ( offsetToFirstDecalIndex & 0xffffff ) << 10 );
 }
 
 
 void DecalVolume_UnpackHeader( uint packedHeader, out uint decalCount, out uint offsetToFirstDecalIndex )
 {
-	decalCount = packedHeader & 0xff;
-	offsetToFirstDecalIndex = packedHeader >> 8;
+	decalCount = packedHeader & 0x3ff;
+	offsetToFirstDecalIndex = packedHeader >> 10;
 }
 
 
