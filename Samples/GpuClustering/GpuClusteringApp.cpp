@@ -9,74 +9,7 @@
 
 namespace spad
 {
-	constexpr uint maxBuckets = 6;
-
-	//Matrix4 testFrustumView;
-	//Matrix4 testFrustumProj;
 	const float testFrustumNearPlane = 4.0f;
-	//const float testFrustumFarPlane = 1000.0f;
-	//const uint testRtWidth = 1920;
-	//const uint testRtHeight = 1080;
-	//const uint testRtWidth = 1280;
-	//const uint testRtHeight = 720;
-	//const uint testRtWidth = 4096;
-	//const uint testRtHeight = 4096;
-	//const uint testRtWidth = 128 * 4;
-	//const uint testRtHeight = 128 * 4;
-	//const uint testRtWidth = 1024;
-	//const uint testRtHeight = 2048;
-	//constexpr uint maxDecalVolumes = 1024;// 1024 * 4;
-	//uint numDecalVolumes = 0;
-	//DecalVolume *g_decalVolumes;
-
-	//inline const Vector3 unprojectNormalized( const Vector3& screenPos01, const Matrix4& inverseMatrix )
-	//{
-	//	const floatInVec one( 1.0f );
-	//	Vector4 hpos = Vector4( screenPos01, one );
-	//	hpos = mulPerElem( hpos, Vector4( 2.0f ) ) - Vector4( one ); // msubf4(hpos, Vector4(2.0f), Vector4(one)); //mulPerElem( hpos, Vector4(2.0f) ) - Vector4(1.0f);
-	//	Vector4 worldPos = inverseMatrix * hpos;
-	//	worldPos /= worldPos.getW();
-	//	return worldPos.getXYZ();
-	//}
-
-	//inline const Vector3 unprojectNormalizedDx( const Vector3& screenPos01, const Matrix4& inverseMatrix )
-	//{
-	//	const floatInVec one( 1.0f );
-	//	const floatInVec zer( 0.0f );
-	//	Vector4 hpos = Vector4( screenPos01, one );
-	//	hpos = mulPerElem( hpos, Vector4( 2.0f, 2.0f, 1.0f, 1.0f ) ) - Vector4( one, one, zer, zer ); // msubf4(hpos, Vector4(2.0f), Vector4(one)); //mulPerElem( hpos, Vector4(2.0f) ) - Vector4(1.0f);
-	//	Vector4 worldPos = inverseMatrix * hpos;
-	//	worldPos /= worldPos.getW();
-	//	return worldPos.getXYZ();
-	//}
-
-	//void DebugDrawDecalVolumes()
-	//{
-	//	for ( uint i = 0; i < maxDecalVolumes_; ++i )
-	//	{
-	//		const DecalVolume &dv = decalVolumesCPU_[i];
-	//		debugDraw::AddAxes( dv.position, dv.halfSize, dv.x, dv.y, dv.z, 1, 1 );
-	//	}
-	//}
-
-	//uint PackListNode( uint decalIndex, uint nextNodeIndex )
-	//{
-	//	return ( decalIndex & 0xfff ) | ( nextNodeIndex << 12 );
-	//}
-
-
-	//void UnpackListNode( uint packedListNode, uint &decalIndex, uint &nextNodeIndex )
-	//{
-	//	decalIndex = packedListNode & 0xfff;
-	//	nextNodeIndex = packedListNode >> 12;
-	//}
-
-	//uint32_t numberOfSetBits( uint32_t i )
-	//{
-	//	i = i - ( ( i >> 1 ) & 0x55555555 );
-	//	i = ( i & 0x33333333 ) + ( ( i >> 2 ) & 0x33333333 );
-	//	return ( ( ( i + ( i >> 4 ) ) & 0x0F0F0F0F ) * 0x01010101 ) >> 24;
-	//}
 
 	float calcZ( float nearPlane, float farPlane, uint zIndex, uint zMax )
 	{
@@ -983,92 +916,78 @@ namespace spad
 
 	void SettingsTestApp::UpdateImGui( const Timer& /*timer*/ )
 	{
-		//ImGui::Spacing();
-		//if ( ImGui::CollapsingHeader( "GpuClustering", nullptr, ImGuiTreeNodeFlags_DefaultOpen ) )
-		//{
-			//ImGui::Text( "Clustering total time %u us", decalVolumesClusteringTimer_.getDurationUS() );
-			//ImGui::Text( "Pass -1 time %u us", decalVolumesPassM1Timer_.getDurationUS() );
-			//ImGui::Text( "Pass 0 time %u us", decalVolumesPass0Timer_.getDurationUS() );
-			//ImGui::Text( "Pass 1 time %u us", decalVolumesPass1Timer_.getDurationUS() );
-			//ImGui::Text( "Pass 2 time %u us", decalVolumesPass2Timer_.getDurationUS() );
-			//ImGui::Text( "Pass 3 time %u us", decalVolumesPass3Timer_.getDurationUS() );
-			//ImGui::Text( "Pass 4 time %u us", decalVolumesPass4Timer_.getDurationUS() );
+		Vector3 cameraPos = inverse( viewMatrixForCamera_ ).getTranslation();
+		ImGui::Text( "Camera pos [%3.3f %3.3f %3.3f]", cameraPos.getX().getAsFloat(), cameraPos.getY().getAsFloat(), cameraPos.getZ().getAsFloat() );
 
-			//ImGui::Text( "DecalVisibility1 time %u us", decalVolumesVisibility1Timer_.getDurationUS() );
-			//ImGui::Text( "DecalVisibility time %u us", decalVolumesVisibilityTimer_.getDurationUS() );
-			//ImGui::Text( "DecalCountPerCell time %u us", decalVolumesCountPerCellTimer_.getDurationUS() );
-			//ImGui::Text( "DecalList time %u us", decalVolumesListTimer_.getDurationUS() );
-
-			Vector3 cameraPos = inverse( viewMatrixForCamera_ ).getTranslation();
-			ImGui::Text( "Camera pos [%3.3f %3.3f %3.3f]", cameraPos.getX().getAsFloat(), cameraPos.getY().getAsFloat(), cameraPos.getZ().getAsFloat() );
-
-			if ( ImGui::SliderInt( "Max decal volumes", &maxDecalVolumes_, 1, 16 * 1024 ) )
-			{
-				if ( appMode_ == Scene )
-					GenDecalVolumesModel();
-				else if ( appMode_ == Tiling || appMode_ == Clustering )
-					GenDecalVolumesRandom();
-			}
-
-			ImGui::Text( "Num decals %u / %u / %u", decalVolumesCulledCount_, numDecalVolumes_, maxDecalVolumes_ );
-
-			if ( ImGui::SliderFloat( "Decal volume grid far plane", &decalVolumeFarPlane_, 5.0f, 10000.0f ) )
-			{
-			}
+		if ( ImGui::SliderInt( "Max decal volumes", &maxDecalVolumes_, 1, 16 * 1024 ) )
+		{
+			tiling_ = DecalVolumeTilingStartUp();
+			clustering_ = DecalVolumeClusteringStartUp();
 
 			if ( appMode_ == Scene )
+				GenDecalVolumesModel();
+			else if ( appMode_ == Tiling || appMode_ == Clustering )
+				GenDecalVolumesRandom();
+		}
+
+		ImGui::Text( "Num decals %u / %u / %u", decalVolumesCulledCount_, numDecalVolumes_, maxDecalVolumes_ );
+
+		if ( ImGui::SliderFloat( "Decal volume grid far plane", &decalVolumeFarPlane_, 5.0f, 10000.0f ) )
+		{
+		}
+
+		if ( appMode_ == Scene )
+		{
+			if ( ImGui::CollapsingHeader( "Scene", nullptr, ImGuiTreeNodeFlags_DefaultOpen ) )
 			{
-				if ( ImGui::CollapsingHeader( "Scene", nullptr, ImGuiTreeNodeFlags_DefaultOpen ) )
+				const char* items[] = { "Solid", "Wireframe" };
+				ImGui::Combo( "Render mode", reinterpret_cast<int*>( &sceneRenderMode_ ), items, IM_ARRAYSIZE( items ) );
+
+				if ( ImGui::SliderFloat( "Area threshold", &decalVolumesAreaThreshold_, 0.0f, 500.0f ) )
 				{
-					const char* items[] = { "Solid", "Wireframe" };
-					ImGui::Combo( "Render mode", reinterpret_cast<int*>( &sceneRenderMode_ ), items, IM_ARRAYSIZE( items ) );
+					GenDecalVolumesModel();
+				}
 
-					if ( ImGui::SliderFloat( "Area threshold", &decalVolumesAreaThreshold_, 0.0f, 500.0f ) )
-					{
-						GenDecalVolumesModel();
-					}
-
-					if ( ImGui::SliderFloat( "Decal volume scale", &decalVolumesModelScale_, 0.001f, 2.0f ) )
-					{
-						GenDecalVolumesModel();
-					}
+				if ( ImGui::SliderFloat( "Decal volume scale", &decalVolumesModelScale_, 0.001f, 2.0f ) )
+				{
+					GenDecalVolumesModel();
 				}
 			}
+		}
 
-			if ( appMode_ == Tiling )
-			{
-				ImGuiPrintClusteringInfo( tiling_->tiling_, tiling_->tilingPasses_, tiling_->decalVolumesTilingTimer_ );
-			}
-			else if ( appMode_ == Clustering || appMode_ == Scene )
-			{
-				ImGuiPrintClusteringInfo( clustering_->clustering_, clustering_->clusteringPasses_, clustering_->decalVolumesClusteringTimer_ );
-			}
+		if ( appMode_ == Tiling )
+		{
+			ImGuiPrintClusteringInfo( tiling_->tiling_, tiling_->tilingPasses_, tiling_->decalVolumesTilingTimer_ );
+		}
+		else if ( appMode_ == Clustering || appMode_ == Scene )
+		{
+			ImGuiPrintClusteringInfo( clustering_->clustering_, clustering_->clusteringPasses_, clustering_->decalVolumesClusteringTimer_ );
+		}
 
-			{
-				const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum" };
-				ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
-			}
+		{
+			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum" };
+			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
+		}
 
-			{
-				const char* items[] = {
-					"1920_1080",
-					"1280_720",
-					"3840_2160",
-					"4096_4096",
-					"2048_2048",
-					"1024_1024",
-					"512_512",
-					"128_128",
-					"64_64",
-				};
+		{
+			const char* items[] = {
+				"1920_1080",
+				"1280_720",
+				"3840_2160",
+				"4096_4096",
+				"2048_2048",
+				"1024_1024",
+				"512_512",
+				"128_128",
+				"64_64",
+			};
 
-				if ( ImGui::Combo( "RT Size", reinterpret_cast<int*>( &rtSize_ ), items, IM_ARRAYSIZE( items ) ) )
-				{
-					tiling_ = DecalVolumeTilingStartUp();
-					clustering_ = DecalVolumeClusteringStartUp();
-				}
+			if ( ImGui::Combo( "RT Size", reinterpret_cast<int*>( &rtSize_ ), items, IM_ARRAYSIZE( items ) ) )
+			{
+				tiling_ = DecalVolumeTilingStartUp();
+				clustering_ = DecalVolumeClusteringStartUp();
 			}
-		//}
+		}
 	}
 
 	void SettingsTestApp::SceneReset()
@@ -1591,7 +1510,7 @@ namespace spad
 
 			if ( lastPass )
 			{
-				const u32 *decalsPerCell = p.decalPerCell.CPUReadbackStart( deviceContext.context );
+				const u32 *decalsPerCell = p.decalIndices.CPUReadbackStart( deviceContext.context );
 
 				for ( float & i : p.stats.countPerCellHistogram )
 				{
@@ -1610,7 +1529,7 @@ namespace spad
 					maxCount = std::max( maxCount, c );
 					minCount = std::min( minCount, c );
 
-					SPAD_ASSERT( c < p.maxDecalsPerCell );
+					//SPAD_ASSERT( c < p.maxDecalsPerCell );
 					p.stats.countPerCellHistogram[c] += 1;
 				}
 
@@ -1618,10 +1537,10 @@ namespace spad
 				p.stats.avgDecalsPerCell = (float)sum / (float)cellCount;
 				p.stats.maxDecalsPerCell = maxCount;
 				p.stats.minDecalsPerCell = minCount;
-				p.stats.numCellIndirections = 0;
+				memset( &p.stats.numCellIndirections, 0, sizeof(p.stats.numCellIndirections) );
 				p.stats.numWaves = 0;
 
-				p.decalPerCell.CPUReadbackEnd( deviceContext.context );
+				p.decalIndices.CPUReadbackEnd( deviceContext.context );
 			}
 			else
 			{
@@ -1643,7 +1562,7 @@ namespace spad
 				uint sum = 0;
 				uint maxCount = 0;
 				uint minCount = 0xffffffff;
-				uint totalCellCount = 0;
+				//uint totalCellCount = 0;
 				//const uint cellCount = p.nCellsX * p.nCellsY * p.nCellsZ;
 				if ( shared.enableBuckets_ )
 				{
@@ -1651,12 +1570,15 @@ namespace spad
 
 					for ( uint iBucket = 0; iBucket < maxBuckets; ++iBucket )
 					{
-						const uint cellOffset = iBucket * p.nCellsX * p.nCellsY * p.nCellsZ;
+						//const uint cellOffset = iBucket * p.nCellsX * p.nCellsY * p.nCellsZ;
+						const uint cellOffset = iBucket * p.maxCellIndirectionsPerBucket;
 						const CellIndirection *cellIndirectionBucket = cellIndirection + cellOffset;
 
-						const uint cellCount = cellIndirectionCount[iBucket];
-						totalCellCount += cellCount;
-						for ( uint i = 0; i < cellCount / 8; ++i )
+						uint cellCount = cellIndirectionCount[iBucket];
+						SPAD_ASSERT( cellCount % 8 == 0 );
+						cellCount /= 8;
+						//totalCellCount += cellCount;
+						for ( uint i = 0; i < cellCount; ++i )
 						{
 							//uint c = countPerCell[i] & 0xff;
 							uint c = cellIndirectionBucket[i].decalCount;
@@ -1665,19 +1587,21 @@ namespace spad
 							maxCount = std::max( maxCount, c );
 							minCount = std::min( minCount, c );
 
-							SPAD_ASSERT( c < p.maxDecalsPerCell );
-							p.stats.countPerCellHistogram[c] += 1;
+							//SPAD_ASSERT( c < p.maxDecalsPerCell );
+							uint ci = std::min( c, (uint)p.stats.countPerCellHistogram.size() - 1 );
+							p.stats.countPerCellHistogram[ci] += 1;
 						}
 
 						p.stats.numWaves += args[iBucket*3];
+						p.stats.numCellIndirections[iBucket] = cellCount;
 					}
 				}
 				else
 				{
-					const uint cellCount = cellIndirectionCount[0];
+					uint cellCount = cellIndirectionCount[0];
 					SPAD_ASSERT( cellCount % 8 == 0 );
-					totalCellCount += cellCount;
-					for ( uint i = 0; i < cellCount / 8; ++i )
+					cellCount /= 8;
+					for ( uint i = 0; i < cellCount; ++i )
 					{
 						//uint c = countPerCell[i] & 0xff;
 						uint c = cellIndirection[i].decalCount;
@@ -1686,20 +1610,23 @@ namespace spad
 						maxCount = std::max( maxCount, c );
 						minCount = std::min( minCount, c );
 
-						SPAD_ASSERT( c < p.maxDecalsPerCell );
-						p.stats.countPerCellHistogram[c] += 1;
+						//SPAD_ASSERT( c < p.maxDecalsPerCell );
+						uint ci = std::min( c, (uint)p.stats.countPerCellHistogram.size() - 1 );
+						p.stats.countPerCellHistogram[ci] += 1;
 					}
 
 					p.stats.numWaves = args[0];
+					p.stats.numCellIndirections[0] = cellCount;
+					p.stats.avgDecalsPerCell = (float)sum / (float)cellCount;
 				}
 
 				//SPAD_ASSERT( ( sum % 8 ) == 0 );
+				//SPAD_ASSERT( sum <= p.maxDecalIndices );
 
 				p.stats.numDecalsInAllCells = sum; // / 8;
-				p.stats.avgDecalsPerCell = (float)sum / (float)totalCellCount;
 				p.stats.maxDecalsPerCell = maxCount;
 				p.stats.minDecalsPerCell = minCount;
-				p.stats.numCellIndirections = totalCellCount;
+				//p.stats.numCellIndirections = totalCellCount;
 
 				if ( !firstPass )
 				{
@@ -1745,7 +1672,7 @@ namespace spad
 
 		ImGui::Spacing();
 
-		ImGui::Text( "Total mem %u [B], %u [MB]", shared.totalMemUsed_, shared.totalMemUsed_ / ( 1024 * 1024 ) );
+		ImGui::Text( "Total mem %u [B], %u [kB], %u [MB]", shared.totalMemUsed_, shared.totalMemUsed_ / 1024, shared.totalMemUsed_ / ( 1024 * 1024 ) );
 
 		{
 			const char* items[] = { "Simple", "Two pass Inigo" };
@@ -1765,6 +1692,9 @@ namespace spad
 
 			for ( size_t iPass = 0; iPass < passes.size(); ++iPass )
 			{
+				const bool firstPass = iPass == 0;
+				const bool lastPass = iPass == ( passes.size() - 1 );
+
 				const DecalVolumeClusteringPass &p = passes[iPass];
 				const uint totalCells = p.nCellsX * p.nCellsY * p.nCellsZ;
 
@@ -1773,31 +1703,41 @@ namespace spad
 
 				if ( ImGui::CollapsingHeader( passName, nullptr, ImGuiTreeNodeFlags_DefaultOpen ) )
 				{
-					//ImGui::Text( "Pass %u - %u x %u x %u - %u", (uint)iPass, p.nCellsX, p.nCellsY, p.nCellsZ, totalCells );
-					ImGui::Text( "Pass mem %u [B], %u [MB]", p.stats.totalMem, p.stats.totalMem / ( 1024 * 1024 ) );
-					ImGui::Text( "Decals mem %u [B], %u [MB]", p.stats.decalsPerCellMem, p.stats.decalsPerCellMem / ( 1024 * 1024 ) );
-					uint memNotCompacted;
-					if ( iPass == 0 )
+					ImGui::Text( "Pass mem %u [kB], %u [MB]", p.stats.totalMem / 1024, p.stats.totalMem / ( 1024 * 1024 ) );
+					ImGui::Text( "Decal indices mem %u [kB], %u [MB]", p.maxDecalIndices * sizeof(uint) / 1024, p.maxDecalIndices * sizeof( uint ) / ( 1024 * 1024 ) );
+					ImGui::Text( "Cells indirection mem %u [kB], %u [MB]", p.maxCellIndirectionsPerBucket * maxBuckets, p.maxCellIndirectionsPerBucket * maxBuckets / ( 1024 * 1024 ) );
+					if ( lastPass )
 					{
-						memNotCompacted = totalCells * p.maxDecalsPerCell * sizeof( uint );
+						ImGui::Text( "Decal indices used (+header) [kB] %u / %u", ( p.stats.memAllocated + totalCells * sizeof(uint) ) / 1024, ( p.maxDecalIndices * sizeof( uint ) ) / 1024 );
 					}
 					else
 					{
-						const DecalVolumeClusteringPass &pp = passes[iPass - 1];
-						memNotCompacted = pp.stats.numCellIndirections * p.maxDecalsPerCell * sizeof( uint );
+						ImGui::Text( "Decal indices used [kB] %u / %u", p.stats.memAllocated / 1024, ( p.maxDecalIndices * sizeof( uint ) ) / 1024 );
 					}
-					ImGui::Text( "Mem used [kB] %u / %u / %u", p.stats.memAllocated / 1024, memNotCompacted / 1024, p.stats.decalsPerCellMem / 1024 );
+
+					if ( !lastPass )
+					{
+						// Cells indirection is not written out in last pass
+						if ( shared.enableBuckets_ )
+						{
+							for ( uint iBucket = 0; iBucket < maxBuckets; ++iBucket )
+							{
+								ImGui::Text( "Cells [%u] %u / %u (%3.3f%%)", iBucket, p.stats.numCellIndirections[iBucket], p.maxCellIndirectionsPerBucket, ( (float)p.stats.numCellIndirections[iBucket] / (float)p.maxCellIndirectionsPerBucket ) * 100.0f );
+							}
+						}
+						else
+						{
+							ImGui::Text( "Cells %u / %u (%3.3f%%)", p.stats.numCellIndirections[0], p.maxCellIndirectionsPerBucket, ( (float)p.stats.numCellIndirections[0] / (float)p.maxCellIndirectionsPerBucket ) * 100.0f );
+						}
+					}
 
 					if ( iPass == 0 )
 					{
-						ImGui::Text( "Cells to process %u", totalCells );
 						ImGui::Text( "Spawned waves %u", totalCells );
 					}
 					else
 					{
 						const DecalVolumeClusteringPass &pp = passes[iPass - 1];
-
-						ImGui::Text( "Cells to process %u / %u (%3.3f%%)", pp.stats.numCellIndirections, totalCells, ( (float)pp.stats.numCellIndirections / (float)totalCells ) * 100.0f );
 						ImGui::Text( "Spawned waves %u", pp.stats.numWaves );
 					}
 
@@ -1813,7 +1753,16 @@ namespace spad
 					}
 
 					ImGui::PlotHistogram( "count per cell", p.stats.countPerCellHistogram.data(), maxIndex + 1, 0, NULL, FLT_MAX, FLT_MAX, ImVec2( 0, 80 ) );
-					ImGui::Text( "Num decals in all cells %u", p.stats.numDecalsInAllCells );
+
+					//SPAD_ASSERT( sum <= p.maxDecalIndices );
+					if ( p.stats.numDecalsInAllCells > p.maxDecalIndices )
+					{
+						ImGui::TextColored( ImVec4(1, 0, 0, 1), "Num decals in all cells %u / %u", p.stats.numDecalsInAllCells, p.maxDecalIndices );
+					}
+					else
+					{
+						ImGui::Text( "Num decals in all cells %u / %u", p.stats.numDecalsInAllCells, p.maxDecalIndices );
+					}
 					ImGui::Text( "Avg decals per cell %3.3f", p.stats.avgDecalsPerCell );
 					ImGui::Text( "Min decals per cell %u", p.stats.minDecalsPerCell );
 					ImGui::Text( "Max decals per cell %u", p.stats.maxDecalsPerCell );
@@ -1824,7 +1773,7 @@ namespace spad
 
 	SettingsTestApp::DecalVolumeTilingDataPtr SettingsTestApp::DecalVolumeTilingStartUp()
 	{
-		ID3D11Device* dxDevice = dx11_->getDevice();
+		//ID3D11Device* dxDevice = dx11_->getDevice();
 
 		DecalVolumeTilingDataPtr tilingPtr = std::make_unique<DecalVolumeTilingData>();
 
@@ -1938,7 +1887,7 @@ namespace spad
 				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalTilingClearHeader" );
 				fxPass.setCS( deviceContext.context );
 
-				p.decalPerCell.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
+				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
 
 				uint nGroupsX = ( p.nCellsX * p.nCellsY + 256 - 1 ) / 256;
 				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -1988,19 +1937,20 @@ namespace spad
 			//tiling_->tilingConstants_.data.decalCountInFrustum[1] = 0;
 			//tiling_->tilingConstants_.data.decalCountInFrustum[2] = 0;
 			//tiling_->tilingConstants_.data.decalCountInFrustum[3] = 0;
-			tiling_->tilingConstants_.data.maxCountPerCell[0] = p.maxDecalsPerCell;
-			tiling_->tilingConstants_.data.maxCountPerCell[1] = 0;
-			tiling_->tilingConstants_.data.maxCountPerCell[2] = 0;
-			tiling_->tilingConstants_.data.maxCountPerCell[3] = 0;
+			//tiling_->tilingConstants_.data.maxCountPerCell[0] = p.maxDecalsPerCell;
+			tiling_->tilingConstants_.data.decalVolumeLimits[0] = p.maxDecalIndices;
+			tiling_->tilingConstants_.data.decalVolumeLimits[1] = p.maxCellIndirectionsPerBucket;
+			tiling_->tilingConstants_.data.decalVolumeLimits[2] = 0;
+			tiling_->tilingConstants_.data.decalVolumeLimits[3] = 0;
 
 			if ( !firstPass )
 			{
 				DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass-1];
 
-				tiling_->tilingConstants_.data.maxCountPerCell[1] = pp.maxDecalsPerCell;
+				tiling_->tilingConstants_.data.decalVolumeLimits[2] = pp.maxCellIndirectionsPerBucket;
 
 				//pp.countPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_COUNT_PER_CELL_BINDING );
-				pp.decalPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
+				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
 				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
 			}
@@ -2032,7 +1982,7 @@ namespace spad
 				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
 			}
 
-			p.decalPerCell.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
+			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
 			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_MEM_ALLOC_BINDING );
 
 			if ( firstPass )
@@ -2130,29 +2080,64 @@ namespace spad
 		uint nCellsX = nCellsXBase;
 		uint nCellsY = nCellsYBase;
 		uint nCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
-		uint nDecalsPerCell = 64;
-
-		uint totalMemoryUsed = 0;
 
 		for ( int iPass = (int)clusteringPtr->clusteringPasses_.size() - 1; iPass >= 0; --iPass )
 		{
 			const bool firstPass = iPass == 0;
-			//const bool lastPass = iPass == ( clusteringPtr->clusteringPasses_.size() - 1 );
+			const bool lastPass = iPass == ( clusteringPtr->clusteringPasses_.size() - 1 );
 
 			DecalVolumeClusteringPass &p = clusteringPtr->clusteringPasses_[iPass];
 			p.nCellsX = nCellsX;
 			p.nCellsY = nCellsY;
 			p.nCellsZ = nCellsZ;
-			p.maxDecalsPerCell = nDecalsPerCell;// firstPass ? 1024 : nDecalsPerCell;
+
+			nCellsX /= 2;
+			nCellsY /= 2;
+			nCellsZ /= 2;
+		}
+
+		//uint nDecalsPerCell = 64;
+		//uint maxDecalIndicesPerPass = 1 << ( clusteringPtr->clusteringPasses_.size() );
+
+		uint totalMemoryUsed = 0;
+
+		for ( uint iPass = 0; iPass < (uint)clusteringPtr->clusteringPasses_.size(); ++iPass )
+		{
+			const bool firstPass = iPass == 0;
+			const bool lastPass = iPass == ( clusteringPtr->clusteringPasses_.size() - 1 );
+
+			DecalVolumeClusteringPass &p = clusteringPtr->clusteringPasses_[iPass];
+
+			uint cellCount = p.nCellsX * p.nCellsY * p.nCellsZ;
+
+			if ( iPass <= 2 )
+			{
+				p.maxDecalIndices = maxDecalVolumes_ * 16;
+			}
+			else
+			{
+				p.maxDecalIndices = maxDecalVolumes_ * 32;
+			}
+
+			if ( lastPass )
+			{
+				p.maxDecalIndices += cellCount;
+				p.maxCellIndirectionsPerBucket = 0;
+			}
+			else
+			{
+				p.maxCellIndirectionsPerBucket = cellCount;
+			}
 
 			uint passTotalMemory = 0;
 
-			//passTotalMemory += p.countPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ, nullptr, false, true, true );
-			p.stats.decalsPerCellMem = p.decalPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * p.maxDecalsPerCell, nullptr, false, true, true );
-			passTotalMemory += p.stats.decalsPerCellMem;
-			passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ * maxBuckets, nullptr, false, true, true );
-			passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, maxBuckets, nullptr, false, true, true );
-			passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3 * maxBuckets, nullptr, false, true, true, true );
+			passTotalMemory += p.decalIndices.Initialize( dxDevice, p.maxDecalIndices, nullptr, false, true, true );
+			if ( !lastPass )
+			{
+				passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.maxCellIndirectionsPerBucket * maxBuckets, nullptr, false, true, true );
+				passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, maxBuckets, nullptr, false, true, true );
+				passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3 * maxBuckets, nullptr, false, true, true, true );
+			}
 			passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );
 			if ( !firstPass )
 			{
@@ -2164,19 +2149,9 @@ namespace spad
 			totalMemoryUsed += passTotalMemory;
 
 			p.stats.totalMem = passTotalMemory;
-			//p.stats.headerMem = p.nCellsX * p.nCellsY * p.nCellsZ * sizeof( uint );
-
-			p.stats.countPerCellHistogram.resize( p.maxDecalsPerCell );
-
-			nCellsX = ( nCellsX + 1 ) / 2;
-			nCellsY = ( nCellsY + 1 ) / 2;
-			//nTilesX = spadAlignU32_2( nTilesX / 2, 2 );
-			//nTilesY = spadAlignU32_2( nTilesY / 2, 2 );
-			nCellsZ /= 2;
-			nDecalsPerCell *= 2;
+			p.stats.countPerCellHistogram.resize( 1024 );
 		}
 
-		//std::cout << "Total mem used clustering: " << totalMemoryUsed << " B, " << totalMemoryUsed / ( 1024 * 1024 ) << " MB" << std::endl;
 		clusteringPtr->clustering_.totalMemUsed_ = totalMemoryUsed;
 
 		return clusteringPtr;
@@ -2202,7 +2177,7 @@ namespace spad
 		
 		for ( size_t iPass = 0; iPass < clustering_->clusteringPasses_.size(); ++iPass )
 		{
-			deviceContext.BeginMarker( "Pass" );
+			deviceContext.BeginMarker( "Pass", (uint)iPass );
 
 			DecalVolumeClusteringPass &p = clustering_->clusteringPasses_[iPass];
 
@@ -2219,7 +2194,7 @@ namespace spad
 				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingClearHeader" );
 				fxPass.setCS( deviceContext.context );
 
-				p.decalPerCell.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
+				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
 
 				uint nGroupsX = (p.nCellsX * p.nCellsY * p.nCellsZ + 256 - 1) / 256;
 				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -2227,13 +2202,8 @@ namespace spad
 				deviceContext.UnbindCSUAVs();
 			}
 
-			//char passName[128];
-			//snprintf( passName, sizeof( passName ), "DecalVolumeClusteringPass%u", (uint)iPass );
-			//const HlslShaderPass& fxPass = *decalVolumesClusteringShader_->getPass( passName );
-			//fxPass.setCS( deviceContext.context );
 			const uint bucketsEnabled = clustering_->clustering_.enableBuckets_ ? 1 : 0;
 			const uint bucketsMergeEnabled = bucketsEnabled & ( clustering_->clustering_.dynamicBucketsMerge_ ? 1 : 0 );
-			//const uint maxBuckets = 6;
 
 			if ( firstPass )
 			{
@@ -2286,27 +2256,21 @@ namespace spad
 			clustering_->clusteringConstants_.data.cellCountA[1] = p.nCellsY;
 			clustering_->clusteringConstants_.data.cellCountA[2] = p.nCellsZ;
 			clustering_->clusteringConstants_.data.cellCountA[3] = 0;
-			//clustering_->clusteringConstants_.data.decalCountInFrustum[0] = maxDecalVolumes_;
-			//clustering_->clusteringConstants_.data.decalCountInFrustum[1] = 0;
-			//clustering_->clusteringConstants_.data.decalCountInFrustum[2] = 0;
-			//clustering_->clusteringConstants_.data.decalCountInFrustum[3] = 0;
-			clustering_->clusteringConstants_.data.maxCountPerCell[0] = p.maxDecalsPerCell;
-			clustering_->clusteringConstants_.data.maxCountPerCell[1] = 0;
-			clustering_->clusteringConstants_.data.maxCountPerCell[2] = 0;
-			clustering_->clusteringConstants_.data.maxCountPerCell[3] = 0;
+			clustering_->clusteringConstants_.data.decalVolumeLimits[0] = p.maxDecalIndices;
+			clustering_->clusteringConstants_.data.decalVolumeLimits[1] = p.maxCellIndirectionsPerBucket;
+			clustering_->clusteringConstants_.data.decalVolumeLimits[2] = 0;
+			clustering_->clusteringConstants_.data.decalVolumeLimits[3] = 0;
 
 			if ( !firstPass )
 			{
 				DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
 
-				clustering_->clusteringConstants_.data.maxCountPerCell[1] = pp.maxDecalsPerCell;
+				clustering_->clusteringConstants_.data.decalVolumeLimits[2] = pp.maxCellIndirectionsPerBucket;
 
-				//pp.countPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_COUNT_PER_CELL_BINDING );
-				pp.decalPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
+				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
 				if ( bucketsMergeEnabled )
 				{
-					//pp.groupToBucket.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
 					p.groupToBucket.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
 				}
 			}
@@ -2320,7 +2284,6 @@ namespace spad
 			clustering_->clusteringConstants_.updateGpu( deviceContext.context );
 			clustering_->clusteringConstants_.setCS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
 
-			//decalVolumesGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
 			if ( clustering_->clustering_.intersectionMethod_ )
 			{
 				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_TEST_BINDING );
@@ -2329,16 +2292,16 @@ namespace spad
 			{
 				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
 			}
+
 			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
 
 			if ( !lastPass )
 			{
-				//p.countPerCell.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_COUNT_PER_CELL_BINDING );
 				p.cellIndirection.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_CELL_INDIRECTION_BINDING );
 				p.cellIndirectionCount.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT_BINDING );
 			}
 
-			p.decalPerCell.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
+			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
 			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_MEM_ALLOC_BINDING );
 
 			if ( firstPass )
@@ -2356,7 +2319,6 @@ namespace spad
 				else if ( bucketsEnabled )
 				{
 					for ( uint i = 0; i < maxBuckets; ++i )
-					//for ( uint i = 0; i < 2; ++i )
 					{
 						if ( clustering_->clustering_.dynamicBuckets_ )
 						{
@@ -2374,7 +2336,7 @@ namespace spad
 								}
 							}
 
-							clustering_->clusteringConstants_.data.maxCountPerCell[1] = i;
+							clustering_->clusteringConstants_.data.decalVolumeLimits[3] = i;
 							clustering_->clusteringConstants_.updateGpu( deviceContext.context );
 						}
 						else
@@ -2515,43 +2477,6 @@ namespace spad
 
 		if ( currentView_ == GpuHeatmap )
 		{
-			//srvs[0] = decalVolumesLinkedList_.getSRV();
-			//srvs[0] = decalsPerCell4_.getSRV();
-			//if ( appMode_ == Tiling )
-			//{
-			//	srvs[0] = tiling_->tilingPasses_.back().decalPerCell.getSRV();
-
-			//	tiling_->tilingConstants_.data.renderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
-			//	tiling_->tilingConstants_.data.cellCountA[0] = tiling_->tilingPasses_.back().nCellsX;
-			//	tiling_->tilingConstants_.data.cellCountA[1] = tiling_->tilingPasses_.back().nCellsY;
-			//	tiling_->tilingConstants_.data.cellCountA[2] = 1;
-			//	tiling_->tilingConstants_.data.cellCountA[3] = 0;
-			//	tiling_->tilingConstants_.data.decalCountInFrustum[0] = maxDecalVolumes_;
-			//	tiling_->tilingConstants_.data.decalCountInFrustum[1] = 0;
-			//	tiling_->tilingConstants_.data.decalCountInFrustum[2] = 0;
-			//	tiling_->tilingConstants_.data.decalCountInFrustum[3] = 0;
-			//	tiling_->tilingConstants_.updateGpu( deviceContext.context );
-			//	tiling_->tilingConstants_.setVS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
-			//	tiling_->tilingConstants_.setPS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
-			//}
-			//else if ( appMode_ == Clustering )
-			//{
-			//	srvs[0] = clustering_->clusteringPasses_.back().decalPerCell.getSRV();
-
-			//	clustering_->clusteringConstants_.data.renderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
-			//	clustering_->clusteringConstants_.data.cellCountA[0] = clustering_->clusteringPasses_.back().nCellsX;
-			//	clustering_->clusteringConstants_.data.cellCountA[1] = clustering_->clusteringPasses_.back().nCellsY;
-			//	clustering_->clusteringConstants_.data.cellCountA[2] = clustering_->clusteringPasses_.back().nCellsZ;
-			//	clustering_->clusteringConstants_.data.cellCountA[3] = 0;
-			//	clustering_->clusteringConstants_.data.decalCountInFrustum[0] = maxDecalVolumes_;
-			//	clustering_->clusteringConstants_.data.decalCountInFrustum[1] = 0;
-			//	clustering_->clusteringConstants_.data.decalCountInFrustum[2] = 0;
-			//	clustering_->clusteringConstants_.data.decalCountInFrustum[3] = 0;
-			//	clustering_->clusteringConstants_.updateGpu( deviceContext.context );
-			//	clustering_->clusteringConstants_.setVS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
-			//	clustering_->clusteringConstants_.setPS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
-			//}
-
 			decalVolumeRenderingConstants_.data.renderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
 
 			if ( appMode_ == Tiling )
@@ -2561,7 +2486,7 @@ namespace spad
 				decalVolumeRenderingConstants_.data.cellCountA[2] = 1;
 				decalVolumeRenderingConstants_.data.cellCountA[3] = 0;
 
-				srvs[0] = tiling_->tilingPasses_.back().decalPerCell.getSRV();
+				srvs[0] = tiling_->tilingPasses_.back().decalIndices.getSRV();
 			}
 			else
 			{
@@ -2570,7 +2495,7 @@ namespace spad
 				decalVolumeRenderingConstants_.data.cellCountA[2] = clustering_->clusteringPasses_.back().nCellsZ;
 				decalVolumeRenderingConstants_.data.cellCountA[3] = 0;
 
-				srvs[0] = clustering_->clusteringPasses_.back().decalPerCell.getSRV();
+				srvs[0] = clustering_->clusteringPasses_.back().decalIndices.getSRV();
 			}
 			decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
 			decalVolumeRenderingConstants_.setVS( deviceContext.context, DECAL_VOLUME_CONSTANTS_BINDING );

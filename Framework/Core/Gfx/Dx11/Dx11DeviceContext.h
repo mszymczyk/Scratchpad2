@@ -40,6 +40,7 @@ public:
 	}
 
 	void BeginMarker( const char *name );
+	void BeginMarker( const char *name, uint index );
 	void EndMarker();
 	void SetMarker( const char *name );
 

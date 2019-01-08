@@ -43,7 +43,8 @@ MAKE_FLAT_CBUFFER( DecalVolumeCsConstants, DECAL_VOLUME_CS_CONSTANTS_BINDING )
 	CBUFFER_FLOAT4( nearFar ); // far over near in z
 	CBUFFER_UINT4( cellCountA );
 	//CBUFFER_UINT4( decalCountInFrustum );
-	CBUFFER_UINT4( maxCountPerCell ); // x - maxCountPerCell, y - cell bucket
+	//CBUFFER_UINT4( maxCountPerCell ); // x - maxCountPerCell, y - cell bucket
+	CBUFFER_UINT4( decalVolumeLimits ); // x - max output decal indices
 };
 
 MAKE_FLAT_CBUFFER( DecalVolumeCsCullConstants, DECAL_VOLUME_CS_CONSTANTS_BINDING )

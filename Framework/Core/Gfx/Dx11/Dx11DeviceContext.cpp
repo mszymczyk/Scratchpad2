@@ -52,6 +52,20 @@ namespace spad
 		userDefinedAnnotation_->BeginEvent( wcstring );
 	}
 
+	void Dx11DeviceContext::BeginMarker( const char *name, uint index )
+	{
+		if ( !markersEnabled_ )
+			return;
+
+		constexpr size_t maxMarkerLen = 128;
+		char buf[maxMarkerLen];
+
+		snprintf( buf, sizeof( buf ) - 1, "%s %u", name, index );
+		buf[maxMarkerLen - 1] = 0;
+
+		BeginMarker( buf );
+	}
+
 	void Dx11DeviceContext::EndMarker()
 	{
 		if ( !markersEnabled_ )

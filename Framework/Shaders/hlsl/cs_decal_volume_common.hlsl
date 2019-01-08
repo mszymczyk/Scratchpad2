@@ -400,6 +400,25 @@ uint RoundUpToPowerOfTwo( uint v )
 //
 //	return uint3( cellX, cellY, cellZ );
 //}
+uint DecalVolume_GetMaxOutDecalIndices()
+{
+	return decalVolumeLimits.x;
+}
+
+uint DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket()
+{
+	return decalVolumeLimits.y;
+}
+
+uint DecalVolume_GetMaxPrevOutCellIndirections()
+{
+	return decalVolumeLimits.z;
+}
+
+uint DecalVolume_GetBucketIndex()
+{
+	return decalVolumeLimits.w;
+}
 
 
 uint3 DecalVolume_CellCountXYZ()
@@ -474,13 +493,15 @@ void DecalVolume_OutputCellIndirection( uint cellThreadIndex, uint3 cellXYZ, uin
 {
 	if ( cellThreadIndex == 0 )
 	{
-		uint maxDecalsPerCell = maxCountPerCell.x;
+		//uint maxDecalsPerCell = maxCountPerCell.x;
+		//uint maxCellIndirections = decalVolumeLimits.y;
+		uint maxCellIndirectionsPerBucket = DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket();
 		uint flatCellCount = DecalVolume_CellCountCurrentPass();
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
 		uint flatCellIndex2 = DecalVolume_GetCellFlatIndex( cellXYZ, cellCountA.xyz );
-		outDecalsPerCell[flatCellIndex2] = DecalVolume_PackHeader( min( cellDecalCount, maxDecalsPerCell ), offsetToFirstDecalIndex );
+		outDecalsPerCell[flatCellIndex2] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
 
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 
@@ -488,7 +509,7 @@ void DecalVolume_OutputCellIndirection( uint cellThreadIndex, uint3 cellXYZ, uin
 		{
 			CellIndirection ci;
 			ci.offsetToFirstDecalIndex = offsetToFirstDecalIndex;
-			ci.decalCount = min( cellDecalCount, maxDecalsPerCell );
+			ci.decalCount = cellDecalCount;
 
 #if DECAL_VOLUME_CLUSTER_BUCKETS
 			uint np2 = RoundUpToPowerOfTwo( min( cellDecalCount, 32 ) );
@@ -503,24 +524,27 @@ void DecalVolume_OutputCellIndirection( uint cellThreadIndex, uint3 cellXYZ, uin
 			uint cellIndirectionIndex;
 			InterlockedAdd( outCellIndirectionCount[cellSlot], 8, cellIndirectionIndex );
 
-#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
-			ci.cellIndex = encodedCellXYZ;
-			outDecalCellIndirection[cellIndirectionIndex / 8 + cellSlot * flatCellCount] = ci;
-#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
-			for ( uint i = 0; i < 8; ++i )
+			if ( cellIndirectionIndex / 8 < maxCellIndirectionsPerBucket )
 			{
-				uint slice = i / 4;
-				uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
-				uint tile = i % 4;
-				uint row = tile / 2;
-				uint col = tile % 2;
-				ci.cellIndex = ( cellXYZ.z * 2 + slice ) * sliceSize * 4 + ( cellXYZ.y * 2 + row ) * numCellsXYZ.x * 2 + cellXYZ.x * 2 + col;
-				//ci.cellIndex = flatCellIndex;
-				ci.cellIndex = DecalVolume_EncodeCell3D( uint3( cellXYZ.x * 2 + col, cellXYZ.y * 2 + row, cellXYZ.z * 2 + slice ) );
 
-				outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 8] = ci;
-			}
+#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+				ci.cellIndex = encodedCellXYZ;
+				outDecalCellIndirection[cellIndirectionIndex / 8 + cellSlot * maxCellIndirectionsPerBucket] = ci;
+#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+				for ( uint i = 0; i < 8; ++i )
+				{
+					uint slice = i / 4;
+					uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
+					uint tile = i % 4;
+					uint row = tile / 2;
+					uint col = tile % 2;
+					ci.cellIndex = DecalVolume_EncodeCell3D( uint3( cellXYZ.x * 2 + col, cellXYZ.y * 2 + row, cellXYZ.z * 2 + slice ) );
+
+					outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * maxCellIndirectionsPerBucket * 8] = ci;
+				}
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+
+			}
 
 #else // #if DECAL_VOLUME_CLUSTERING_3D
 

@@ -1,8 +1,6 @@
 #include <Core/AppBase/AppBase.h>
 #include <Core/Gfx/Mesh/Model.h>
 #include <Shaders/hlsl/PassConstants.h>
-//#include <Shaders/hlsl/MeshConstants.h>
-//#include <Shaders/hlsl/gpuClusteringConstants.h>
 #include <Shaders/hlsl/cs_decal_volume_cshared.hlsl>
 #include <Shaders/hlsl/decal_volume_rendering_cshared.h>
 #include <Core/Gfx/Camera.h>
@@ -10,6 +8,8 @@
 
 namespace spad
 {
+	constexpr uint maxBuckets = 6;
+
 	class SettingsTestApp : public AppBase
 	{
 	public:
@@ -118,8 +118,7 @@ namespace spad
 		struct Stats
 		{
 			uint totalMem;
-			uint decalsPerCellMem;
-			uint numCellIndirections;
+			uint numCellIndirections[maxBuckets];
 			uint numWaves;
 			uint numDecalsInAllCells;
 			float avgDecalsPerCell;
@@ -135,9 +134,10 @@ namespace spad
 			uint nCellsX;
 			uint nCellsY;
 			uint nCellsZ;
-			uint maxDecalsPerCell;
+			uint maxDecalIndices;
+			uint maxCellIndirectionsPerBucket;
 
-			StructuredBuffer<uint> decalPerCell;
+			StructuredBuffer<uint> decalIndices;
 			StructuredBuffer<CellIndirection> cellIndirection;
 			StructuredBuffer<uint> cellIndirectionCount;
 			StructuredBuffer<uint> indirectArgs;

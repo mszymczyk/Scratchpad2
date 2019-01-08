@@ -2,15 +2,15 @@
 #error Can't be used in first pass
 #endif // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
-void DecalVisibilityOnThreadPerCell( uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint maxDecalsPerCell, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilityOnThreadPerCell( uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
-	uint nSlotsToAlloc = min( passDecalCount, maxDecalsPerCell );
 	uint offsetToFirstDecalIndex;
-	InterlockedAdd( outMemAlloc[0], nSlotsToAlloc, offsetToFirstDecalIndex );
+	InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex );
 
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
 	uint cellCount = DecalVolume_CellCountCurrentPass();
 	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
+	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 	offsetToFirstDecalIndex += cellCount;
@@ -27,9 +27,10 @@ void DecalVisibilityOnThreadPerCell( uint flatCellIndex, uint passDecalCount, ui
 
 		uint intersects = DecalVolume_TestFrustum( frustum, decalIndex );
 
-		if ( intersects && localIndex < maxDecalsPerCell )
+		uint globalIndex = offsetToFirstDecalIndex + localIndex;
+		if ( intersects && globalIndex < maxDecalIndices )
 		{
-			outDecalsPerCell[offsetToFirstDecalIndex + localIndex] = decalIndex;
+			outDecalsPerCell[globalIndex] = decalIndex;
 			localIndex += 1;
 		}
 	}
