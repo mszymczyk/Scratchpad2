@@ -24,6 +24,187 @@ namespace spad
 		return n;
 	}
 	
+	void buildFrustumClip( float clipSpacePlanes[6], uint cellCountX, uint cellCountY, uint cellCountZ, uint cellIndexX, uint cellIndexY, uint cellIndexZ, float nearPlane, float farPlaneOverNearPlane )
+	{
+		float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndexZ     ) / cellCountZ );
+		float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndexZ + 1 ) / cellCountZ );
+
+		clipSpacePlanes[0] = -1 + ( 2.0f / cellCountX ) * ( cellIndexX );
+		clipSpacePlanes[1] = -1 + ( 2.0f / cellCountX ) * ( cellIndexX + 1 );
+		clipSpacePlanes[2] = 1 - ( 2.0f / cellCountY ) * ( cellIndexY + 1 );
+		clipSpacePlanes[3] = 1 - ( 2.0f / cellCountY ) * ( cellIndexY );
+		clipSpacePlanes[4] = n;
+		clipSpacePlanes[5] = f;
+
+#if USE_Z_01
+		nearPlane = 4;
+		float farPlane = 1000;
+		float nmf = 1.0f / ( nearPlane - farPlane );
+		float a = farPlane * nmf;
+		float b = nearPlane * farPlane * nmf;
+
+		//float z01_2 = ( -zLog * a + b ) / zLog;
+		frustum.clipSpacePlanes[4] = ( -n * a + b ) / n;
+		frustum.clipSpacePlanes[5] = ( -f * a + b ) / f;
+#endif // #if USE_Z_01
+	}
+
+
+
+	void extractFrustumCorners( Vector3 dst[8], const Matrix4& viewProjection, bool dxStyleZProjection )
+	{
+		const Matrix4 vpInv = inverse( viewProjection );
+
+		const Vector3 leftUpperNear = Vector3( 0, 1, 0 );
+		const Vector3 leftUpperFar = Vector3( 0, 1, 1 );
+		const Vector3 leftLowerNear = Vector3( 0, 0, 0 );
+		const Vector3 leftLowerFar = Vector3( 0, 0, 1 );
+
+		const Vector3 rightLowerNear = Vector3( 1, 0, 0 );
+		const Vector3 rightLowerFar = Vector3( 1, 0, 1 );
+		const Vector3 rightUpperNear = Vector3( 1, 1, 0 );
+		const Vector3 rightUpperFar = Vector3( 1, 1, 1 );
+
+		if ( dxStyleZProjection )
+		{
+			dst[0] = unprojectNormalizedDx( leftUpperNear, vpInv );
+			dst[1] = unprojectNormalizedDx( leftUpperFar, vpInv );
+			dst[2] = unprojectNormalizedDx( leftLowerNear, vpInv );
+			dst[3] = unprojectNormalizedDx( leftLowerFar, vpInv );
+
+			dst[4] = unprojectNormalizedDx( rightLowerNear, vpInv );
+			dst[5] = unprojectNormalizedDx( rightLowerFar, vpInv );
+			dst[6] = unprojectNormalizedDx( rightUpperNear, vpInv );
+			dst[7] = unprojectNormalizedDx( rightUpperFar, vpInv );
+		}
+		else
+		{
+			dst[0] = unprojectNormalized( leftUpperNear, vpInv );
+			dst[1] = unprojectNormalized( leftUpperFar, vpInv );
+			dst[2] = unprojectNormalized( leftLowerNear, vpInv );
+			dst[3] = unprojectNormalized( leftLowerFar, vpInv );
+
+			dst[4] = unprojectNormalized( rightLowerNear, vpInv );
+			dst[5] = unprojectNormalized( rightLowerFar, vpInv );
+			dst[6] = unprojectNormalized( rightUpperNear, vpInv );
+			dst[7] = unprojectNormalized( rightUpperFar, vpInv );
+		}
+	}
+
+	void extractFrustumPlanes( Vector4 planes[6], const Matrix4& vp )
+	{
+		planes[0] = vp.getRow( 0 ) + vp.getRow( 3 ); // left
+		planes[1] = -vp.getRow( 0 ) + vp.getRow( 3 ); // right
+		planes[2] = vp.getRow( 1 ) + vp.getRow( 3 ); // bottom
+		planes[3] = -vp.getRow( 1 ) + vp.getRow( 3 ); //  top
+		planes[4] = vp.getRow( 2 ) + vp.getRow( 3 ); // near
+		planes[5] = -vp.getRow( 2 ) + vp.getRow( 3 ); // far
+
+		for ( int i = 0; i < 6; ++i )
+		{
+			floatInVec lengthRcp = floatInVec( 1.0f ) / length( planes[i].getXYZ() );
+			planes[i] *= lengthRcp;
+		}
+	}
+
+	void extractFrustumPlanesDxRhs( Vector4 planes[6], const Matrix4& vp )
+	{
+		planes[0] = vp.getRow( 0 ) + vp.getRow( 3 ); // left
+		planes[1] = -vp.getRow( 0 ) + vp.getRow( 3 ); // right
+		planes[2] = vp.getRow( 1 ) + vp.getRow( 3 ); // bottom
+		planes[3] = -vp.getRow( 1 ) + vp.getRow( 3 ); //  top
+		planes[4] =  vp.getRow( 2 );// +vp.getRow( 3 ); // near
+		planes[5] = -vp.getRow( 2 ) + vp.getRow( 3 ); // far
+
+		for ( int i = 0; i < 6; ++i )
+		{
+			floatInVec lengthRcp = floatInVec( 1.0f ) / length( planes[i].getXYZ() );
+			planes[i] *= lengthRcp;
+		}
+	}
+
+	void buildSubFrustum( Vector4 frustumPlanes[6], uint cellCountX, uint cellCountY, uint cellCountZ, uint cellIndexX, uint cellIndexY, uint cellIndexZ, float tanHalfFovRcpX, float tanHalfFovRcpY, float nearPlane, float farPlaneOverNearPlane )
+	{
+		float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndexZ     ) / cellCountZ );
+		float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndexZ + 1 ) / cellCountZ );
+		//float n = 1;
+		//float f = 20;
+		float nmf = 1.0f / ( n - f );
+		float a = f * nmf;
+		float b = n * f * nmf;
+
+		float tileScaleX = static_cast<float>( cellCountX );
+		float tileScaleY = static_cast<float>( cellCountY );
+
+		uint subFrustumX = cellIndexX;
+		uint subFrustumY = cellIndexY;
+
+		float tileBiasX = subFrustumX * 2 - tileScaleX + 1;
+		float tileBiasY = subFrustumY * 2 - tileScaleY + 1;
+
+		Matrix4 subProj = {
+			Vector4( tanHalfFovRcpX * tileScaleX,		0,									tileBiasX,			0 ),
+			Vector4( 0,									tanHalfFovRcpY * -tileScaleY,		tileBiasY,			0 ),
+			Vector4( 0,									0,									a,					b ),
+			Vector4( 0,									0,									-1,					0 )
+		};
+
+		extractFrustumPlanesDxRhs( frustumPlanes, transpose( subProj ) );
+	}
+
+	uint TestDecalVolumeFrustumClipSpace( const Vector4 corners[8], const float clipSpacePlanes[6] )
+	{
+		float left        = clipSpacePlanes[0];
+		float right       = clipSpacePlanes[1];
+		float bottom      = clipSpacePlanes[2];
+		float top         = clipSpacePlanes[3];
+		float nearPlane   = clipSpacePlanes[4];
+		float farPlane    = clipSpacePlanes[5];
+
+		bool allOutsideLeft = true;
+		bool allOutsideRight = true;
+		bool allOutsideBottom = true;
+		bool allOutsideTop = true;
+		bool allOutsideNear = true;
+		bool allOutsideFar = true;
+
+		for ( uint iCorner = 0; iCorner < 8; ++iCorner )
+		{
+			Vector4 c = corners[iCorner];
+			float x = c.getX().getAsFloat();
+			float y = c.getY().getAsFloat();
+#if USE_Z_01
+			float z = c.getZ().getAsFloat();
+#endif // #if USE_Z_01
+			float w = c.getW().getAsFloat();
+
+			allOutsideLeft = allOutsideLeft && ( x < left * w );
+			allOutsideRight = allOutsideRight && ( x > right * w );
+
+			allOutsideBottom = allOutsideBottom && ( y < bottom * w );
+			allOutsideTop = allOutsideTop && ( y > top * w );
+
+#if USE_Z_01
+			allOutsideNear = allOutsideNear && ( z < nearPlane * w );
+			allOutsideFar = allOutsideFar && ( z > farPlane * w );
+#else // #if USE_Z_01
+			allOutsideNear = allOutsideNear && ( w < nearPlane );
+			allOutsideFar = allOutsideFar && ( w > farPlane );
+#endif // #else // #if USE_Z_01
+		}
+
+		bool anyOutside = false
+			|| allOutsideLeft
+			|| allOutsideRight
+			|| allOutsideBottom
+			|| allOutsideTop
+			|| allOutsideNear
+			|| allOutsideFar
+			;
+
+		return anyOutside ? 0 : 1;
+	}
+
 	bool SettingsTestApp::StartUp()
 	{
 		uint numThreadsPerCell = 32;
@@ -308,62 +489,6 @@ namespace spad
 		Matrix4 world = inverse( viewMatrixForCamera_ );
 		AppBase::UpdateCamera( world, dt * 5.0f );
 		viewMatrixForCamera_ = inverse( world );
-	}
-
-	void extractFrustumCorners( Vector3 dst[8], const Matrix4& viewProjection, bool dxStyleZProjection )
-	{
-		const Matrix4 vpInv = inverse( viewProjection );
-
-		const Vector3 leftUpperNear = Vector3( 0, 1, 0 );
-		const Vector3 leftUpperFar = Vector3( 0, 1, 1 );
-		const Vector3 leftLowerNear = Vector3( 0, 0, 0 );
-		const Vector3 leftLowerFar = Vector3( 0, 0, 1 );
-
-		const Vector3 rightLowerNear = Vector3( 1, 0, 0 );
-		const Vector3 rightLowerFar = Vector3( 1, 0, 1 );
-		const Vector3 rightUpperNear = Vector3( 1, 1, 0 );
-		const Vector3 rightUpperFar = Vector3( 1, 1, 1 );
-
-		if ( dxStyleZProjection )
-		{
-			dst[0] = unprojectNormalizedDx( leftUpperNear, vpInv );
-			dst[1] = unprojectNormalizedDx( leftUpperFar, vpInv );
-			dst[2] = unprojectNormalizedDx( leftLowerNear, vpInv );
-			dst[3] = unprojectNormalizedDx( leftLowerFar, vpInv );
-
-			dst[4] = unprojectNormalizedDx( rightLowerNear, vpInv );
-			dst[5] = unprojectNormalizedDx( rightLowerFar, vpInv );
-			dst[6] = unprojectNormalizedDx( rightUpperNear, vpInv );
-			dst[7] = unprojectNormalizedDx( rightUpperFar, vpInv );
-		}
-		else
-		{
-			dst[0] = unprojectNormalized( leftUpperNear, vpInv );
-			dst[1] = unprojectNormalized( leftUpperFar, vpInv );
-			dst[2] = unprojectNormalized( leftLowerNear, vpInv );
-			dst[3] = unprojectNormalized( leftLowerFar, vpInv );
-
-			dst[4] = unprojectNormalized( rightLowerNear, vpInv );
-			dst[5] = unprojectNormalized( rightLowerFar, vpInv );
-			dst[6] = unprojectNormalized( rightUpperNear, vpInv );
-			dst[7] = unprojectNormalized( rightUpperFar, vpInv );
-		}
-	}
-
-	void extractFrustumPlanes( Vector4 planes[6], const Matrix4& vp )
-	{
-		planes[0] = vp.getRow( 0 ) + vp.getRow( 3 ); // left
-		planes[1] = -vp.getRow( 0 ) + vp.getRow( 3 ); // right
-		planes[2] = vp.getRow( 1 ) + vp.getRow( 3 ); // bottom
-		planes[3] = -vp.getRow( 1 ) + vp.getRow( 3 ); //  top
-		planes[4] = vp.getRow( 2 ) + vp.getRow( 3 ); // near
-		planes[5] = -vp.getRow( 2 ) + vp.getRow( 3 ); // far
-
-		for ( int i = 0; i < 6; ++i )
-		{
-			floatInVec lengthRcp = floatInVec( 1.0f ) / length( planes[i].getXYZ() );
-			planes[i] *= lengthRcp;
-		}
 	}
 
 	// Real-Time Rendering, 3rd Edition - 16.10.1, 16.14.3 (p. 755, 777)
@@ -1249,23 +1374,48 @@ namespace spad
 			//	clipPoints[ib] = viewProj * Vector4( boxVertices[ib].getXYZ(), 1.0f );
 			//}
 
-			////GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
-
-			//Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
-			//Vector4 xsClip = viewProj * xs;
-			//Vector4 ysClip = viewProj * ys;
-			//Vector4 zsClip = viewProj * zs;
-
-			//GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 8 );
-			//GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 8 );
-
 			//Vector4 v0 = viewProj * Vector4( boxVertices[0].getXYZ(), 1.0f );
 			//Vector4 v4 = viewProj * Vector4( boxVertices[4].getXYZ(), 1.0f );
 			//Vector4 v5 = viewProj * Vector4( boxVertices[5].getXYZ(), 1.0f );
 			//Vector4 v7 = viewProj * Vector4( boxVertices[7].getXYZ(), 1.0f );
 
-			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 16 );
-			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 16 );
+			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 8 );
+
+			////GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
+
+			////Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
+			////Vector4 xsClip = viewProj * xs;
+			////Vector4 ysClip = viewProj * ys;
+			////Vector4 zsClip = viewProj * zs;
+
+			////GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 16 );
+
+			//for ( uint iCellsZ = 0; iCellsZ < 2; ++iCellsZ )
+			//{
+			//	float clipSpacePlanes[6];
+			//	buildFrustumClip( clipSpacePlanes, 1, 1, 2, 0, 0, iCellsZ, testFrustumNearPlane, decalVolumeFarPlane_ / testFrustumNearPlane );
+
+			//	uint visible = TestDecalVolumeFrustumClipSpace( clipPoints + 8, clipSpacePlanes );
+
+			//	uint rtWidth, rtHeight;
+			//	GetRenderTargetSize( rtWidth, rtHeight );
+
+			//	//float n = testFrustumNearPlane * pow( abs( decalVolumeFarPlane_ / testFrustumNearPlane ), (float)( iCellsZ ) / 2 );
+			//	//float f = testFrustumNearPlane * pow( abs( decalVolumeFarPlane_ / testFrustumNearPlane ), (float)( iCellsZ + 1 ) / 2 );
+
+			//	//Matrix4 proj = perspectiveProjectionDxStyle( deg2rad( 60.0f ), (float)rtWidth / (float)rtHeight, n, f );
+
+			//	Vector4 planes[6];
+			//	//extractFrustumPlanes( planes, proj );
+
+			//	float tanHalfFovRcpX = projMatrixForDecalVolumes_.getElem( 0, 0 ).getAsFloat();
+			//	float tanHalfFovRcpY = projMatrixForDecalVolumes_.getElem( 1, 1 ).getAsFloat();
+
+			//	buildSubFrustum( planes, 1, 1, 2, 0, 0, iCellsZ, tanHalfFovRcpX, tanHalfFovRcpY, testFrustumNearPlane, decalVolumeFarPlane_ / testFrustumNearPlane );
+
+			//	uint visible2 = frustumOBBIntersectSimpleOptimized( planes, Vector4( pos, 1.0f ), Vector4( hsX, hsY, hsZ, 0 ), rot.getCol0(), rot.getCol1(), rot.getCol2() );
+			//	std::cout << "iCellsZ " << iCellsZ << "   visible " << visible << "   visible2 " << visible2 << std::endl;
+			//}
 		}
 
 		decalVolumesGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, decalVolumesCPU_, true, false, false );
@@ -1705,7 +1855,7 @@ namespace spad
 				{
 					ImGui::Text( "Pass mem %u [kB], %u [MB]", p.stats.totalMem / 1024, p.stats.totalMem / ( 1024 * 1024 ) );
 					ImGui::Text( "Decal indices mem %u [kB], %u [MB]", p.maxDecalIndices * sizeof(uint) / 1024, p.maxDecalIndices * sizeof( uint ) / ( 1024 * 1024 ) );
-					ImGui::Text( "Cells indirection mem %u [kB], %u [MB]", p.maxCellIndirectionsPerBucket * maxBuckets, p.maxCellIndirectionsPerBucket * maxBuckets / ( 1024 * 1024 ) );
+					ImGui::Text( "Cells indirection mem %u [kB], %u [MB]", (p.maxCellIndirectionsPerBucket * maxBuckets) / 1024, p.maxCellIndirectionsPerBucket * maxBuckets / ( 1024 * 1024 ) );
 					if ( lastPass )
 					{
 						ImGui::Text( "Decal indices used (+header) [kB] %u / %u", ( p.stats.memAllocated + totalCells * sizeof(uint) ) / 1024, ( p.maxDecalIndices * sizeof( uint ) ) / 1024 );
@@ -2046,21 +2196,8 @@ namespace spad
 	}
 
 
-	SettingsTestApp::DecalVolumeClusteringDataPtr SettingsTestApp::DecalVolumeClusteringStartUp()
+	void SettingsTestApp::CalculateCellCount( uint rtWidth, uint rtHeight, uint &outCellsX, uint &outCellsY, uint &outCellsZ )
 	{
-		ID3D11Device* dxDevice = dx11_->getDevice();
-
-		DecalVolumeClusteringDataPtr clusteringPtr = std::make_unique<DecalVolumeClusteringData>();
-
-		clusteringPtr->clusteringConstants_.Initialize( dxDevice );
-		clusteringPtr->decalVolumesClusteringTimer_.Initialize( dxDevice );
-		clusteringPtr->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
-
-		clusteringPtr->clusteringPasses_.resize( DECAL_VOLUME_CLUSTERING_NUM_PASSES );
-
-		uint rtWidth, rtHeight;
-		GetRenderTargetSize( rtWidth, rtHeight );
-
 		uint nCellsXBase = ( rtWidth + DECAL_VOLUME_CLUSTER_SIZE_X - 1 ) / DECAL_VOLUME_CLUSTER_SIZE_X;
 		uint nCellsYBase = ( rtHeight + DECAL_VOLUME_CLUSTER_SIZE_Y - 1 ) / DECAL_VOLUME_CLUSTER_SIZE_Y;
 
@@ -2077,9 +2214,49 @@ namespace spad
 			nCellsXBase = spadAlignU32_2( nCellsXBase - maxDivider - 1, maxDivider );
 		}
 
-		uint nCellsX = nCellsXBase;
-		uint nCellsY = nCellsYBase;
-		uint nCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
+		outCellsX = nCellsXBase;
+		outCellsY = nCellsYBase;
+		outCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
+	}
+
+	SettingsTestApp::DecalVolumeClusteringDataPtr SettingsTestApp::DecalVolumeClusteringStartUp()
+	{
+		std::cout << std::endl;
+
+		for ( uint rtSize = RTW_64_64; rtSize < RenderTargetSizeCount; ++rtSize )
+		{
+			uint rtWidth, rtHeight;
+			GetRenderTargetSize( static_cast<RenderTargetSize>( rtSize ), rtWidth, rtHeight );
+
+			uint nCellsX;
+			uint nCellsY;
+			uint nCellsZ;
+			CalculateCellCount( rtWidth, rtHeight, nCellsX, nCellsY, nCellsZ );
+
+			uint cellCount = nCellsX * nCellsY * nCellsZ;
+			uint cellCountSqr = static_cast<uint>( sqrtf( cellCount ) );
+			std::cout << rtWidth << " x " << rtHeight << "  " << cellCount << "   " << cellCountSqr << std::endl;
+		}
+
+		ID3D11Device* dxDevice = dx11_->getDevice();
+
+		DecalVolumeClusteringDataPtr clusteringPtr = std::make_unique<DecalVolumeClusteringData>();
+
+		clusteringPtr->clusteringConstants_.Initialize( dxDevice );
+		clusteringPtr->decalVolumesClusteringTimer_.Initialize( dxDevice );
+		clusteringPtr->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
+
+		clusteringPtr->clusteringPasses_.resize( DECAL_VOLUME_CLUSTERING_NUM_PASSES );
+
+		uint rtWidth, rtHeight;
+		GetRenderTargetSize( rtWidth, rtHeight );
+
+		uint nCellsX;
+		uint nCellsY;
+		uint nCellsZ;
+		CalculateCellCount( rtWidth, rtHeight, nCellsX, nCellsY, nCellsZ );
+
+		uint cellCountSqr = static_cast<uint>( sqrtf( nCellsX * nCellsY * nCellsZ ) );
 
 		for ( int iPass = (int)clusteringPtr->clusteringPasses_.size() - 1; iPass >= 0; --iPass )
 		{
@@ -2098,10 +2275,13 @@ namespace spad
 
 		//uint nDecalsPerCell = 64;
 		//uint maxDecalIndicesPerPass = 1 << ( clusteringPtr->clusteringPasses_.size() );
+		//uint maxDecalIndicesDiv = 1;
+		uint maxDecalsPerCell = maxOfPair( maxDecalVolumes_ / 64, 1 );
 
 		uint totalMemoryUsed = 0;
 
-		for ( uint iPass = 0; iPass < (uint)clusteringPtr->clusteringPasses_.size(); ++iPass )
+		//for ( uint iPass = 0; iPass < (uint)clusteringPtr->clusteringPasses_.size(); ++iPass )
+		for ( int iPass = (int)clusteringPtr->clusteringPasses_.size() - 1; iPass >= 0; --iPass )
 		{
 			const bool firstPass = iPass == 0;
 			const bool lastPass = iPass == ( clusteringPtr->clusteringPasses_.size() - 1 );
@@ -2109,21 +2289,49 @@ namespace spad
 			DecalVolumeClusteringPass &p = clusteringPtr->clusteringPasses_[iPass];
 
 			uint cellCount = p.nCellsX * p.nCellsY * p.nCellsZ;
+			//uint cellCountSqr = static_cast<uint>( sqrtf( cellCount ) );
 
-			if ( iPass <= 2 )
+			//if ( iPass <= 2 )
+			//{
+			//	p.maxDecalIndices = maxDecalVolumes_ * 16;
+			//}
+			//else
+			//{
+			//	p.maxDecalIndices = maxDecalVolumes_ * 32;
+			//}
+
+			//p.maxDecalIndices *= 64;
+			//p.maxDecalIndices = (cellCount * maxDecalVolumes_) / maxDecalIndicesDiv;
+			//maxDecalIndicesDiv *= 8;
+
+			//if ( !firstPass && !lastPass )
+			//{
+			//	p.maxDecalIndices /= 2;
+			//}
+
+			if ( firstPass )
 			{
-				p.maxDecalIndices = maxDecalVolumes_ * 16;
+				p.maxDecalIndices = cellCount * maxDecalVolumes_;
+			}
+			else if ( lastPass )
+			{
+				p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / (2048), 1 ) );
 			}
 			else
 			{
-				p.maxDecalIndices = maxDecalVolumes_ * 32;
+				//p.maxDecalIndices = cellCountSqr * maxDecalsPerCell;
+				//p.maxDecalIndices = cellCount * maxDecalsPerCell;
+				//maxDecalsPerCell *= 4;
+				//p.maxDecalIndices = cellCountSqr * 32;
+				//p.maxDecalIndices = cellCount * maxDecalsPerCell;
+				//maxDecalsPerCell *= 8;
+				//p.maxDecalIndices = cellCount * ( maxDecalVolumes_ >> (iPass + 3) );
+				//p.maxDecalIndices = ( cellCountSqr >> (iPass + 1) ) * 1024 * ( maxOfPair(maxDecalVolumes_ / 1024, 1) );
+				p.maxDecalIndices = (cellCountSqr / 8) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / 2048, 1 ) );
 			}
-
-			p.maxDecalIndices *= 64;
 
 			if ( lastPass )
 			{
-				p.maxDecalIndices += cellCount;
 				p.maxCellIndirectionsPerBucket = 0;
 			}
 			else
@@ -2720,9 +2928,9 @@ namespace spad
 		//}
 	}
 
-	void SettingsTestApp::GetRenderTargetSize( uint &rtWidth, uint &rtHeight ) const
+	void SettingsTestApp::GetRenderTargetSize( RenderTargetSize rtSize, uint &rtWidth, uint &rtHeight )
 	{
-		switch ( rtSize_ )
+		switch ( rtSize )
 		{
 		case spad::SettingsTestApp::RTW_1920_1080:
 			rtWidth = 1920;
@@ -2764,6 +2972,11 @@ namespace spad
 			SPAD_NOT_IMPLEMENTED;
 			break;
 		}
+	}
+
+	void SettingsTestApp::GetRenderTargetSize( uint &rtWidth, uint &rtHeight ) const
+	{
+		GetRenderTargetSize( rtSize_, rtWidth, rtHeight );
 	}
 
 }

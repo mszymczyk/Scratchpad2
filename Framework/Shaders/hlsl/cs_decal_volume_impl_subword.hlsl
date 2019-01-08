@@ -10,84 +10,89 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	uint threadWordIndex = threadIndex / 32;
 	uint bitIndex = threadIndex - threadWordIndex * 32;
 
-	uint sharedGroupOffset = 0;
-
-	if ( threadIndex == 0 )
+	if ( threadIndex < 2 )
 	{
-		sharedVisibility[0] = 0;
-		sharedVisibility[1] = 0;
+		sharedVisibility[threadIndex] = 0;
 	}
 
-	if ( cellThreadIndex == 0 )
+	// allocate speculatively one chunk per cell, might cause overallocation
+	if ( cellValid && cellThreadIndex == 0 )
 	{
 		InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex[localCellIndex] );
 	}
 
+	// wait for memory allocations
 	GroupMemoryBarrierWithGroupSync();
-
-	uint cellOffsetToFirstDecalIndex = offsetToFirstDecalIndex[localCellIndex];
 
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
 	uint cellCount = DecalVolume_CellCountCurrentPass();
 	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
+	uint cellOffsetToFirstDecalIndex = 0;
+	uint decalIndex = 0;
+	
+	if ( cellValid )
+	{
+		cellOffsetToFirstDecalIndex = offsetToFirstDecalIndex[localCellIndex];
+
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
-	cellOffsetToFirstDecalIndex += cellCount;
+		cellOffsetToFirstDecalIndex += cellCount;
 #endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
-	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, cellXYZ );
+		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, cellXYZ );
 
-	uint iGlobalDecalBase = 0;
+		uint iGlobalDecalBase = 0;
 
-	// every thread calculates intersection with one decal
+		// every thread calculates intersection with one decal
 #if DECAL_VOLUME_CLUSTER_FIRST_PASS
-	uint decalIndex = cellThreadIndex < passDecalCount ? iGlobalDecalBase + cellThreadIndex : 0xffffffff;
+		decalIndex = cellThreadIndex < passDecalCount ? iGlobalDecalBase + cellThreadIndex : 0xffffffff;
 #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
-	uint index = iGlobalDecalBase + cellThreadIndex;
-	uint decalIndex = index < passDecalCount ? inDecalsPerCell[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
+		uint index = iGlobalDecalBase + cellThreadIndex;
+		decalIndex = index < passDecalCount ? inDecalsPerCell[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
-	// Compare against frustum number of decals
-	uint intersects = 0;
-	if ( cellValid && decalIndex < frustumDecalCount )
-	{
-		intersects = DecalVolume_TestFrustum( frustum, decalIndex );
-
-		if ( intersects )
+		// Compare against frustum number of decals
+		uint intersects = 0;
+		if ( decalIndex < frustumDecalCount )
 		{
-			//uint bitValue = intersects << threadIndex;
-			uint bitValue = intersects << bitIndex;
-			//InterlockedOr( sharedVisibility, bitValue );
-			InterlockedOr( sharedVisibility[threadWordIndex], bitValue );
+			intersects = DecalVolume_TestFrustum( frustum, decalIndex );
+
+			if ( intersects )
+			{
+				uint bitValue = intersects << bitIndex;
+				InterlockedOr( sharedVisibility[threadWordIndex], bitValue );
+			}
 		}
 	}
 
+	// wait for all writes to sharedVisibility
 	GroupMemoryBarrierWithGroupSync();
 
-	uint firstCellIndex = localCellIndex * numThreadsPerCell;
-	uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 );
-	//uint cellVisibility = ( sharedVisibility >> firstCellIndex ) & cellMask;
-	uint cellVisibility = ( sharedVisibility[firstCellIndex/32] >> (firstCellIndex - threadWordIndex * 32) ) & cellMask;
-	uint cellDecalCount = countbits( cellVisibility );
-
-	uint cellThreadBit = 1 << cellThreadIndex;
-	if ( cellValid && ( cellVisibility & cellThreadBit ) )
+	if ( cellValid )
 	{
-		uint cellLowerBits = cellVisibility & ( cellThreadBit - 1 );
-		uint localIndex = countbits( cellLowerBits );
+		uint firstCellIndex = localCellIndex * numThreadsPerCell;
+		uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 );
+		//uint cellVisibility = ( sharedVisibility[firstCellIndex/32] >> (firstCellIndex - threadWordIndex * 32) ) & cellMask;
+		uint cellVisibility = ( sharedVisibility[threadWordIndex] >> ( firstCellIndex - threadWordIndex * 32 ) ) & cellMask;
 
-		uint cellIndex = sharedGroupOffset + localIndex;
-		uint globalIndex = cellOffsetToFirstDecalIndex + cellIndex;
-		if ( globalIndex < maxDecalIndices )
+		uint cellThreadBit = 1 << cellThreadIndex;
+		if ( cellValid && ( cellVisibility & cellThreadBit ) )
 		{
-			outDecalsPerCell[cellOffsetToFirstDecalIndex + cellIndex] = decalIndex;
+			uint cellLowerBits = cellVisibility & ( cellThreadBit - 1 );
+			uint localIndex = countbits( cellLowerBits );
+
+			uint cellIndex = localIndex;
+			uint globalIndex = cellOffsetToFirstDecalIndex + cellIndex;
+			if ( globalIndex < maxDecalIndices )
+			{
+				outDecalsPerCell[cellOffsetToFirstDecalIndex + cellIndex] = decalIndex;
+			}
 		}
+
+		uint cellDecalCount = countbits( cellVisibility );
+		DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, cellDecalCount, cellOffsetToFirstDecalIndex, numCellsXYZ );
 	}
-
-	sharedGroupOffset += cellDecalCount;
-
-	DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, sharedGroupOffset, cellOffsetToFirstDecalIndex, numCellsXYZ );
 }
 
 
@@ -96,12 +101,13 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //	uint threadIndex = cellThreadID.x; // warp/wave index
 //	uint localCellIndex = cellThreadID.x / numThreadsPerCell;
 //	uint cellThreadIndex = cellThreadID.x % numThreadsPerCell;
-//
-//	uint sharedGroupOffset = 0;
+//	uint threadWordIndex = threadIndex / 32;
+//	uint bitIndex = threadIndex - threadWordIndex * 32;
 //
 //	if ( threadIndex == 0 )
 //	{
-//		sharedVisibility = 0;
+//		sharedVisibility[0] = 0;
+//		sharedVisibility[1] = 0;
 //	}
 //
 //	if ( cellThreadIndex == 0 )
@@ -123,6 +129,8 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 //
 //	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, cellXYZ );
+//
+//	uint cellTotalDecalCount = 0;
 //
 //	uint iGlobalDecalBase = 0;
 //	uint passDecalCount32 = spadAlignU32_2( passDecalCount, numThreadsPerCell );
@@ -148,7 +156,8 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //			if ( intersects )
 //			{
 //				uint bitValue = intersects << threadIndex;
-//				InterlockedOr( sharedVisibility, bitValue );
+//				//InterlockedOr( sharedVisibility, bitValue );
+//				InterlockedOr( sharedVisibility[threadWordIndex], bitValue );
 //			}
 //		}
 //
@@ -156,8 +165,8 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //
 //		uint firstCellIndex = localCellIndex * numThreadsPerCell;
 //		uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 );
-//		uint cellVisibility = ( sharedVisibility >> firstCellIndex ) & cellMask;
-//		uint cellDecalCount = countbits( cellVisibility );
+//		//uint cellVisibility = ( sharedVisibility >> firstCellIndex ) & cellMask;
+//		uint cellVisibility = ( sharedVisibility[threadWordIndex] >> ( firstCellIndex - threadWordIndex * 32 ) ) & cellMask;
 //
 //		uint cellThreadBit = 1 << cellThreadIndex;
 //		if ( cellVisibility & cellThreadBit )
@@ -165,7 +174,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //			uint cellLowerBits = cellVisibility & ( cellThreadBit - 1 );
 //			uint localIndex = countbits( cellLowerBits );
 //
-//			uint cellIndex = sharedGroupOffset + localIndex;
+//			uint cellIndex = cellTotalDecalCount + localIndex;
 //			uint globalIndex = cellOffsetToFirstDecalIndex + cellIndex;
 //			if ( globalIndex < maxDecalIndices )
 //			{
@@ -173,20 +182,23 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //			}
 //		}
 //
+//		uint cellDecalCount = countbits( cellVisibility );
+//		cellTotalDecalCount += cellDecalCount;
+//
 //		// wait until all accesses to sharedVisibility are complete
 //		GroupMemoryBarrierWithGroupSync();
 //
-//		sharedGroupOffset += cellDecalCount;
-//
 //		if ( threadIndex == 0 )
 //		{
-//			sharedVisibility = 0;
+//			sharedVisibility[0] = 0;
+//			sharedVisibility[1] = 0;
 //		}
 //
 //		GroupMemoryBarrierWithGroupSync();
 //
 //		iGlobalDecalBase += numThreadsPerCell;
-//	} while ( numThreadsPerCell == 32 && iGlobalDecalBase < passDecalCount32 );
+//	}
+//	while ( /*numThreadsPerCell == 64 &&*/ iGlobalDecalBase < passDecalCount32 );
 //
-//	DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, sharedGroupOffset, cellOffsetToFirstDecalIndex, numCellsXYZ );
+//	DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, cellTotalDecalCount, cellOffsetToFirstDecalIndex, numCellsXYZ );
 //}

@@ -4,13 +4,13 @@
 
 void DecalVisibilityOnThreadPerCell( uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
-	uint offsetToFirstDecalIndex;
-	InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex );
-
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
 	uint cellCount = DecalVolume_CellCountCurrentPass();
 	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
+
+	uint offsetToFirstDecalIndex;
+	InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex );
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 	offsetToFirstDecalIndex += cellCount;

@@ -78,13 +78,13 @@ namespace spad
 		void DrawDecalFarPlane( Dx11DeviceContext& deviceContext );
 		void DrawScreenSpaceGrid( Dx11DeviceContext& deviceContext );
 
+		static void GetRenderTargetSize( RenderTargetSize rtSize, uint &rtWidth, uint &rtHeight );
 		void GetRenderTargetSize( uint &rtWidth, uint &rtHeight ) const;
 
 		RenderTarget2D mainRT_ = RenderTarget2D( "mainRT_" );
 		DepthStencil mainDS_ = DepthStencil( "mainDS_" );
 
 		RenderTargetSize rtSize_ = RTW_1920_1080;
-		//RenderTargetSize rtSizeCur_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
 		//RenderTargetSize rtSize_ = RTW_128_128;
 
@@ -152,9 +152,9 @@ namespace spad
 		{
 			uint totalMemUsed_ = 0;
 			IntersectionMethod intersectionMethod_ = Standard;
-			bool enableBuckets_ = false;
+			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;
-			bool dynamicBucketsMerge_ = false;
+			bool dynamicBucketsMerge_ = true;
 			bool enablePassTiming_ = true;
 		};
 
@@ -230,6 +230,7 @@ namespace spad
 		DecalVolumeTilingDataPtr DecalVolumeTilingStartUp();
 		void DecalVolumeTilingRun( Dx11DeviceContext& deviceContext );
 
+		void CalculateCellCount( uint rtWidth, uint rtHeight, uint &outCellsX, uint &outCellsY, uint &outCellsZ );
 		DecalVolumeClusteringDataPtr DecalVolumeClusteringStartUp();
 		void DecalVolumeClusteringRun( Dx11DeviceContext& deviceContext );
 	};

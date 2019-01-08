@@ -61,6 +61,22 @@ void extractFrustumPlanes( out float4 planes[6], float4x4 vp )
 	}
 }
 
+void extractFrustumPlanesDxRhs( out float4 planes[6], float4x4 vp )
+{
+	planes[0] = vp[0] + vp[3]; // left
+	planes[1] = -vp[0] + vp[3]; // right
+	planes[2] = vp[1] + vp[3]; // bottom
+	planes[3] = -vp[1] + vp[3]; // top
+	planes[4] = vp[2];// +vp[3]; // near
+	planes[5] = -vp[2] + vp[3]; // far
+
+	for ( int i = 0; i < 6; ++i )
+	{
+		float lenRcp = 1.0f / length( planes[i].xyz );
+		planes[i] *= lenRcp;
+	}
+}
+
 float3 planesIntersect( float4 p1, float4 p2, float4 p3 )
 {
 	float denom = dot( p1.xyz, cross( p2.xyz, p3.xyz ) );
@@ -139,7 +155,7 @@ void buildFrustum( out Frustum frustum, const uint3 cellCount, uint3 cellIndex, 
 	};
 	float4x4 viewProj = mul( subProj, viewMatrix );
 
-	extractFrustumPlanes( frustum.planes, viewProj );
+	extractFrustumPlanesDxRhs( frustum.planes, viewProj );
 	extractFrustumCorners( frustum.frustumCorners, frustum.planes );
 
 	frustum.twoTests = true;
@@ -502,6 +518,7 @@ void DecalVolume_OutputCellIndirection( uint cellThreadIndex, uint3 cellXYZ, uin
 
 		uint flatCellIndex2 = DecalVolume_GetCellFlatIndex( cellXYZ, cellCountA.xyz );
 		outDecalsPerCell[flatCellIndex2] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
+		//outDecalsPerCell[flatCellIndex2] = DecalVolume_PackHeader( cellDecalCount, 0 );
 
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 
