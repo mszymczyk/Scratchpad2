@@ -1,6 +1,10 @@
 
 groupshared uint offsetToFirstDecalIndex[DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS];
 groupshared uint sharedVisibility[2];
+groupshared uint sharedMemAlloc;
+groupshared uint sharedMemAllocGlobalBase;
+
+#define USE_TWO_LEVEL_MEM_ALLOC 0
 
 void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellThreadID, uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
@@ -15,11 +19,39 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 		sharedVisibility[threadIndex] = 0;
 	}
 
+#if USE_TWO_LEVEL_MEM_ALLOC
+	// do multiple atomic adds to shared memory
+
+	if ( threadIndex == 0 )
+	{
+		sharedMemAlloc = 0;
+	}
+
+	GroupMemoryBarrierWithGroupSync();
+
+	// allocate speculatively one chunk per cell, might cause overallocation
+	if ( cellValid && cellThreadIndex == 0 )
+	{
+		InterlockedAdd( sharedMemAlloc, passDecalCount, offsetToFirstDecalIndex[localCellIndex] );
+	}
+
+	GroupMemoryBarrierWithGroupSync();
+
+	// and only one atomic add to global memory
+	if ( threadIndex == 0 )
+	{
+		InterlockedAdd( outMemAlloc[0], sharedMemAlloc, sharedMemAllocGlobalBase );
+	}
+
+#else // #if USE_TWO_LEVEL_MEM_ALLOC
+
 	// allocate speculatively one chunk per cell, might cause overallocation
 	if ( cellValid && cellThreadIndex == 0 )
 	{
 		InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex[localCellIndex] );
 	}
+
+#endif // #else // #if USE_TWO_LEVEL_MEM_ALLOC
 
 	// wait for memory allocations
 	GroupMemoryBarrierWithGroupSync();
@@ -35,6 +67,10 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	if ( cellValid )
 	{
 		cellOffsetToFirstDecalIndex = offsetToFirstDecalIndex[localCellIndex];
+
+#if USE_TWO_LEVEL_MEM_ALLOC
+		cellOffsetToFirstDecalIndex += sharedMemAllocGlobalBase;
+#endif // #if USE_TWO_LEVEL_MEM_ALLOC
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 		cellOffsetToFirstDecalIndex += cellCount;
