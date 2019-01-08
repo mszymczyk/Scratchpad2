@@ -4,7 +4,7 @@
 groupshared uint sharedWordVisibility[DECAL_VOLUME_CLUSTER_WORD_COUNT];
 groupshared uint sharedVisibleCount[DECAL_VOLUME_CLUSTER_WORD_COUNT];
 groupshared uint sharedGroupOffset;
-groupshared uint offsetToFirstDecalIndex;
+groupshared uint sharedOffsetToFirstDecalIndex;
 
 
 void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
@@ -20,10 +20,10 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 	{
 		sharedGroupOffset = 0;
 
-		InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex );
+		InterlockedAdd( outMemAlloc[0], passDecalCount, sharedOffsetToFirstDecalIndex );
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
-		offsetToFirstDecalIndex += cellCount;
+		sharedOffsetToFirstDecalIndex += cellCount;
 #endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 	}
 
@@ -106,7 +106,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 			uint localIndex = countbits( maskedWord );
 
 			uint cellIndex = sharedGroupOffset + wordBaseIndex + localIndex;
-			uint globalIndex = offsetToFirstDecalIndex + cellIndex;
+			uint globalIndex = sharedOffsetToFirstDecalIndex + cellIndex;
 			if ( globalIndex < maxDecalIndices )
 			{
 				outDecalsPerCell[globalIndex] = decalIndex;
@@ -128,5 +128,5 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 		GroupMemoryBarrierWithGroupSync();
 	}
 
-	DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, sharedGroupOffset, offsetToFirstDecalIndex, numCellsXYZ );
+	DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, sharedGroupOffset, sharedOffsetToFirstDecalIndex, numCellsXYZ );
 }

@@ -512,7 +512,7 @@ void DecalVolume_OutputCellIndirection( uint cellThreadIndex, uint3 cellXYZ, uin
 			ci.decalCount = cellDecalCount;
 
 #if DECAL_VOLUME_CLUSTER_BUCKETS
-			uint np2 = RoundUpToPowerOfTwo( min( cellDecalCount, 32 ) );
+			uint np2 = min( RoundUpToPowerOfTwo( cellDecalCount ), 64 );
 			uint cellSlot = firstbitlow( np2 );
 #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
 			uint cellSlot = 0;

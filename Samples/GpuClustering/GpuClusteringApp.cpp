@@ -2119,6 +2119,8 @@ namespace spad
 				p.maxDecalIndices = maxDecalVolumes_ * 32;
 			}
 
+			p.maxDecalIndices *= 64;
+
 			if ( lastPass )
 			{
 				p.maxDecalIndices += cellCount;
@@ -2214,7 +2216,7 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 7 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
@@ -2232,7 +2234,7 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 7 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )

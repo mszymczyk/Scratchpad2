@@ -8,7 +8,7 @@
 
 namespace spad
 {
-	constexpr uint maxBuckets = 6;
+	constexpr uint maxBuckets = 7;
 
 	class SettingsTestApp : public AppBase
 	{
