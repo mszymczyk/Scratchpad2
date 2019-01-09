@@ -241,7 +241,7 @@ void cs_decal_volume_assign_bucket( uint3 dtid : SV_DispatchThreadID )
 
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_FIRST_PASS
 
-#include "cs_decal_volume_impl.hlsl"
+#include "cs_decal_volume_cluster_impl_generic.hlsl"
 
 [numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
 void cs_decal_volume_cluster_first_pass( uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID )
@@ -258,16 +258,16 @@ void cs_decal_volume_cluster_first_pass( uint3 groupThreadID : SV_GroupThreadID,
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_MID_LAST_PASS
 
 #if DECAL_VOLUME_CLUSTER_SUB_WORD == 1
-#include "cs_decal_volume_impl_one_thread_per_cell.hlsl"
+#include "cs_decal_volume_cluster_impl_one_thread_per_cell.hlsl"
 #elif DECAL_VOLUME_CLUSTER_SUB_WORD == -1 || DECAL_VOLUME_CLUSTER_SUB_WORD == -2
-#include "cs_decal_volume_impl.hlsl"
+#include "cs_decal_volume_cluster_impl_generic.hlsl"
 #define DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP
-#include "cs_decal_volume_impl_subgroup.hlsl"
+#include "cs_decal_volume_cluster_impl_subgroup.hlsl"
 #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32 || DECAL_VOLUME_CLUSTER_SUB_WORD == 64
-#include "cs_decal_volume_impl.hlsl"
+#include "cs_decal_volume_cluster_impl_generic.hlsl"
 #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 32
 #define DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP
-#include "cs_decal_volume_impl_subgroup.hlsl"
+#include "cs_decal_volume_cluster_impl_subgroup.hlsl"
 #endif // #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
 
 

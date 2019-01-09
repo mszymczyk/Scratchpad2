@@ -957,7 +957,7 @@ namespace spad
 			decalVolumeRenderingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\decal_volume_rendering.hlslc_packed" );
 			decalVolumeCullShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_culling.hlslc_packed" );
 			//tiling_->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
-			clustering_->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
+			clustering_->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_cluster.hlslc_packed" );
 		}
 	}
 
@@ -2297,7 +2297,7 @@ namespace spad
 
 		clusteringPtr->clusteringConstants_.Initialize( dxDevice );
 		clusteringPtr->decalVolumesClusteringTimer_.Initialize( dxDevice );
-		clusteringPtr->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
+		clusteringPtr->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_cluster.hlslc_packed" );
 
 		clusteringPtr->clusteringPasses_.resize( numPassesForClustering_ );
 

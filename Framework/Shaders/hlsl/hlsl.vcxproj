@@ -143,12 +143,12 @@
     </ProjDoc>
   </ItemGroup>
   <ItemGroup>
-    <FxCompilerFile Include="cs_decal_volume_clustering.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster_impl_generic.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster_impl_one_thread_per_cell.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster_impl_subgroup.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_cshared.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_culling.hlsl" />
-    <FxCompilerFile Include="cs_decal_volume_impl.hlsl" />
-    <FxCompilerFile Include="cs_decal_volume_impl_one_thread_per_cell.hlsl" />
-    <FxCompilerFile Include="cs_decal_volume_impl_subgroup.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_tiling.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_util.hlsl" />
     <FxCompilerFile Include="decal_volume_rendering.hlsl" />
