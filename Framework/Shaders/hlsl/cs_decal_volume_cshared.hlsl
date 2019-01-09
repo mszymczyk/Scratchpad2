@@ -37,14 +37,13 @@
 
 MAKE_FLAT_CBUFFER( DecalVolumeCsConstants, DECAL_VOLUME_CS_CONSTANTS_BINDING )
 {
-	CBUFFER_FLOAT4X4( ViewMatrix );
-	CBUFFER_FLOAT4( renderTargetSize ); // rcp in zw
-	CBUFFER_FLOAT4( tanHalfFov ); // rcp in zw
-	CBUFFER_FLOAT4( nearFar ); // far over near in z
-	CBUFFER_UINT4( cellCountA );
-	//CBUFFER_UINT4( decalCountInFrustum );
-	//CBUFFER_UINT4( maxCountPerCell ); // x - maxCountPerCell, y - cell bucket
-	CBUFFER_UINT4( decalVolumeLimits ); // x - max output decal indices
+	CBUFFER_FLOAT4X4( dvViewMatrix );
+	//CBUFFER_FLOAT4( renderTargetSize ); // rcp in zw
+	CBUFFER_FLOAT4( dvTanHalfFov ); // rcp in zw
+	CBUFFER_FLOAT4( dvNearFar ); // x - near, y - far, z - far over near
+	CBUFFER_UINT4( dvCellCount ); // w = dvCellCount.x * dvCellCount.y * dvCellCount.z
+	CBUFFER_FLOAT4( dvCellCountRcp ); // w - unused
+	CBUFFER_UINT4( dvPassLimits ); // x - max output decal indices, y - max cell indirections per bucket, z - max cell indirections per bucket for previous pass, w - bucket index
 };
 
 MAKE_FLAT_CBUFFER( DecalVolumeCsCullConstants, DECAL_VOLUME_CS_CONSTANTS_BINDING )
@@ -84,6 +83,7 @@ struct IndirectDispatchArgs
 #ifndef __cplusplus
 
 #define mul24( x, y ) (x * y )
+#define mad24( x, y, a ) ( x * y + a )
 
 void DecalVolume_UnpackGroupToBucket( GroupToBucket gtb, out uint bucket, out uint firstGroup )
 {

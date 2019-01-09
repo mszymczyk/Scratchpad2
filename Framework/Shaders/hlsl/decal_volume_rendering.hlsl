@@ -143,14 +143,14 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 {
 	uint2 pixelCoord = IN.hpos.xy;
 	float2 pixelCoordNormalized = pixelCoord * renderTargetSize.zw;
-	uint2 screenTile = min( uint2( pixelCoordNormalized * float2( cellCountA.xy ) ), cellCountA.xy - 1 );
+	uint2 screenTile = min( uint2( pixelCoordNormalized * float2( dvCellCount.xy ) ), dvCellCount.xy - 1 );
 
 	uint decalCount = 0;
 
-	for ( uint slice = 0; slice < cellCountA.z; ++slice )
+	for ( uint slice = 0; slice < dvCellCount.z; ++slice )
 	{
 		uint3 cellID = uint3( screenTile, slice );
-		uint clusterIndex = DecalVolume_GetCellFlatIndex( cellID, uint3( cellCountA.xy, 1 ) );
+		uint clusterIndex = DecalVolume_GetCellFlatIndex( cellID, uint3( dvCellCount.xy, 1 ) );
 
 		uint node = inDecalsPerCell[clusterIndex];
 		uint cellDecalCount;

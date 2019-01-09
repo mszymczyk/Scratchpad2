@@ -1,12 +1,12 @@
 
-groupshared uint offsetToFirstDecalIndex[DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS];
+groupshared uint sharedOffsetToFirstDecalIndexPerCell[DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS];
 groupshared uint sharedVisibility[2];
 groupshared uint sharedMemAlloc;
 groupshared uint sharedMemAllocGlobalBase;
 
 #define USE_TWO_LEVEL_MEM_ALLOC 0
 
-void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellThreadID, uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
 	uint threadIndex = cellThreadID.x; // warp/wave index
 	uint localCellIndex = cellThreadID.x / numThreadsPerCell;
@@ -32,7 +32,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	// allocate speculatively one chunk per cell, might cause overallocation
 	if ( cellValid && cellThreadIndex == 0 )
 	{
-		InterlockedAdd( sharedMemAlloc, passDecalCount, offsetToFirstDecalIndex[localCellIndex] );
+		InterlockedAdd( sharedMemAlloc, passDecalCount, sharedOffsetToFirstDecalIndexPerCell[localCellIndex] );
 	}
 
 	GroupMemoryBarrierWithGroupSync();
@@ -48,7 +48,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	// allocate speculatively one chunk per cell, might cause overallocation
 	if ( cellValid && cellThreadIndex == 0 )
 	{
-		InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex[localCellIndex] );
+		InterlockedAdd( outMemAlloc[0], passDecalCount, sharedOffsetToFirstDecalIndexPerCell[localCellIndex] );
 	}
 
 #endif // #else // #if USE_TWO_LEVEL_MEM_ALLOC
@@ -57,8 +57,9 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	GroupMemoryBarrierWithGroupSync();
 
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
+	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
 	uint cellCount = DecalVolume_CellCountCurrentPass();
-	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
+	uint3 cellXYZ = DecalVolume_DecodeCellCoord( encodedCellXYZ );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
 	uint cellOffsetToFirstDecalIndex = 0;
@@ -66,7 +67,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	
 	if ( cellValid )
 	{
-		cellOffsetToFirstDecalIndex = offsetToFirstDecalIndex[localCellIndex];
+		cellOffsetToFirstDecalIndex = sharedOffsetToFirstDecalIndexPerCell[localCellIndex];
 
 #if USE_TWO_LEVEL_MEM_ALLOC
 		cellOffsetToFirstDecalIndex += sharedMemAllocGlobalBase;
@@ -76,7 +77,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 		cellOffsetToFirstDecalIndex += cellCount;
 #endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
-		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, cellXYZ );
+		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
 
 		uint iGlobalDecalBase = 0;
 
@@ -126,8 +127,12 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 			}
 		}
 
-		uint cellDecalCount = countbits( cellVisibility );
-		DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, cellDecalCount, cellOffsetToFirstDecalIndex, numCellsXYZ );
+		if ( cellThreadIndex == 0 )
+		{
+			// One output per cell
+			uint cellDecalCount = countbits( cellVisibility );
+			DecalVolume_OutputCellIndirection( cellXYZ, encodedCellXYZ, cellDecalCount, cellOffsetToFirstDecalIndex, numCellsXYZ );
+		}
 	}
 }
 

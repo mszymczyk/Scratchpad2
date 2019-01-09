@@ -42,7 +42,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint3 cellID, uint3 numGridCell
 #endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
 	Frustum frustum;
-	buildFrustum( frustum, numGridCells, cellID, tanHalfFov.zw, ViewMatrix, nearFar.x, nearFar.z );
+	buildFrustum( frustum, numGridCells, cellID, dvTanHalfFov.zw, ViewMatrix, dvNearFar.x, dvNearFar.z );
 
 	for ( uint iGlobalWord = 0; iGlobalWord < numWords; iGlobalWord += DECAL_VOLUME_CLUSTER_WORD_COUNT )
 	{

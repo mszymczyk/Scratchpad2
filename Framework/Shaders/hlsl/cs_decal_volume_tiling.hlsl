@@ -89,7 +89,7 @@ void DecalTilingCopyIndirectArgsLastPass()
 [numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
 void DecalVolumeTilingFirstPass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID )
 {
-	uint flatCellIndex = DecalVolume_GetCellFlatIndex( uint3( cellID.xy, 0 ), uint3( cellCountA.xy, 1 ) );
+	uint flatCellIndex = DecalVolume_GetCellFlatIndex( uint3( cellID.xy, 0 ), uint3( dvCellCount.xy, 1 ) );
 	uint decalCountInFrustum = inDecalVolumesCount[0];
 	DecalVisibilityGeneric( cellThreadID, flatCellIndex, decalCountInFrustum, decalCountInFrustum, maxCountPerCell.x, 0, INTERSECTION_METHOD );
 }

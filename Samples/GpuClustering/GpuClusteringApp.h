@@ -26,7 +26,7 @@ namespace spad
 		enum IntersectionMethod : int
 		{
 			Standard,
-			TwoPassInigo,
+			ClipSpace,
 			IntersectionMethodCount
 		};
 
@@ -151,7 +151,7 @@ namespace spad
 		struct DecalVolumeShared
 		{
 			uint totalMemUsed_ = 0;
-			IntersectionMethod intersectionMethod_ = Standard;
+			IntersectionMethod intersectionMethod_ = ClipSpace;
 			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;
 			bool dynamicBucketsMerge_ = true;

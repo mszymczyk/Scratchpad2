@@ -12,6 +12,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 	uint cellThreadIndex = cellThreadID.x;
 
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
+	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
 	uint cellCount = DecalVolume_CellCountCurrentPass();
 	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
@@ -34,7 +35,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 
 	GroupMemoryBarrierWithGroupSync();
 
-	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, cellXYZ );
+	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
 
 	uint numWords = ( passDecalCount + 32 - 1 ) / 32;
 	numWords = spadAlignU32_2( numWords, DECAL_VOLUME_CLUSTER_WORD_COUNT );
@@ -128,5 +129,9 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 		GroupMemoryBarrierWithGroupSync();
 	}
 
-	DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, sharedGroupOffset, sharedOffsetToFirstDecalIndex, numCellsXYZ );
+	if ( cellThreadIndex == 0 )
+	{
+		// One output per all threads
+		DecalVolume_OutputCellIndirection( cellXYZ, flatCellIndex, sharedGroupOffset, sharedOffsetToFirstDecalIndex, numCellsXYZ );
+	}
 }

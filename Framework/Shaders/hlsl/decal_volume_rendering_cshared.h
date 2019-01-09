@@ -11,8 +11,7 @@
 MAKE_FLAT_CBUFFER( CbDecalVolumeRenderingConstants, DECAL_VOLUME_CONSTANTS_BINDING )
 {
 	CBUFFER_FLOAT4( renderTargetSize ); // rcp in zw
-	CBUFFER_UINT4( cellCountA );
-	//CBUFFER_UINT4( decalCountInFrustum );
+	CBUFFER_UINT4( dvCellCount );
 	CBUFFER_FLOAT4( colorMultiplier );
 	CBUFFER_FLOAT4( nearFarPlane );
 };

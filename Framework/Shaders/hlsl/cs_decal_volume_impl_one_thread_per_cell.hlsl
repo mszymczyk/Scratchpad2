@@ -2,11 +2,12 @@
 #error Can't be used in first pass
 #endif // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
-void DecalVisibilityOnThreadPerCell( uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilityOnThreadPerCell( uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
+	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
 	uint cellCount = DecalVolume_CellCountCurrentPass();
-	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
+	uint3 cellXYZ = DecalVolume_DecodeCellCoord( encodedCellXYZ );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
 	uint offsetToFirstDecalIndex;
@@ -16,7 +17,7 @@ void DecalVisibilityOnThreadPerCell( uint flatCellIndex, uint passDecalCount, ui
 	offsetToFirstDecalIndex += cellCount;
 #endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
-	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, cellXYZ );
+	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
 
 	uint localIndex = 0;
 	for ( uint iGlobalDecalBase = 0; iGlobalDecalBase < passDecalCount; iGlobalDecalBase += 1 )
@@ -35,5 +36,6 @@ void DecalVisibilityOnThreadPerCell( uint flatCellIndex, uint passDecalCount, ui
 		}
 	}
 
-	DecalVolume_OutputCellIndirection( 0, cellXYZ, flatCellIndex, localIndex, offsetToFirstDecalIndex, numCellsXYZ );
+	// Every thread outputs data
+	DecalVolume_OutputCellIndirection( cellXYZ, encodedCellXYZ, localIndex, offsetToFirstDecalIndex, numCellsXYZ );
 }

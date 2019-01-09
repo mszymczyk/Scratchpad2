@@ -2072,32 +2072,36 @@ namespace spad
 			}
 
 			//tilingConstants_.data.BaseProjMatrix = testFrustumProj;
-			tiling_->tilingConstants_.data.ViewMatrix = viewMatrixForDecalVolumes_;
-			tiling_->tilingConstants_.data.nearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
-			tiling_->tilingConstants_.data.tanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			tiling_->tilingConstants_.data.tanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			tiling_->tilingConstants_.data.tanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			tiling_->tilingConstants_.data.tanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			tiling_->tilingConstants_.data.renderTargetSize = Vector4( 0 );
-			tiling_->tilingConstants_.data.cellCountA[0] = p.nCellsX;
-			tiling_->tilingConstants_.data.cellCountA[1] = p.nCellsY;
-			tiling_->tilingConstants_.data.cellCountA[2] = 1;
-			tiling_->tilingConstants_.data.cellCountA[3] = 0;
+			tiling_->tilingConstants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
+			tiling_->tilingConstants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
+			tiling_->tilingConstants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			tiling_->tilingConstants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			tiling_->tilingConstants_.data.dvTanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			tiling_->tilingConstants_.data.dvTanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			//tiling_->tilingConstants_.data.renderTargetSize = Vector4( 0 );
+			clustering_->clusteringConstants_.data.dvCellCount[0] = p.nCellsX;
+			clustering_->clusteringConstants_.data.dvCellCount[1] = p.nCellsY;
+			clustering_->clusteringConstants_.data.dvCellCount[2] = 1;
+			clustering_->clusteringConstants_.data.dvCellCount[3] = p.nCellsX * p.nCellsY;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[2] = 1;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[3] = 0;
 			//tiling_->tilingConstants_.data.decalCountInFrustum[0] = maxDecalVolumes_;
 			//tiling_->tilingConstants_.data.decalCountInFrustum[1] = 0;
 			//tiling_->tilingConstants_.data.decalCountInFrustum[2] = 0;
 			//tiling_->tilingConstants_.data.decalCountInFrustum[3] = 0;
 			//tiling_->tilingConstants_.data.maxCountPerCell[0] = p.maxDecalsPerCell;
-			tiling_->tilingConstants_.data.decalVolumeLimits[0] = p.maxDecalIndices;
-			tiling_->tilingConstants_.data.decalVolumeLimits[1] = p.maxCellIndirectionsPerBucket;
-			tiling_->tilingConstants_.data.decalVolumeLimits[2] = 0;
-			tiling_->tilingConstants_.data.decalVolumeLimits[3] = 0;
+			tiling_->tilingConstants_.data.dvPassLimits[0] = p.maxDecalIndices;
+			tiling_->tilingConstants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
+			tiling_->tilingConstants_.data.dvPassLimits[2] = 0;
+			tiling_->tilingConstants_.data.dvPassLimits[3] = 0;
 
 			if ( !firstPass )
 			{
 				DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass-1];
 
-				tiling_->tilingConstants_.data.decalVolumeLimits[2] = pp.maxCellIndirectionsPerBucket;
+				tiling_->tilingConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
 				//pp.countPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_COUNT_PER_CELL_BINDING );
 				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
@@ -2234,7 +2238,7 @@ namespace spad
 			CalculateCellCount( rtWidth, rtHeight, nCellsX, nCellsY, nCellsZ );
 
 			uint cellCount = nCellsX * nCellsY * nCellsZ;
-			uint cellCountSqr = static_cast<uint>( sqrtf( cellCount ) );
+			uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( cellCount ) ) );
 			std::cout << rtWidth << " x " << rtHeight << "  " << cellCount << "   " << cellCountSqr << std::endl;
 		}
 
@@ -2256,7 +2260,7 @@ namespace spad
 		uint nCellsZ;
 		CalculateCellCount( rtWidth, rtHeight, nCellsX, nCellsY, nCellsZ );
 
-		uint cellCountSqr = static_cast<uint>( sqrtf( nCellsX * nCellsY * nCellsZ ) );
+		uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( nCellsX * nCellsY * nCellsZ ) ) );
 
 		for ( int iPass = (int)clusteringPtr->clusteringPasses_.size() - 1; iPass >= 0; --iPass )
 		{
@@ -2273,11 +2277,6 @@ namespace spad
 			nCellsZ /= 2;
 		}
 
-		//uint nDecalsPerCell = 64;
-		//uint maxDecalIndicesPerPass = 1 << ( clusteringPtr->clusteringPasses_.size() );
-		//uint maxDecalIndicesDiv = 1;
-		uint maxDecalsPerCell = maxOfPair( maxDecalVolumes_ / 64, 1 );
-
 		uint totalMemoryUsed = 0;
 
 		//for ( uint iPass = 0; iPass < (uint)clusteringPtr->clusteringPasses_.size(); ++iPass )
@@ -2289,25 +2288,6 @@ namespace spad
 			DecalVolumeClusteringPass &p = clusteringPtr->clusteringPasses_[iPass];
 
 			uint cellCount = p.nCellsX * p.nCellsY * p.nCellsZ;
-			//uint cellCountSqr = static_cast<uint>( sqrtf( cellCount ) );
-
-			//if ( iPass <= 2 )
-			//{
-			//	p.maxDecalIndices = maxDecalVolumes_ * 16;
-			//}
-			//else
-			//{
-			//	p.maxDecalIndices = maxDecalVolumes_ * 32;
-			//}
-
-			//p.maxDecalIndices *= 64;
-			//p.maxDecalIndices = (cellCount * maxDecalVolumes_) / maxDecalIndicesDiv;
-			//maxDecalIndicesDiv *= 8;
-
-			//if ( !firstPass && !lastPass )
-			//{
-			//	p.maxDecalIndices /= 2;
-			//}
 
 			if ( firstPass )
 			{
@@ -2319,14 +2299,6 @@ namespace spad
 			}
 			else
 			{
-				//p.maxDecalIndices = cellCountSqr * maxDecalsPerCell;
-				//p.maxDecalIndices = cellCount * maxDecalsPerCell;
-				//maxDecalsPerCell *= 4;
-				//p.maxDecalIndices = cellCountSqr * 32;
-				//p.maxDecalIndices = cellCount * maxDecalsPerCell;
-				//maxDecalsPerCell *= 8;
-				//p.maxDecalIndices = cellCount * ( maxDecalVolumes_ >> (iPass + 3) );
-				//p.maxDecalIndices = ( cellCountSqr >> (iPass + 1) ) * 1024 * ( maxOfPair(maxDecalVolumes_ / 1024, 1) );
 				p.maxDecalIndices = (cellCountSqr / 8) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / 2048, 1 ) );
 			}
 
@@ -2340,7 +2312,7 @@ namespace spad
 			}
 			else
 			{
-				p.maxCellIndirectionsPerBucket = cellCount / 2;
+				p.maxCellIndirectionsPerBucket = cellCount;// / 2;
 			}
 
 			uint passTotalMemory = 0;
@@ -2459,27 +2431,31 @@ namespace spad
 				}
 			}
 
-			clustering_->clusteringConstants_.data.ViewMatrix = viewMatrixForDecalVolumes_;
-			clustering_->clusteringConstants_.data.nearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
-			clustering_->clusteringConstants_.data.tanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			clustering_->clusteringConstants_.data.tanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			clustering_->clusteringConstants_.data.tanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			clustering_->clusteringConstants_.data.tanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			clustering_->clusteringConstants_.data.renderTargetSize = Vector4( 0 );
-			clustering_->clusteringConstants_.data.cellCountA[0] = p.nCellsX;
-			clustering_->clusteringConstants_.data.cellCountA[1] = p.nCellsY;
-			clustering_->clusteringConstants_.data.cellCountA[2] = p.nCellsZ;
-			clustering_->clusteringConstants_.data.cellCountA[3] = 0;
-			clustering_->clusteringConstants_.data.decalVolumeLimits[0] = p.maxDecalIndices;
-			clustering_->clusteringConstants_.data.decalVolumeLimits[1] = p.maxCellIndirectionsPerBucket;
-			clustering_->clusteringConstants_.data.decalVolumeLimits[2] = 0;
-			clustering_->clusteringConstants_.data.decalVolumeLimits[3] = 0;
+			clustering_->clusteringConstants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
+			clustering_->clusteringConstants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
+			clustering_->clusteringConstants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			clustering_->clusteringConstants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			clustering_->clusteringConstants_.data.dvTanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			clustering_->clusteringConstants_.data.dvTanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			//clustering_->clusteringConstants_.data.renderTargetSize = Vector4( 0 );
+			clustering_->clusteringConstants_.data.dvCellCount[0] = p.nCellsX;
+			clustering_->clusteringConstants_.data.dvCellCount[1] = p.nCellsY;
+			clustering_->clusteringConstants_.data.dvCellCount[2] = p.nCellsZ;
+			clustering_->clusteringConstants_.data.dvCellCount[3] = p.nCellsX * p.nCellsY * p.nCellsZ;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[2] = 1.0f / p.nCellsZ;
+			clustering_->clusteringConstants_.data.dvCellCountRcp[3] = 0;
+			clustering_->clusteringConstants_.data.dvPassLimits[0] = p.maxDecalIndices;
+			clustering_->clusteringConstants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
+			clustering_->clusteringConstants_.data.dvPassLimits[2] = 0;
+			clustering_->clusteringConstants_.data.dvPassLimits[3] = 0;
 
 			if ( !firstPass )
 			{
 				DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
 
-				clustering_->clusteringConstants_.data.decalVolumeLimits[2] = pp.maxCellIndirectionsPerBucket;
+				clustering_->clusteringConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
 				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
@@ -2550,7 +2526,7 @@ namespace spad
 								}
 							}
 
-							clustering_->clusteringConstants_.data.decalVolumeLimits[3] = i;
+							clustering_->clusteringConstants_.data.dvPassLimits[3] = i;
 							clustering_->clusteringConstants_.updateGpu( deviceContext.context );
 						}
 						else
@@ -2695,19 +2671,19 @@ namespace spad
 
 			if ( appMode_ == Tiling )
 			{
-				decalVolumeRenderingConstants_.data.cellCountA[0] = tiling_->tilingPasses_.back().nCellsX;
-				decalVolumeRenderingConstants_.data.cellCountA[1] = tiling_->tilingPasses_.back().nCellsY;
-				decalVolumeRenderingConstants_.data.cellCountA[2] = 1;
-				decalVolumeRenderingConstants_.data.cellCountA[3] = 0;
+				decalVolumeRenderingConstants_.data.dvCellCount[0] = tiling_->tilingPasses_.back().nCellsX;
+				decalVolumeRenderingConstants_.data.dvCellCount[1] = tiling_->tilingPasses_.back().nCellsY;
+				decalVolumeRenderingConstants_.data.dvCellCount[2] = 1;
+				decalVolumeRenderingConstants_.data.dvCellCount[3] = 0;
 
 				srvs[0] = tiling_->tilingPasses_.back().decalIndices.getSRV();
 			}
 			else
 			{
-				decalVolumeRenderingConstants_.data.cellCountA[0] = clustering_->clusteringPasses_.back().nCellsX;
-				decalVolumeRenderingConstants_.data.cellCountA[1] = clustering_->clusteringPasses_.back().nCellsY;
-				decalVolumeRenderingConstants_.data.cellCountA[2] = clustering_->clusteringPasses_.back().nCellsZ;
-				decalVolumeRenderingConstants_.data.cellCountA[3] = 0;
+				decalVolumeRenderingConstants_.data.dvCellCount[0] = clustering_->clusteringPasses_.back().nCellsX;
+				decalVolumeRenderingConstants_.data.dvCellCount[1] = clustering_->clusteringPasses_.back().nCellsY;
+				decalVolumeRenderingConstants_.data.dvCellCount[2] = clustering_->clusteringPasses_.back().nCellsZ;
+				decalVolumeRenderingConstants_.data.dvCellCount[3] = 0;
 
 				srvs[0] = clustering_->clusteringPasses_.back().decalIndices.getSRV();
 			}

@@ -302,17 +302,19 @@ void DecalVolume_GetCornersClipSpace( DecalVolumeTest dv, out float4 dvCornersXY
 
 #define USE_Z_01 0
 
-void buildFrustumClip( out Frustum frustum, const uint3 cellCount, uint3 cellIndex, float nearPlane, float farPlaneOverNearPlane )
+void buildFrustumClip( out Frustum frustum, const float3 cellCount, const float3 cellCountRcp, float3 cellIndex, float nearPlane, float farPlaneOverNearPlane )
 {
 	frustum = (Frustum)0;
 
-	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) / cellCount.z );
-	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) / cellCount.z );
+	//float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) / cellCount.z );
+	//float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) / cellCount.z );
+	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
+	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
 
-	frustum.clipSpacePlanes[0] = -1 + ( 2.0f / cellCount.x ) * ( cellIndex.x );
-	frustum.clipSpacePlanes[1] = -1 + ( 2.0f / cellCount.x ) * ( cellIndex.x + 1 );
-	frustum.clipSpacePlanes[2] = 1 - ( 2.0f / cellCount.y ) * ( cellIndex.y + 1 );
-	frustum.clipSpacePlanes[3] = 1 - ( 2.0f / cellCount.y ) * ( cellIndex.y );
+	frustum.clipSpacePlanes[0] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x     );
+	frustum.clipSpacePlanes[1] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x + 1 );
+	frustum.clipSpacePlanes[2] =  1 - ( 2.0f * cellCountRcp.y ) * ( cellIndex.y + 1 );
+	frustum.clipSpacePlanes[3] =  1 - ( 2.0f * cellCountRcp.y ) * ( cellIndex.y     );
 	frustum.clipSpacePlanes[4] = n;
 	frustum.clipSpacePlanes[5] = f;
 
@@ -418,31 +420,41 @@ uint RoundUpToPowerOfTwo( uint v )
 //}
 uint DecalVolume_GetMaxOutDecalIndices()
 {
-	return decalVolumeLimits.x;
+	return dvPassLimits.x;
 }
 
 uint DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket()
 {
-	return decalVolumeLimits.y;
+	return dvPassLimits.y;
 }
 
 uint DecalVolume_GetMaxPrevOutCellIndirections()
 {
-	return decalVolumeLimits.z;
+	return dvPassLimits.z;
 }
 
 uint DecalVolume_GetBucketIndex()
 {
-	return decalVolumeLimits.w;
+	return dvPassLimits.w;
 }
 
 
 uint3 DecalVolume_CellCountXYZ()
 {
 #if DECAL_VOLUME_CLUSTERING_3D
-	return cellCountA.xyz;
+	return dvCellCount.xyz;
 #else // #if DECAL_VOLUME_CLUSTERING_3D
-	return uint3( cellCountA.xy, 1 );
+	return uint3( dvCellCount.xy, 1 );
+#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+}
+
+
+float3 DecalVolume_CellCountXYZRcp()
+{
+#if DECAL_VOLUME_CLUSTERING_3D
+	return dvCellCountRcp.xyz;
+#else // #if DECAL_VOLUME_CLUSTERING_3D
+	return float3( dvCellCountRcp.xy, 1 );
 #endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
 }
 
@@ -450,9 +462,11 @@ uint3 DecalVolume_CellCountXYZ()
 uint DecalVolume_CellCountCurrentPass()
 {
 #if DECAL_VOLUME_CLUSTERING_3D
-	return mul24( mul24( cellCountA.x, cellCountA.y ), cellCountA.z );
+	//return mul24( mul24( dvCellCount.x, dvCellCount.y ), dvCellCount.z );
+	return dvCellCount.w;
 #else // #if DECAL_VOLUME_CLUSTERING_3D
-	return mul24( cellCountA.x, cellCountA.y );
+	//return mul24( dvCellCount.x, dvCellCount.y );
+	return dvCellCount.w;
 #endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
 }
 
@@ -494,110 +508,102 @@ uint2 DecalVolume_DecodeCell2D( uint flatCellIndex )
 uint3 DecalVolume_DecodeCellCoord( uint flatCellIndex )
 {
 #if DECAL_VOLUME_CLUSTERING_3D
-	uint3 numCellsXYZ = cellCountA.xyz;
 	uint3 cellXYZ = DecalVolume_DecodeCell3D( flatCellIndex );
 	return cellXYZ;
 #else // #if DECAL_VOLUME_CLUSTERING_3D
-	uint3 numCellsXYZ = uint3( cellCountA.xy, 1 );
 	uint2 cellXY = DecalVolume_DecodeCell2D( flatCellIndex );
 	return uint3( cellXY, 0 );
 #endif // #if DECAL_VOLUME_CLUSTERING_3D
 }
 
 
-void DecalVolume_OutputCellIndirection( uint cellThreadIndex, uint3 cellXYZ, uint encodedCellXYZ, uint cellDecalCount, uint offsetToFirstDecalIndex, uint3 numCellsXYZ )
+void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint cellDecalCount, uint offsetToFirstDecalIndex, uint3 numCellsXYZ )
 {
-	if ( cellThreadIndex == 0 )
-	{
-		//uint maxDecalsPerCell = maxCountPerCell.x;
-		//uint maxCellIndirections = decalVolumeLimits.y;
-		uint maxCellIndirectionsPerBucket = DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket();
-		uint flatCellCount = DecalVolume_CellCountCurrentPass();
+	uint maxCellIndirectionsPerBucket = DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket();
+	uint flatCellCount = DecalVolume_CellCountCurrentPass();
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
-		uint flatCellIndex2 = DecalVolume_GetCellFlatIndex( cellXYZ, cellCountA.xyz );
-		outDecalsPerCell[flatCellIndex2] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
-		//outDecalsPerCell[flatCellIndex2] = DecalVolume_PackHeader( cellDecalCount, 0 );
+	uint flatCellIndex = DecalVolume_GetCellFlatIndex( cellXYZ, dvCellCount.xyz );
+	outDecalsPerCell[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
 
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 
-		if ( cellDecalCount > 0 )
-		{
-			CellIndirection ci;
-			ci.offsetToFirstDecalIndex = offsetToFirstDecalIndex;
-			ci.decalCount = cellDecalCount;
+	if ( cellDecalCount > 0 )
+	{
+		CellIndirection ci;
+		ci.offsetToFirstDecalIndex = offsetToFirstDecalIndex;
+		ci.decalCount = cellDecalCount;
 
 #if DECAL_VOLUME_CLUSTER_BUCKETS
-			uint np2 = min( RoundUpToPowerOfTwo( cellDecalCount ), 64 );
-			uint cellSlot = firstbitlow( np2 );
+		uint np2 = min( RoundUpToPowerOfTwo( cellDecalCount ), 64 );
+		uint cellSlot = firstbitlow( np2 );
 #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
-			uint cellSlot = 0;
+		uint cellSlot = 0;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
 
 #if DECAL_VOLUME_CLUSTERING_3D
 
-			// Could use append buffer
-			uint cellIndirectionIndex;
-			InterlockedAdd( outCellIndirectionCount[cellSlot], 8, cellIndirectionIndex );
+		// Could use append buffer
+		uint cellIndirectionIndex;
+		InterlockedAdd( outCellIndirectionCount[cellSlot], 8, cellIndirectionIndex );
 
-			if ( cellIndirectionIndex / 8 < maxCellIndirectionsPerBucket )
-			{
-
-#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
-				ci.cellIndex = encodedCellXYZ;
-				outDecalCellIndirection[cellIndirectionIndex / 8 + cellSlot * maxCellIndirectionsPerBucket] = ci;
-#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
-				for ( uint i = 0; i < 8; ++i )
-				{
-					uint slice = i / 4;
-					uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
-					uint tile = i % 4;
-					uint row = tile / 2;
-					uint col = tile % 2;
-					ci.cellIndex = DecalVolume_EncodeCell3D( uint3( cellXYZ.x * 2 + col, cellXYZ.y * 2 + row, cellXYZ.z * 2 + slice ) );
-
-					outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * maxCellIndirectionsPerBucket * 8] = ci;
-				}
-#endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
-
-			}
-
-#else // #if DECAL_VOLUME_CLUSTERING_3D
-
-			// Could use append buffer
-			uint cellIndirectionIndex;
-			InterlockedAdd( outCellIndirectionCount[cellSlot], 4, cellIndirectionIndex );
+		if ( cellIndirectionIndex / 8 < maxCellIndirectionsPerBucket )
+		{
 
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 			ci.cellIndex = encodedCellXYZ;
-			outDecalCellIndirection[cellIndirectionIndex / 4 + cellSlot * flatCellCount] = ci;
+			outDecalCellIndirection[cellIndirectionIndex / 8 + cellSlot * maxCellIndirectionsPerBucket] = ci;
+#else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+			for ( uint i = 0; i < 8; ++i )
+			{
+				uint slice = i / 4;
+				uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
+				uint tile = i % 4;
+				uint row = tile / 2;
+				uint col = tile % 2;
+				ci.cellIndex = DecalVolume_EncodeCell3D( uint3( cellXYZ.x * 2 + col, cellXYZ.y * 2 + row, cellXYZ.z * 2 + slice ) );
+
+				outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * maxCellIndirectionsPerBucket * 8] = ci;
+			}
+#endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+
+		}
+
+#else // #if DECAL_VOLUME_CLUSTERING_3D
+
+		// Could use append buffer
+		uint cellIndirectionIndex;
+		InterlockedAdd( outCellIndirectionCount[cellSlot], 4, cellIndirectionIndex );
+
+#if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+		ci.cellIndex = encodedCellXYZ;
+		outDecalCellIndirection[cellIndirectionIndex / 4 + cellSlot * flatCellCount] = ci;
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
-			for ( uint i = 0; i < 4; ++i )
-			{
-				uint row = i / 2;
-				uint col = i % 2;
-				ci.cellIndex = ( cellXYZ.y * 2 + row ) * numCellsXYZ.x * 2 + cellXYZ.x * 2 + col;
+		for ( uint i = 0; i < 4; ++i )
+		{
+			uint row = i / 2;
+			uint col = i % 2;
+			ci.cellIndex = ( cellXYZ.y * 2 + row ) * numCellsXYZ.x * 2 + cellXYZ.x * 2 + col;
 
-				outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
-			}
+			outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
+		}
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
 #endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
-		}
-#endif // #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 	}
+#endif // #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 }
 
 
-Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, uint3 cellXYZ )
+Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCellsXYZRcp, uint3 cellXYZ )
 {
 	Frustum outFrustum = (Frustum)0;
 
 #if INTERSECTION_METHOD == 0
-	buildFrustum( outFrustum, numCellsXYZ, cellXYZ, tanHalfFov.zw, ViewMatrix, nearFar.x, nearFar.z );
+	buildFrustum( outFrustum, numCellsXYZ, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.z );
 
 	//if ( intersectionMethod == 0 )
 	outFrustum.twoTests = false;
@@ -605,7 +611,7 @@ Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, uint3 cellXYZ )
 	//	outFrustum.twoTests = true;
 
 #else // INTERSECTION_METHOD == 0
-	buildFrustumClip( outFrustum, numCellsXYZ, cellXYZ, nearFar.x, nearFar.z );
+	buildFrustumClip( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvNearFar.x, dvNearFar.z );
 #endif // #else // INTERSECTION_METHOD == 0
 
 	return outFrustum;
