@@ -64,7 +64,7 @@ passes :
 #endif // FX_PASSES
 #endif // FX_HEADER
 
-#define DECAL_VOLUME_CLUSTER_3D								1
+#define DECAL_VOLUME_CLUSTER_3D									1
 #define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
 //#define DECAL_VOLUME_INTERSECTION_METHOD						0
 
@@ -112,10 +112,10 @@ void DecalVolume_GetBuckets( uint numThreadsPerGroup, out uint n1, out uint n2, 
 	uint b32 = inCellIndirectionCount[5] * mult;
 	uint b64 = inCellIndirectionCount[6] * mult;
 
-	n1  = b1  ? ( b1  + numThreadsPerGroup / 1  - 1 ) / ( numThreadsPerGroup / 1 ) : 0;
-	n2  = b2  ? ( b2  + numThreadsPerGroup / 2  - 1 ) / ( numThreadsPerGroup / 2 ) : 0;
-	n4  = b4  ? ( b4  + numThreadsPerGroup / 4  - 1 ) / ( numThreadsPerGroup / 4 ) : 0;
-	n8  = b8  ? ( b8  + numThreadsPerGroup / 8  - 1 ) / ( numThreadsPerGroup / 8 ) : 0;
+	n1  = b1  ? ( b1  + numThreadsPerGroup / 1  - 1 ) / ( numThreadsPerGroup / 1 )  : 0;
+	n2  = b2  ? ( b2  + numThreadsPerGroup / 2  - 1 ) / ( numThreadsPerGroup / 2 )  : 0;
+	n4  = b4  ? ( b4  + numThreadsPerGroup / 4  - 1 ) / ( numThreadsPerGroup / 4 )  : 0;
+	n8  = b8  ? ( b8  + numThreadsPerGroup / 8  - 1 ) / ( numThreadsPerGroup / 8 )  : 0;
 	n16 = b16 ? ( b16 + numThreadsPerGroup / 16 - 1 ) / ( numThreadsPerGroup / 16 ) : 0;
 	n32 = b32 ? ( b32 + numThreadsPerGroup / 32 - 1 ) / ( numThreadsPerGroup / 32 ) : 0;
 	n64 = b64 ? ( b64 + numThreadsPerGroup / 64 - 1 ) / ( numThreadsPerGroup / 64 ) : 0;

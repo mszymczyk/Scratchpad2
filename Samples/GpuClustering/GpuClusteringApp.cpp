@@ -1631,24 +1631,6 @@ namespace spad
 		return perspectiveProjectionDxStyle( deg2rad( 60.0f ), (float)rtWidth / (float)rtHeight, testFrustumNearPlane, decalVolumeFarPlane_ );
 	}
 
-	//void SettingsTestApp::SetViewProjMatricesForDecalVolumes()
-	//{
-	//	if ( appMode_ == Tiling || appMode_ == Clustering )
-	//	{
-	//		viewMatrixForDecalVolumes_ = Matrix4::identity();
-
-	//	}
-	//	else if ( appMode_ == Scene )
-	//	{
-	//		viewMatrixForDecalVolumes_ = viewMatrixForCamera_;
-	//		projMatrixForDecalVolumes_ = projMatrixForCamera_;
-	//	}
-	//	else
-	//	{
-	//		SPAD_NOT_IMPLEMENTED;
-	//	}
-	//}
-
 	void SettingsTestApp::PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeShared &shared, std::vector<DecalVolumeClusteringPass> &passes )
 	{
 		for ( size_t iPass = 0; iPass < passes.size(); ++iPass )
@@ -1679,7 +1661,6 @@ namespace spad
 					maxCount = std::max( maxCount, c );
 					minCount = std::min( minCount, c );
 
-					//SPAD_ASSERT( c < p.maxDecalsPerCell );
 					p.stats.countPerCellHistogram[c] += 1;
 				}
 
@@ -1694,7 +1675,6 @@ namespace spad
 			}
 			else
 			{
-				//const u32 *countPerCell = p.countPerCell.CPUReadbackStart( deviceContext.context );
 				const CellIndirection *cellIndirection = p.cellIndirection.CPUReadbackStart( deviceContext.context );
 				const u32 *cellIndirectionCount = p.cellIndirectionCount.CPUReadbackStart( deviceContext.context );
 				const u32 *args = p.indirectArgs.CPUReadbackStart( deviceContext.context );
@@ -1712,32 +1692,26 @@ namespace spad
 				uint sum = 0;
 				uint maxCount = 0;
 				uint minCount = 0xffffffff;
-				//uint totalCellCount = 0;
-				//const uint cellCount = p.nCellsX * p.nCellsY * p.nCellsZ;
 				if ( shared.enableBuckets_ )
 				{
 					p.stats.numWaves = 0;
 
 					for ( uint iBucket = 0; iBucket < maxBuckets; ++iBucket )
 					{
-						//const uint cellOffset = iBucket * p.nCellsX * p.nCellsY * p.nCellsZ;
 						const uint cellOffset = iBucket * p.maxCellIndirectionsPerBucket;
 						const CellIndirection *cellIndirectionBucket = cellIndirection + cellOffset;
 
 						uint cellCount = cellIndirectionCount[iBucket];
 						SPAD_ASSERT( cellCount % 8 == 0 );
 						cellCount /= 8;
-						//totalCellCount += cellCount;
 						for ( uint i = 0; i < cellCount; ++i )
 						{
-							//uint c = countPerCell[i] & 0xff;
 							uint c = cellIndirectionBucket[i].decalCount;
 
 							sum += c;
 							maxCount = std::max( maxCount, c );
 							minCount = std::min( minCount, c );
 
-							//SPAD_ASSERT( c < p.maxDecalsPerCell );
 							uint ci = std::min( c, (uint)p.stats.countPerCellHistogram.size() - 1 );
 							p.stats.countPerCellHistogram[ci] += 1;
 						}
@@ -1753,14 +1727,12 @@ namespace spad
 					cellCount /= 8;
 					for ( uint i = 0; i < cellCount; ++i )
 					{
-						//uint c = countPerCell[i] & 0xff;
 						uint c = cellIndirection[i].decalCount;
 
 						sum += c;
 						maxCount = std::max( maxCount, c );
 						minCount = std::min( minCount, c );
 
-						//SPAD_ASSERT( c < p.maxDecalsPerCell );
 						uint ci = std::min( c, (uint)p.stats.countPerCellHistogram.size() - 1 );
 						p.stats.countPerCellHistogram[ci] += 1;
 					}
@@ -1770,13 +1742,9 @@ namespace spad
 					p.stats.avgDecalsPerCell = (float)sum / (float)cellCount;
 				}
 
-				//SPAD_ASSERT( ( sum % 8 ) == 0 );
-				//SPAD_ASSERT( sum <= p.maxDecalIndices );
-
 				p.stats.numDecalsInAllCells = sum; // / 8;
 				p.stats.maxDecalsPerCell = maxCount;
 				p.stats.minDecalsPerCell = minCount;
-				//p.stats.numCellIndirections = totalCellCount;
 
 				if ( !firstPass )
 				{
@@ -1784,7 +1752,6 @@ namespace spad
 				}
 				p.indirectArgs.CPUReadbackEnd( deviceContext.context );
 				p.cellIndirectionCount.CPUReadbackEnd( deviceContext.context );
-				//p.countPerCell.CPUReadbackEnd( deviceContext.context );
 				p.cellIndirection.CPUReadbackEnd( deviceContext.context );
 			}
 
@@ -2087,11 +2054,6 @@ namespace spad
 			clustering_->clusteringConstants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
 			clustering_->clusteringConstants_.data.dvCellCountRcp[2] = 1;
 			clustering_->clusteringConstants_.data.dvCellCountRcp[3] = 0;
-			//tiling_->tilingConstants_.data.decalCountInFrustum[0] = maxDecalVolumes_;
-			//tiling_->tilingConstants_.data.decalCountInFrustum[1] = 0;
-			//tiling_->tilingConstants_.data.decalCountInFrustum[2] = 0;
-			//tiling_->tilingConstants_.data.decalCountInFrustum[3] = 0;
-			//tiling_->tilingConstants_.data.maxCountPerCell[0] = p.maxDecalsPerCell;
 			tiling_->tilingConstants_.data.dvPassLimits[0] = p.maxDecalIndices;
 			tiling_->tilingConstants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
 			tiling_->tilingConstants_.data.dvPassLimits[2] = 0;
@@ -2405,8 +2367,6 @@ namespace spad
 				}
 				else if ( bucketsEnabled )
 				{
-					//const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_ } );
-					//fxPass.setCS( deviceContext.context );
 				}
 				else
 				{
@@ -2591,11 +2551,11 @@ namespace spad
 
 				//if ( bucketsMergeEnabled )
 				//{
-				//	deviceContext.BeginMarker( "cs_decal_volume_assign_slot" );
+				//	deviceContext.BeginMarker( "cs_decal_volume_assign_bucket" );
 				//
 				//	DecalVolumeClusteringPass &np = clustering_->clusteringPasses_[iPass + 1];
 
-				//	const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_assign_slot" );
+				//	const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_assign_bucket" );
 				//	fxPassCopy.setCS( deviceContext.context );
 
 				//	p.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );

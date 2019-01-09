@@ -88,12 +88,10 @@ namespace spad
 		//RenderTargetSize rtSize_ = RTW_64_64;
 		//RenderTargetSize rtSize_ = RTW_128_128;
 
-		//HlslShaderPtr gpuClusteringShader_;
 		HlslShaderPtr decalVolumeRenderingShader_;
 		HlslShaderPtr decalVolumeCullShader_;
 
 		Model sceneModel_;
-		//HlslShaderPtr meshShader_;
 		SceneRenderMode sceneRenderMode_ = Solid;
 		
 		ConstantBuffer<CbPassConstants> passConstants_;
@@ -113,7 +111,6 @@ namespace spad
 		StructuredBuffer<uint> decalVolumesCulledCountGPU_;
 		ConstantBuffer<DecalVolumeCsCullConstants> decalVolumeCullConstants_;
 		uint decalVolumesCulledCount_ = 0;
-		//float decalVolumesAreaThresholdReq_ = 200.0f;
 
 		struct Stats
 		{
