@@ -77,7 +77,7 @@ passes :
 [numthreads( 256, 1, 1 )]
 void DecalTilingClearHeader( uint3 dtid : SV_DispatchThreadID )
 {
-	outDecalsPerCell[dtid.x] = 0;
+	outDecalVolumeIndices[dtid.x] = 0;
 }
 
 

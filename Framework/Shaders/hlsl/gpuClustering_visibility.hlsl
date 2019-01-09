@@ -54,7 +54,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint3 cellID, uint3 numGridCell
 		uint decalIndex = iGlobalWord * 32 + cellThreadIndex;
 #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 		uint index = iGlobalWord * 32 + cellThreadIndex;
-		uint decalIndex = index < decalCount ? inDecalsPerCell[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
+		uint decalIndex = index < decalCount ? inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
 		// Compare against frustum number of decals
@@ -106,7 +106,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint3 cellID, uint3 numGridCell
 			uint cellIndex = sharedGroupOffset + wordBaseIndex + localIndex;
 			if ( cellIndex < maxDecalsPerCell )
 			{
-				outDecalsPerCell[offsetToFirstDecalIndex + cellIndex] = decalIndex;
+				outDecalVolumeIndices[offsetToFirstDecalIndex + cellIndex] = decalIndex;
 			}
 		}
 
@@ -126,7 +126,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint3 cellID, uint3 numGridCell
 	if ( cellThreadIndex == 0 )
 	{
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
-		outDecalsPerCell[flatCellIndex] = DecalVolume_PackHeader( min( sharedGroupOffset, maxDecalsPerCell ), offsetToFirstDecalIndex );
+		outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( min( sharedGroupOffset, maxDecalsPerCell ), offsetToFirstDecalIndex );
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 		outDecalCountPerCell[flatCellIndex] = min( sharedGroupOffset, maxDecalsPerCell );
 #endif // #else // DECAL_VOLUME_CLUSTER_LAST_PASS

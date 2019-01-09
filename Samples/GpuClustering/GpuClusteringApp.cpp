@@ -2037,7 +2037,7 @@ namespace spad
 				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalTilingClearHeader" );
 				fxPass.setCS( deviceContext.context );
 
-				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
+				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
 
 				uint nGroupsX = ( p.nCellsX * p.nCellsY + 256 - 1 ) / 256;
 				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -2104,7 +2104,7 @@ namespace spad
 				tiling_->tilingConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
 				//pp.countPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_COUNT_PER_CELL_BINDING );
-				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
+				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
 				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
 			}
@@ -2136,8 +2136,8 @@ namespace spad
 				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
 			}
 
-			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
-			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_MEM_ALLOC_BINDING );
+			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
+			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_COUNT_BINDING );
 
 			if ( firstPass )
 			{
@@ -2380,7 +2380,7 @@ namespace spad
 				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingClearHeader" );
 				fxPass.setCS( deviceContext.context );
 
-				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
+				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
 
 				uint nGroupsX = (p.nCellsX * p.nCellsY * p.nCellsZ + 256 - 1) / 256;
 				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -2457,7 +2457,7 @@ namespace spad
 
 				clustering_->clusteringConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
-				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
+				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
 				if ( bucketsMergeEnabled )
 				{
@@ -2491,8 +2491,8 @@ namespace spad
 				p.cellIndirectionCount.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT_BINDING );
 			}
 
-			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
-			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_MEM_ALLOC_BINDING );
+			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
+			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_COUNT_BINDING );
 
 			if ( firstPass )
 			{
@@ -2697,7 +2697,7 @@ namespace spad
 			//srvs[0] = decalVolumesLinkedListCPU_.getSRV();
 		}
 
-		context->PSSetShaderResources( DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING, 1, srvs );
+		context->PSSetShaderResources( DECAL_VOLUME_IN_DECAL_INDICES_BINDING, 1, srvs );
 
 		context->Draw( 3, 0 );
 

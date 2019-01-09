@@ -26,7 +26,6 @@ void DecalVolumeCulling( uint3 dtid : SV_DispatchThreadID )
 	DecalVolume dv = inDecalVolumes[decalVolumeIndex];
 
 	Frustum frustum;
-	frustum.twoTests = false;
 	frustum.planes[0] = frustumPlane0;
 	frustum.planes[1] = frustumPlane1;
 	frustum.planes[2] = frustumPlane2;

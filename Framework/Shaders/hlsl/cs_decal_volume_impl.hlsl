@@ -21,7 +21,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 	{
 		sharedGroupOffset = 0;
 
-		InterlockedAdd( outMemAlloc[0], passDecalCount, sharedOffsetToFirstDecalIndex );
+		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, sharedOffsetToFirstDecalIndex );
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 		sharedOffsetToFirstDecalIndex += cellCount;
@@ -50,7 +50,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 		uint decalIndex = iGlobalWord * 32 + cellThreadIndex;
 #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 		uint index = iGlobalWord * 32 + cellThreadIndex;
-		uint decalIndex = index < passDecalCount ? inDecalsPerCell[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
+		uint decalIndex = index < passDecalCount ? inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
 		// Compare against frustum number of decals
@@ -110,7 +110,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 			uint globalIndex = sharedOffsetToFirstDecalIndex + cellIndex;
 			if ( globalIndex < maxDecalIndices )
 			{
-				outDecalsPerCell[globalIndex] = decalIndex;
+				outDecalVolumeIndices[globalIndex] = decalIndex;
 			}
 		}
 

@@ -43,7 +43,7 @@ passes :
 
 StructuredBuffer<DecalVolume> inDecalVolumes		REGISTER_T( DECAL_VOLUME_IN_DECALS_BINDING );
 StructuredBuffer<uint> inDecalVolumesCount			REGISTER_T( DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
-StructuredBuffer<uint> inDecalsPerCell				REGISTER_T( DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
+StructuredBuffer<uint> inDecalVolumeIndices				REGISTER_T( DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
 RWByteAddressBuffer outIndirectArgs					REGISTER_U( DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
 
 Texture2D diffuseTex								REGISTER_T( DIFFUSE_TEXTURE_REGISTER_BINDING );
@@ -152,7 +152,7 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 		uint3 cellID = uint3( screenTile, slice );
 		uint clusterIndex = DecalVolume_GetCellFlatIndex( cellID, uint3( dvCellCount.xy, 1 ) );
 
-		uint node = inDecalsPerCell[clusterIndex];
+		uint node = inDecalVolumeIndices[clusterIndex];
 		uint cellDecalCount;
 		uint offsetToFirstDecalIndex;
 		DecalVolume_UnpackHeader( node, cellDecalCount, offsetToFirstDecalIndex );

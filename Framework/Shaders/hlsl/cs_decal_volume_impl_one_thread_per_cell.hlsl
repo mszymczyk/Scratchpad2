@@ -11,7 +11,7 @@ void DecalVisibilityOnThreadPerCell( uint encodedCellXYZ, uint passDecalCount, u
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
 	uint offsetToFirstDecalIndex;
-	InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex );
+	InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, offsetToFirstDecalIndex );
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 	offsetToFirstDecalIndex += cellCount;
@@ -24,14 +24,14 @@ void DecalVisibilityOnThreadPerCell( uint encodedCellXYZ, uint passDecalCount, u
 	{
 		// every thread calculates intersection with one decal
 		uint index = iGlobalDecalBase;
-		uint decalIndex = inDecalsPerCell[prevPassOffsetToFirstDecalIndex + index];
+		uint decalIndex = inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + index];
 
 		uint intersects = DecalVolume_TestFrustum( frustum, decalIndex );
 
 		uint globalIndex = offsetToFirstDecalIndex + localIndex;
 		if ( intersects && globalIndex < maxDecalIndices )
 		{
-			outDecalsPerCell[globalIndex] = decalIndex;
+			outDecalVolumeIndices[globalIndex] = decalIndex;
 			localIndex += 1;
 		}
 	}

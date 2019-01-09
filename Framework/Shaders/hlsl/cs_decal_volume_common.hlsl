@@ -3,19 +3,19 @@
 StructuredBuffer<DecalVolume> inDecalVolumes REGISTER_T( DECAL_VOLUME_IN_DECALS_BINDING );
 StructuredBuffer<DecalVolumeTest> inDecalVolumesTest REGISTER_T( DECAL_VOLUME_IN_DECALS_TEST_BINDING );
 StructuredBuffer<uint> inDecalVolumesCount REGISTER_T( DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
-StructuredBuffer<uint> inDecalsPerCell REGISTER_T( DECAL_VOLUME_IN_DECALS_PER_CELL_BINDING );
+StructuredBuffer<uint> inDecalVolumeIndices REGISTER_T( DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
 StructuredBuffer<CellIndirection> inCellIndirection REGISTER_T( DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
-StructuredBuffer<GroupToBucket> inGroupToBucket REGISTER_T( DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
 StructuredBuffer<uint> inCellIndirectionCount REGISTER_T( DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
 
 
-RWStructuredBuffer<CellIndirection> outDecalCellIndirection REGISTER_U( DECAL_VOLUME_OUT_CELL_INDIRECTION_BINDING );
+RWStructuredBuffer<CellIndirection> outCellIndirection REGISTER_U( DECAL_VOLUME_OUT_CELL_INDIRECTION_BINDING );
 RWStructuredBuffer<uint> outCellIndirectionCount REGISTER_U( DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT_BINDING );
-RWStructuredBuffer<GroupToBucket> outGroupToBucket REGISTER_U( DECAL_VOLUME_OUT_GROUP_TO_BUCKET_BINDING );
-RWStructuredBuffer<uint> outMemAlloc REGISTER_U( DECAL_VOLUME_OUT_MEM_ALLOC_BINDING );
+RWStructuredBuffer<uint> outDecalVolumeIndicesCount REGISTER_U( DECAL_VOLUME_OUT_DECAL_INDICES_COUNT_BINDING );
 RWByteAddressBuffer outIndirectArgs REGISTER_U( DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
+RWStructuredBuffer<uint> outDecalVolumeIndices REGISTER_U( DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
 
-RWStructuredBuffer<uint> outDecalsPerCell REGISTER_U( DECAL_VOLUME_OUT_DECALS_PER_CELL_BINDING );
+StructuredBuffer<GroupToBucket> inGroupToBucket REGISTER_T( DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
+RWStructuredBuffer<GroupToBucket> outGroupToBucket REGISTER_U( DECAL_VOLUME_OUT_GROUP_TO_BUCKET_BINDING );
 
 
 struct Frustum
@@ -475,7 +475,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
 	uint flatCellIndex = DecalVolume_GetCellFlatIndex( cellXYZ, dvCellCount.xyz );
-	outDecalsPerCell[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
+	outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
 
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 
@@ -503,7 +503,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 			ci.cellIndex = encodedCellXYZ;
-			outDecalCellIndirection[cellIndirectionIndex / 8 + cellSlot * maxCellIndirectionsPerBucket] = ci;
+			outCellIndirection[cellIndirectionIndex / 8 + cellSlot * maxCellIndirectionsPerBucket] = ci;
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 			for ( uint i = 0; i < 8; ++i )
 			{
@@ -514,7 +514,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 				uint col = tile % 2;
 				ci.cellIndex = DecalVolume_EncodeCell3D( uint3( cellXYZ.x * 2 + col, cellXYZ.y * 2 + row, cellXYZ.z * 2 + slice ) );
 
-				outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * maxCellIndirectionsPerBucket * 8] = ci;
+				outCellIndirection[cellIndirectionIndex + i + cellSlot * maxCellIndirectionsPerBucket * 8] = ci;
 			}
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
@@ -528,7 +528,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 		ci.cellIndex = encodedCellXYZ;
-		outDecalCellIndirection[cellIndirectionIndex / 4 + cellSlot * flatCellCount] = ci;
+		outCellIndirection[cellIndirectionIndex / 4 + cellSlot * flatCellCount] = ci;
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
 		for ( uint i = 0; i < 4; ++i )
@@ -537,7 +537,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 			uint col = i % 2;
 			ci.cellIndex = ( cellXYZ.y * 2 + row ) * numCellsXYZ.x * 2 + cellXYZ.x * 2 + col;
 
-			outDecalCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
+			outCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
 		}
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1

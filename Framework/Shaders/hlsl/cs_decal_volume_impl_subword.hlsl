@@ -40,7 +40,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	// and only one atomic add to global memory
 	if ( threadIndex == 0 )
 	{
-		InterlockedAdd( outMemAlloc[0], sharedMemAlloc, sharedMemAllocGlobalBase );
+		InterlockedAdd( outDecalVolumeIndicesCount[0], sharedMemAlloc, sharedMemAllocGlobalBase );
 	}
 
 #else // #if USE_TWO_LEVEL_MEM_ALLOC
@@ -48,7 +48,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	// allocate speculatively one chunk per cell, might cause overallocation
 	if ( cellValid && cellThreadIndex == 0 )
 	{
-		InterlockedAdd( outMemAlloc[0], passDecalCount, sharedOffsetToFirstDecalIndexPerCell[localCellIndex] );
+		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, sharedOffsetToFirstDecalIndexPerCell[localCellIndex] );
 	}
 
 #endif // #else // #if USE_TWO_LEVEL_MEM_ALLOC
@@ -86,7 +86,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 		decalIndex = cellThreadIndex < passDecalCount ? iGlobalDecalBase + cellThreadIndex : 0xffffffff;
 #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 		uint index = iGlobalDecalBase + cellThreadIndex;
-		decalIndex = index < passDecalCount ? inDecalsPerCell[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
+		decalIndex = index < passDecalCount ? inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
 		// Compare against frustum number of decals
@@ -123,7 +123,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 			uint globalIndex = cellOffsetToFirstDecalIndex + cellIndex;
 			if ( globalIndex < maxDecalIndices )
 			{
-				outDecalsPerCell[cellOffsetToFirstDecalIndex + cellIndex] = decalIndex;
+				outDecalVolumeIndices[cellOffsetToFirstDecalIndex + cellIndex] = decalIndex;
 			}
 		}
 
@@ -153,7 +153,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //
 //	if ( cellThreadIndex == 0 )
 //	{
-//		InterlockedAdd( outMemAlloc[0], passDecalCount, offsetToFirstDecalIndex[localCellIndex] );
+//		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, offsetToFirstDecalIndex[localCellIndex] );
 //	}
 //
 //	GroupMemoryBarrierWithGroupSync();
@@ -184,7 +184,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //		uint decalIndex = cellThreadIndex < passDecalCount ? iGlobalDecalBase + cellThreadIndex : 0xffffffff;
 //#else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 //		uint index = iGlobalDecalBase + cellThreadIndex;
-//		uint decalIndex = index < passDecalCount ? inDecalsPerCell[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
+//		uint decalIndex = index < passDecalCount ? inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
 //#endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 //
 //		// Compare against frustum number of decals
@@ -219,7 +219,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //			uint globalIndex = cellOffsetToFirstDecalIndex + cellIndex;
 //			if ( globalIndex < maxDecalIndices )
 //			{
-//				outDecalsPerCell[globalIndex] = decalIndex;
+//				outDecalVolumeIndices[globalIndex] = decalIndex;
 //			}
 //		}
 //
