@@ -391,43 +391,43 @@ uint DecalVolume_GetBucketIndex()
 
 uint3 DecalVolume_CellCountXYZ()
 {
-#if DECAL_VOLUME_CLUSTERING_3D
+#if DECAL_VOLUME_CLUSTER_3D
 	return dvCellCount.xyz;
-#else // #if DECAL_VOLUME_CLUSTERING_3D
+#else // #if DECAL_VOLUME_CLUSTER_3D
 	return uint3( dvCellCount.xy, 1 );
-#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 }
 
 
 float3 DecalVolume_CellCountXYZRcp()
 {
-#if DECAL_VOLUME_CLUSTERING_3D
+#if DECAL_VOLUME_CLUSTER_3D
 	return dvCellCountRcp.xyz;
-#else // #if DECAL_VOLUME_CLUSTERING_3D
+#else // #if DECAL_VOLUME_CLUSTER_3D
 	return float3( dvCellCountRcp.xy, 1 );
-#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 }
 
 
 uint DecalVolume_CellCountCurrentPass()
 {
-#if DECAL_VOLUME_CLUSTERING_3D
+#if DECAL_VOLUME_CLUSTER_3D
 	//return mul24( mul24( dvCellCount.x, dvCellCount.y ), dvCellCount.z );
 	return dvCellCount.w;
-#else // #if DECAL_VOLUME_CLUSTERING_3D
+#else // #if DECAL_VOLUME_CLUSTER_3D
 	//return mul24( dvCellCount.x, dvCellCount.y );
 	return dvCellCount.w;
-#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 }
 
 
 uint DecalVolume_CellCountPrevPass()
 {
-#if DECAL_VOLUME_CLUSTERING_3D
+#if DECAL_VOLUME_CLUSTER_3D
 	return DecalVolume_CellCountCurrentPass() / 8;
-#else // #if DECAL_VOLUME_CLUSTERING_3D
+#else // #if DECAL_VOLUME_CLUSTER_3D
 	return DecalVolume_CellCountCurrentPass() / 4;
-#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 }
 
 
@@ -457,21 +457,18 @@ uint2 DecalVolume_DecodeCell2D( uint flatCellIndex )
 
 uint3 DecalVolume_DecodeCellCoord( uint flatCellIndex )
 {
-#if DECAL_VOLUME_CLUSTERING_3D
+#if DECAL_VOLUME_CLUSTER_3D
 	uint3 cellXYZ = DecalVolume_DecodeCell3D( flatCellIndex );
 	return cellXYZ;
-#else // #if DECAL_VOLUME_CLUSTERING_3D
+#else // #if DECAL_VOLUME_CLUSTER_3D
 	uint2 cellXY = DecalVolume_DecodeCell2D( flatCellIndex );
 	return uint3( cellXY, 0 );
-#endif // #if DECAL_VOLUME_CLUSTERING_3D
+#endif // #if DECAL_VOLUME_CLUSTER_3D
 }
 
 
 void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint cellDecalCount, uint offsetToFirstDecalIndex, uint3 numCellsXYZ )
 {
-	uint maxCellIndirectionsPerBucket = DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket();
-	uint flatCellCount = DecalVolume_CellCountCurrentPass();
-
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
 	uint flatCellIndex = DecalVolume_GetCellFlatIndex( cellXYZ, dvCellCount.xyz );
@@ -481,6 +478,9 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 	if ( cellDecalCount > 0 )
 	{
+		uint maxCellIndirectionsPerBucket = DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket();
+		uint flatCellCount = DecalVolume_CellCountCurrentPass();
+
 		CellIndirection ci;
 		ci.offsetToFirstDecalIndex = offsetToFirstDecalIndex;
 		ci.decalCount = cellDecalCount;
@@ -492,7 +492,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 		uint cellSlot = 0;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
 
-#if DECAL_VOLUME_CLUSTERING_3D
+#if DECAL_VOLUME_CLUSTER_3D
 
 		// Could use append buffer
 		uint cellIndirectionIndex;
@@ -520,7 +520,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 		}
 
-#else // #if DECAL_VOLUME_CLUSTERING_3D
+#else // #if DECAL_VOLUME_CLUSTER_3D
 
 		// Could use append buffer
 		uint cellIndirectionIndex;
@@ -542,7 +542,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
-#endif // #else // #if DECAL_VOLUME_CLUSTERING_3D
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 	}
 #endif // #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 }

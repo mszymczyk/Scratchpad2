@@ -4,6 +4,8 @@
 
 void DecalVisibilityOnThreadPerCell( uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
+	// every thread processes one cell
+
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
 	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
 	uint cellCount = DecalVolume_CellCountCurrentPass();

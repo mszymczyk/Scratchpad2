@@ -7,9 +7,11 @@ groupshared uint sharedGroupOffset;
 groupshared uint sharedOffsetToFirstDecalIndex;
 
 
-void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
-	uint cellThreadIndex = cellThreadID.x;
+	// every thread group processes one cell
+
+	uint groupThreadIndex = groupThreadID.x;
 
 	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
 	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
@@ -17,7 +19,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
-	if ( cellThreadIndex == 0 )
+	if ( groupThreadIndex == 0 )
 	{
 		sharedGroupOffset = 0;
 
@@ -28,9 +30,9 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 #endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 	}
 
-	if ( cellThreadIndex < DECAL_VOLUME_CLUSTER_WORD_COUNT )
+	if ( groupThreadIndex < DECAL_VOLUME_CLUSTER_WORD_COUNT )
 	{
-		sharedWordVisibility[cellThreadIndex] = 0;
+		sharedWordVisibility[groupThreadIndex] = 0;
 	}
 
 	GroupMemoryBarrierWithGroupSync();
@@ -42,14 +44,14 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 
 	for ( uint iGlobalWord = 0; iGlobalWord < numWords; iGlobalWord += DECAL_VOLUME_CLUSTER_WORD_COUNT )
 	{
-		uint threadWordIndex = cellThreadIndex / 32;
-		uint bitIndex = cellThreadIndex - threadWordIndex * 32;
+		uint threadWordIndex = groupThreadIndex / 32;
+		uint bitIndex = groupThreadIndex - threadWordIndex * 32;
 
 		// every thread calculates intersection with one decal
 #if DECAL_VOLUME_CLUSTER_FIRST_PASS
-		uint decalIndex = iGlobalWord * 32 + cellThreadIndex;
+		uint decalIndex = iGlobalWord * 32 + groupThreadIndex;
 #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
-		uint index = iGlobalWord * 32 + cellThreadIndex;
+		uint index = iGlobalWord * 32 + groupThreadIndex;
 		uint decalIndex = index < passDecalCount ? inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
@@ -68,15 +70,15 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 
 		GroupMemoryBarrierWithGroupSync();
 
-		if ( cellThreadIndex < DECAL_VOLUME_CLUSTER_WORD_COUNT )
+		if ( groupThreadIndex < DECAL_VOLUME_CLUSTER_WORD_COUNT )
 		{
-			sharedVisibleCount[cellThreadIndex] = countbits( sharedWordVisibility[cellThreadIndex] );
+			sharedVisibleCount[groupThreadIndex] = countbits( sharedWordVisibility[groupThreadIndex] );
 		}
 
 		GroupMemoryBarrierWithGroupSync();
 
 #if DECAL_VOLUME_CLUSTER_WORD_COUNT > 1
-		if ( cellThreadIndex == 0 )
+		if ( groupThreadIndex == 0 )
 		{
 			// Very naive way of calculating prefix sum
 			[unroll]
@@ -116,12 +118,12 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 
 		GroupMemoryBarrierWithGroupSync();
 
-		if ( cellThreadIndex < DECAL_VOLUME_CLUSTER_WORD_COUNT )
+		if ( groupThreadIndex < DECAL_VOLUME_CLUSTER_WORD_COUNT )
 		{
-			sharedWordVisibility[cellThreadIndex] = 0;
+			sharedWordVisibility[groupThreadIndex] = 0;
 		}
 
-		if ( cellThreadIndex == 0 )
+		if ( groupThreadIndex == 0 )
 		{
 			sharedGroupOffset += sharedVisibleCount[DECAL_VOLUME_CLUSTER_WORD_COUNT - 1];
 		}
@@ -129,7 +131,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 		GroupMemoryBarrierWithGroupSync();
 	}
 
-	if ( cellThreadIndex == 0 )
+	if ( groupThreadIndex == 0 )
 	{
 		// One output per all threads
 		DecalVolume_OutputCellIndirection( cellXYZ, flatCellIndex, sharedGroupOffset, sharedOffsetToFirstDecalIndex, numCellsXYZ );

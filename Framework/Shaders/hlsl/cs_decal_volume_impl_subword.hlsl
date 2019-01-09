@@ -6,12 +6,14 @@ groupshared uint sharedMemAllocGlobalBase;
 
 #define USE_TWO_LEVEL_MEM_ALLOC 0
 
-void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
-	uint threadIndex = cellThreadID.x; // warp/wave index
-	uint localCellIndex = cellThreadID.x / numThreadsPerCell;
-	uint cellThreadIndex = cellThreadID.x % numThreadsPerCell;
-	uint threadWordIndex = threadIndex / 32;
+	// every n threads process single cell, for instance group of 64 threads can process 2, 4, 8, 16, 32 or 64 cells
+
+	uint threadIndex = groupThreadID.x; // warp/wave index
+	uint localCellIndex = groupThreadID.x / numThreadsPerCell; // cell index, e.g., every 4 threads process one cell, in this case, whole group is processing 16 cells
+	uint cellThreadIndex = groupThreadID.x % numThreadsPerCell; // thread within 'cell'
+	uint threadWordIndex = threadIndex / 32; // selects which sharedVisibility index to write to
 	uint bitIndex = threadIndex - threadWordIndex * 32;
 
 	if ( threadIndex < 2 )
@@ -109,9 +111,9 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 	if ( cellValid )
 	{
 		uint firstCellIndex = localCellIndex * numThreadsPerCell;
-		uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 );
+		uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 ); // (1 << 32) - 1 is undefined when operating on uint
 		//uint cellVisibility = ( sharedVisibility[firstCellIndex/32] >> (firstCellIndex - threadWordIndex * 32) ) & cellMask;
-		uint cellVisibility = ( sharedVisibility[threadWordIndex] >> ( firstCellIndex - threadWordIndex * 32 ) ) & cellMask;
+		uint cellVisibility = ( sharedVisibility[threadWordIndex] >> ( firstCellIndex - threadWordIndex * 32 ) ) & cellMask; // only cell relevant bits
 
 		uint cellThreadBit = 1 << cellThreadIndex;
 		if ( cellValid && ( cellVisibility & cellThreadBit ) )

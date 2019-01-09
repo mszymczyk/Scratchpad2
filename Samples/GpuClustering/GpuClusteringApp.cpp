@@ -1080,20 +1080,6 @@ namespace spad
 			}
 		}
 
-		if ( appMode_ == Tiling )
-		{
-			ImGuiPrintClusteringInfo( tiling_->tiling_, tiling_->tilingPasses_, tiling_->decalVolumesTilingTimer_ );
-		}
-		else if ( appMode_ == Clustering || appMode_ == Scene )
-		{
-			ImGuiPrintClusteringInfo( clustering_->clustering_, clustering_->clusteringPasses_, clustering_->decalVolumesClusteringTimer_ );
-		}
-
-		{
-			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum" };
-			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
-		}
-
 		{
 			const char* items[] = {
 				"1920_1080",
@@ -1112,6 +1098,20 @@ namespace spad
 				tiling_ = DecalVolumeTilingStartUp();
 				clustering_ = DecalVolumeClusteringStartUp();
 			}
+		}
+
+		if ( appMode_ == Tiling )
+		{
+			ImGuiPrintClusteringInfo( tiling_->tiling_, tiling_->tilingPasses_, tiling_->decalVolumesTilingTimer_ );
+		}
+		else if ( appMode_ == Clustering || appMode_ == Scene )
+		{
+			ImGuiPrintClusteringInfo( clustering_->clustering_, clustering_->clusteringPasses_, clustering_->decalVolumesClusteringTimer_ );
+		}
+
+		{
+			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum" };
+			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
 		}
 	}
 
@@ -1825,7 +1825,7 @@ namespace spad
 		ImGui::Text( "Total mem %u [B], %u [kB], %u [MB]", shared.totalMemUsed_, shared.totalMemUsed_ / 1024, shared.totalMemUsed_ / ( 1024 * 1024 ) );
 
 		{
-			const char* items[] = { "Simple", "Two pass Inigo" };
+			const char* items[] = { "World space optimized", "Clip space" };
 			ImGui::Combo( "Intersection method", reinterpret_cast<int*>( &shared.intersectionMethod_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
