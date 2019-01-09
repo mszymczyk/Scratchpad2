@@ -6,7 +6,7 @@ groupshared uint sharedMemAllocGlobalBase;
 
 #define USE_TWO_LEVEL_MEM_ALLOC 0
 
-void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
 	// every n threads process single cell, for instance group of 64 threads can process 2, 4, 8, 16, 32 or 64 cells
 

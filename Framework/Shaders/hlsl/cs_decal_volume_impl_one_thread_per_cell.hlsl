@@ -2,7 +2,7 @@
 #error Can't be used in first pass
 #endif // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
-void DecalVisibilityOnThreadPerCell( uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilityOneThreadPerCell( uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
 	// every thread processes one cell
 

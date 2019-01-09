@@ -120,7 +120,7 @@ void DecalVolumeTilingMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 cell
 #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
 	uint cellIndex = cellID.x * DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP + cellThreadID.x / DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL;
 	CellIndirection ci = inCellIndirection[cellIndex];
-	DecalVisibilitySubWord( cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, DECAL_VOLUME_INTERSECTION_METHOD );
+	DecalVisibilitySubGroup( cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, DECAL_VOLUME_INTERSECTION_METHOD );
 #endif // #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
 }
 
