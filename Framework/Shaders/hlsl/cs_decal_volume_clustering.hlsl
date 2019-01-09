@@ -70,7 +70,7 @@ passes :
 #define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
 //#define DECAL_VOLUME_INTERSECTION_METHOD						0
 
-#include "cs_decal_volume_common.hlsl"
+#include "cs_decal_volume_util.hlsl"
 
 #if DECAL_VOLUME_CLUSTER_GCN
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_FIRST_PASS		64
