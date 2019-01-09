@@ -174,7 +174,7 @@ void DecalVisibilitySubWord( uint numThreadsPerCell, bool cellValid, uint3 cellT
 //	uint cellTotalDecalCount = 0;
 //
 //	uint iGlobalDecalBase = 0;
-//	uint passDecalCount32 = spadAlignU32_2( passDecalCount, numThreadsPerCell );
+//	uint passDecalCount32 = AlignPowerOfTwo( passDecalCount, numThreadsPerCell );
 //	//for ( uint iGlobalDecalBase = 0; iGlobalDecalBase < passDecalCount32; ++numThreadsPerCell )
 //	do
 //	{

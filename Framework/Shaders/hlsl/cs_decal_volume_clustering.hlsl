@@ -31,7 +31,7 @@ passes :
 			EntryName = "DecalVolumeClusteringFirstPass";
 			cdefines = {
 				DECAL_VOLUME_CLUSTER_FIRST_PASS = ( "1" );
-				INTERSECTION_METHOD = ( "0", "1" );
+				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
 				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
 			}
 		}
@@ -42,7 +42,7 @@ passes :
 			EntryName = "DecalVolumeClusteringMidPass";
 			cdefines = {
 				DECAL_VOLUME_CLUSTER_MID_PASS = ( "1" );
-				INTERSECTION_METHOD = ( "0", "1" );
+				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
 				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
 				DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
 			}
@@ -54,7 +54,7 @@ passes :
 			EntryName = "DecalVolumeClusteringMidPass";
 			cdefines = {
 				DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
-				INTERSECTION_METHOD = ( "0", "1" );
+				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
 				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
 				DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
 			}
@@ -66,7 +66,7 @@ passes :
 
 #define DECAL_VOLUME_CLUSTERING_3D								1
 #define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
-//#define INTERSECTION_METHOD										0
+//#define DECAL_VOLUME_INTERSECTION_METHOD										0
 
 #include "cs_decal_volume_common.hlsl"
 

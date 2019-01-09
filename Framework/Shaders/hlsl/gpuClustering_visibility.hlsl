@@ -61,7 +61,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint3 cellID, uint3 numGridCell
 		if ( decalIndex < frustumDecalCount )
 		{
 			const DecalVolume dv = inDecalVolumes[decalIndex];
-			uint intersects = TestDecalVolumeFrustum( dv, frustum );
+			uint intersects = DecalVolume_TestFrustumWorldSpace( dv, frustum );
 			if ( intersects )
 			{
 				uint bitValue = intersects << bitIndex;

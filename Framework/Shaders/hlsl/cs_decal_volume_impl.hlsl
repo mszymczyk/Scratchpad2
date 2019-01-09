@@ -38,7 +38,7 @@ void DecalVisibilityGeneric( uint3 cellThreadID, uint flatCellIndex, uint passDe
 	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
 
 	uint numWords = ( passDecalCount + 32 - 1 ) / 32;
-	numWords = spadAlignU32_2( numWords, DECAL_VOLUME_CLUSTER_WORD_COUNT );
+	numWords = AlignPowerOfTwo( numWords, DECAL_VOLUME_CLUSTER_WORD_COUNT );
 
 	for ( uint iGlobalWord = 0; iGlobalWord < numWords; iGlobalWord += DECAL_VOLUME_CLUSTER_WORD_COUNT )
 	{
