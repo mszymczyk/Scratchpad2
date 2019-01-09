@@ -2034,7 +2034,7 @@ namespace spad
 
 			if ( lastPass )
 			{
-				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalTilingClearHeader" );
+				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_clear_header" );
 				fxPass.setCS( deviceContext.context );
 
 				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
@@ -2157,12 +2157,12 @@ namespace spad
 
 				if ( iPass == tiling_->tilingPasses_.size() - 2 )
 				{
-					const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "DecalTilingCopyIndirectArgsLastPass" );
+					const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_indirect_args_last_pass" );
 					fxPassCopy.setCS( deviceContext.context );
 				}
 				else
 				{
-					const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "DecalTilingCopyIndirectArgs" );
+					const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_indirect_args" );
 					fxPassCopy.setCS( deviceContext.context );
 				}
 
@@ -2377,7 +2377,7 @@ namespace spad
 
 			if ( lastPass )
 			{
-				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingClearHeader" );
+				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_clear_header" );
 				fxPass.setCS( deviceContext.context );
 
 				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
@@ -2393,24 +2393,24 @@ namespace spad
 
 			if ( firstPass )
 			{
-				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringFirstPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled } );
+				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled } );
 				fxPass.setCS( deviceContext.context );
 			}
 			else if ( lastPass )
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
 				{
-					//const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_ } );
+					//const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_ } );
 					//fxPass.setCS( deviceContext.context );
 				}
 				else
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 0 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 0 } );
 					fxPass.setCS( deviceContext.context );
 				}
 			}
@@ -2418,7 +2418,7 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
@@ -2426,7 +2426,7 @@ namespace spad
 				}
 				else
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, maxBuckets - 1 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, maxBuckets - 1 } );
 					fxPass.setCS( deviceContext.context );
 				}
 			}
@@ -2516,12 +2516,12 @@ namespace spad
 							{
 								if ( lastPass )
 								{
-									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
+									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
 									fxPass.setCS( deviceContext.context );
 								}
 								else
 								{
-									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
+									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
 									fxPass.setCS( deviceContext.context );
 								}
 							}
@@ -2533,12 +2533,12 @@ namespace spad
 						{
 							if ( lastPass )
 							{
-								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringLastPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
+								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
 								fxPass.setCS( deviceContext.context );
 							}
 							else
 							{
-								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "DecalVolumeClusteringMidPass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
+								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
 								fxPass.setCS( deviceContext.context );
 							}
 						}
@@ -2560,24 +2560,24 @@ namespace spad
 
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgsBucketsMerge" );
+					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args_buckets_merged" );
 					fxPassCopy.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
 				{
-					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgsBuckets" );
+					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args_buckets" );
 					fxPassCopy.setCS( deviceContext.context );
 				}
 				else
 				{
 					if ( iPass == clustering_->clusteringPasses_.size() - 2 )
 					{
-						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgsLastPass" );
+						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args_last_pass" );
 						fxPassCopy.setCS( deviceContext.context );
 					}
 					else
 					{
-						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "DecalTilingCopyIndirectArgs" );
+						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args" );
 						fxPassCopy.setCS( deviceContext.context );
 					}
 				}
@@ -2659,6 +2659,7 @@ namespace spad
 		context->OMSetBlendState( BlendStates::alphaBlend, nullptr, 0xffffffff );
 		context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 		context->OMSetDepthStencilState( DepthStencilStates::DepthDisabled(), 0 );
+		context->IASetInputLayout( nullptr );
 
 		ID3D11ShaderResourceView* srvs[1] = { nullptr };
 
@@ -2718,7 +2719,7 @@ namespace spad
 		}
 
 		{
-			const HlslShaderPass& fxPass = *decalVolumeRenderingShader_->getPass( "DecalVolumeCopyIndirectArgs" );
+			const HlslShaderPass& fxPass = *decalVolumeRenderingShader_->getPass( "cs_decal_volume_indirect_args" );
 			fxPass.setCS( deviceContext.context );
 
 			axesIndirectArgs_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );

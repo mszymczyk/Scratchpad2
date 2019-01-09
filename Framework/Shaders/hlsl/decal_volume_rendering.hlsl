@@ -2,8 +2,8 @@
 #ifdef FX_PASSES
 passes :
 {
-	DecalVolumeCopyIndirectArgs = {
-		ComputeProgram = "DecalVolumeCopyIndirectArgs";
+	cs_decal_volume_indirect_args = {
+		ComputeProgram = "cs_decal_volume_indirect_args";
 	}
 
 	DecalVolumeCopyIndirectArgsIndexed = {
@@ -51,7 +51,7 @@ SamplerState diffuseTexSamp							REGISTER_S( DIFFUSE_SAMPLER_REGISTER_BINDING )
 
 
 [numthreads( 1, 1, 1 )]
-void DecalVolumeCopyIndirectArgs()
+void cs_decal_volume_indirect_args()
 {
 	uint n = inDecalVolumesCount[0];
 	uint4 arg0;

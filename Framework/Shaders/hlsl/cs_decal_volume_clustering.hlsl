@@ -2,33 +2,33 @@
 #ifdef FX_PASSES
 passes :
 {
-	DecalTilingClearHeader = {
-		ComputeProgram = "DecalTilingClearHeader";
+	cs_decal_volume_clear_header = {
+		ComputeProgram = "cs_decal_volume_clear_header";
 	}
 
-	DecalTilingCopyIndirectArgs = {
-		ComputeProgram = "DecalTilingCopyIndirectArgs";
+	cs_decal_volume_indirect_args = {
+		ComputeProgram = "cs_decal_volume_indirect_args";
 	}
 
-	DecalTilingCopyIndirectArgsLastPass = {
-		ComputeProgram = "DecalTilingCopyIndirectArgsLastPass";
+	cs_decal_volume_indirect_args_last_pass = {
+		ComputeProgram = "cs_decal_volume_indirect_args_last_pass";
 	}
 
-	DecalTilingCopyIndirectArgsBuckets = {
-		ComputeProgram = "DecalTilingCopyIndirectArgsBuckets";
+	cs_decal_volume_indirect_args_buckets = {
+		ComputeProgram = "cs_decal_volume_indirect_args_buckets";
 	}
 
-	DecalTilingCopyIndirectArgsBucketsMerge = {
-		ComputeProgram = "DecalTilingCopyIndirectArgsBucketsMerge";
+	cs_decal_volume_indirect_args_buckets_merged = {
+		ComputeProgram = "cs_decal_volume_indirect_args_buckets_merged";
 	}
 
 	cs_decal_volume_assign_slot = {
 		ComputeProgram = "cs_decal_volume_assign_slot";
 	}
 
-	DecalVolumeClusteringFirstPass = {
+	cs_decal_volume_cluster_first_pass = {
 		ComputeProgram = {
-			EntryName = "DecalVolumeClusteringFirstPass";
+			EntryName = "cs_decal_volume_cluster_first_pass";
 			cdefines = {
 				DECAL_VOLUME_CLUSTER_FIRST_PASS = ( "1" );
 				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
@@ -37,9 +37,9 @@ passes :
 		}
 	}
 
-	DecalVolumeClusteringMidPass = {
+	cs_decal_volume_cluster_mid_pass = {
 		ComputeProgram = {
-			EntryName = "DecalVolumeClusteringMidPass";
+			EntryName = "cs_decal_volume_cluster_mid_pass";
 			cdefines = {
 				DECAL_VOLUME_CLUSTER_MID_PASS = ( "1" );
 				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
@@ -49,9 +49,9 @@ passes :
 		}
 	}
 
-	DecalVolumeClusteringLastPass = {
+	cs_decal_volume_cluster_last_pass = {
 		ComputeProgram = {
-			EntryName = "DecalVolumeClusteringMidPass";
+			EntryName = "cs_decal_volume_cluster_mid_pass";
 			cdefines = {
 				DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
 				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
@@ -66,7 +66,7 @@ passes :
 
 #define DECAL_VOLUME_CLUSTERING_3D								1
 #define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
-//#define DECAL_VOLUME_INTERSECTION_METHOD										0
+//#define DECAL_VOLUME_INTERSECTION_METHOD						0
 
 #include "cs_decal_volume_common.hlsl"
 
@@ -75,14 +75,14 @@ passes :
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS		64
 
 [numthreads( 256, 1, 1 )]
-void DecalTilingClearHeader( uint3 dtid : SV_DispatchThreadID )
+void cs_decal_volume_clear_header( uint3 dtid : SV_DispatchThreadID )
 {
 	outDecalVolumeIndices[dtid.x] = 0;
 }
 
 
 [numthreads( 1, 1, 1 )]
-void DecalTilingCopyIndirectArgs()
+void cs_decal_volume_indirect_args()
 {
 	uint n = inCellIndirectionCount[0];
 	outIndirectArgs.Store3( 0, uint3( n, 1, 1 ) );
@@ -90,7 +90,7 @@ void DecalTilingCopyIndirectArgs()
 
 
 [numthreads( 1, 1, 1 )]
-void DecalTilingCopyIndirectArgsLastPass()
+void cs_decal_volume_indirect_args_last_pass()
 {
 	uint n = inCellIndirectionCount[0];
 	outIndirectArgs.Store3( 0, uint3( (n + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS ) / DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS, 1, 1 ) );
@@ -98,7 +98,7 @@ void DecalTilingCopyIndirectArgsLastPass()
 
 
 [numthreads( 1, 1, 1 )]
-void DecalTilingCopyIndirectArgsBuckets()
+void cs_decal_volume_indirect_args_buckets()
 {
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 	uint mult = 1;
@@ -132,7 +132,7 @@ void DecalTilingCopyIndirectArgsBuckets()
 
 
 [numthreads( 1, 1, 1 )]
-void DecalTilingCopyIndirectArgsBucketsMerge()
+void cs_decal_volume_indirect_args_buckets_merged()
 {
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 	uint mult = 1;
@@ -267,7 +267,7 @@ void cs_decal_volume_assign_slot( uint3 dtid : SV_DispatchThreadID )
 #include "cs_decal_volume_impl.hlsl"
 
 [numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
-void DecalVolumeClusteringFirstPass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID )
+void cs_decal_volume_cluster_first_pass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID )
 {
 	uint flatCellIndex = DecalVolume_EncodeCell3D( cellID.xyz );
 	uint decalCountInFrustum = inDecalVolumesCount[0];
@@ -326,7 +326,7 @@ CellIndirection DecalVolumeGetCellIndirection( uint cellIndex, uint cellBucket )
 
 
 [numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
-void DecalVolumeClusteringMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID, uint3 dtid : SV_DispatchThreadID )
+void cs_decal_volume_cluster_mid_pass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID, uint3 dtid : SV_DispatchThreadID )
 {
 #if DECAL_VOLUME_CLUSTER_SUB_WORD == 1
 

@@ -2,16 +2,16 @@
 #ifdef FX_PASSES
 passes :
 {
-	DecalTilingClearHeader = {
-		ComputeProgram = "DecalTilingClearHeader";
+	cs_decal_volume_clear_header = {
+		ComputeProgram = "cs_decal_volume_clear_header";
 	}
 
-	DecalTilingCopyIndirectArgs = {
-		ComputeProgram = "DecalTilingCopyIndirectArgs";
+	cs_decal_volume_indirect_args = {
+		ComputeProgram = "cs_decal_volume_indirect_args";
 	}
 
-	DecalTilingCopyIndirectArgsLastPass = {
-		ComputeProgram = "DecalTilingCopyIndirectArgsLastPass";
+	cs_decal_volume_indirect_args_last_pass = {
+		ComputeProgram = "cs_decal_volume_indirect_args_last_pass";
 	}
 
 	DecalVolumeTilingFirstPass = {
@@ -57,14 +57,14 @@ passes :
 
 
 [numthreads( 256, 1, 1 )]
-void DecalTilingClearHeader( uint3 dtid : SV_DispatchThreadID )
+void cs_decal_volume_clear_header( uint3 dtid : SV_DispatchThreadID )
 {
 	outDecalVolumeIndices[dtid.x] = 0;
 }
 
 
 [numthreads( 1, 1, 1 )]
-void DecalTilingCopyIndirectArgs()
+void cs_decal_volume_indirect_args()
 {
 	uint n = inCellIndirectionCount[0];
 	outIndirectArgs.Store3( 0, uint3( n, 1, 1 ) );
@@ -72,7 +72,7 @@ void DecalTilingCopyIndirectArgs()
 
 
 [numthreads( 1, 1, 1 )]
-void DecalTilingCopyIndirectArgsLastPass()
+void cs_decal_volume_indirect_args_last_pass()
 {
 	uint n = inCellIndirectionCount[0];
 	outIndirectArgs.Store3( 0, uint3( ( n + DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS ) / DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_LAST_PASS, 1, 1 ) );
