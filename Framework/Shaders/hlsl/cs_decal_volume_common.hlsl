@@ -354,6 +354,36 @@ uint DecalVolume_TestFrustumClipSpace( in DecalVolumeTest dv, in Frustum frustum
 }
 
 
+Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCellsXYZRcp, uint3 cellXYZ )
+{
+	Frustum outFrustum = (Frustum)0;
+
+#if DECAL_VOLUME_INTERSECTION_METHOD == 0
+	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.z );
+#else // DECAL_VOLUME_INTERSECTION_METHOD == 0
+	DecalVolume_BuildSubFrustumClipSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvNearFar.x, dvNearFar.z );
+#endif // #else // DECAL_VOLUME_INTERSECTION_METHOD == 0
+
+	return outFrustum;
+}
+
+
+uint DecalVolume_TestFrustum( const Frustum frustum, uint decalIndex )
+{
+	uint intersects;
+
+#if DECAL_VOLUME_INTERSECTION_METHOD == 0
+	const DecalVolume dv = inDecalVolumes[decalIndex];
+	intersects = DecalVolume_TestFrustumWorldSpace( dv, frustum, false );
+#else // #if DECAL_VOLUME_INTERSECTION_METHOD == 0
+	const DecalVolumeTest dv = inDecalVolumesTest[decalIndex];
+	intersects = DecalVolume_TestFrustumClipSpace( dv, frustum );
+#endif // #if DECAL_VOLUME_INTERSECTION_METHOD == 0
+
+	return intersects;
+}
+
+
 uint AlignPowerOfTwo( uint value, uint alignment )
 {
 	alignment--;
@@ -486,6 +516,19 @@ uint3 DecalVolume_DecodeCellCoord( uint flatCellIndex )
 }
 
 
+void DecalVolume_UnpackGroupToBucket( GroupToBucket gtb, out uint bucket, out uint firstGroup )
+{
+	bucket = gtb.packedBucketAndFirstGroup & 0xf;
+	firstGroup = gtb.packedBucketAndFirstGroup >> 4;
+}
+
+
+void DecalVolume_PackGroupToBucket( uint bucket, uint firstGroup, out GroupToBucket gtb )
+{
+	gtb.packedBucketAndFirstGroup = bucket | ( firstGroup << 4 );
+}
+
+
 void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint cellDecalCount, uint offsetToFirstDecalIndex, uint3 numCellsXYZ )
 {
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
@@ -564,36 +607,6 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 	}
 #endif // #else // DECAL_VOLUME_CLUSTER_LAST_PASS
-}
-
-
-Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCellsXYZRcp, uint3 cellXYZ )
-{
-	Frustum outFrustum = (Frustum)0;
-
-#if DECAL_VOLUME_INTERSECTION_METHOD == 0
-	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.z );
-#else // DECAL_VOLUME_INTERSECTION_METHOD == 0
-	DecalVolume_BuildSubFrustumClipSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvNearFar.x, dvNearFar.z );
-#endif // #else // DECAL_VOLUME_INTERSECTION_METHOD == 0
-
-	return outFrustum;
-}
-
-
-uint DecalVolume_TestFrustum( const Frustum frustum, uint decalIndex )
-{
-	uint intersects;
-
-#if DECAL_VOLUME_INTERSECTION_METHOD == 0
-	const DecalVolume dv = inDecalVolumes[decalIndex];
-	intersects = DecalVolume_TestFrustumWorldSpace( dv, frustum, false );
-#else // #if DECAL_VOLUME_INTERSECTION_METHOD == 0
-	const DecalVolumeTest dv = inDecalVolumesTest[decalIndex];
-	intersects = DecalVolume_TestFrustumClipSpace( dv, frustum );
-#endif // #if DECAL_VOLUME_INTERSECTION_METHOD == 0
-
-	return intersects;
 }
 
 

@@ -40,6 +40,7 @@ passes :
 
 #include "PassConstants.h"
 #include "decal_volume_rendering_cshared.h"
+#include "cs_decal_volume_cshared.hlsl"
 
 StructuredBuffer<DecalVolume> inDecalVolumes		REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS;
 StructuredBuffer<uint> inDecalVolumesCount			REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT;
@@ -142,15 +143,15 @@ float3 GetColorMap( uint count )
 float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 {
 	uint2 pixelCoord = IN.hpos.xy;
-	float2 pixelCoordNormalized = pixelCoord * renderTargetSize.zw;
-	uint2 screenTile = min( uint2( pixelCoordNormalized * float2( dvCellCount.xy ) ), dvCellCount.xy - 1 );
+	float2 pixelCoordNormalized = pixelCoord * dvdRenderTargetSize.zw;
+	uint2 screenTile = min( uint2( pixelCoordNormalized * float2( dvdCellCount.xy ) ), dvdCellCount.xy - 1 );
 
 	uint decalCount = 0;
 
-	for ( uint slice = 0; slice < dvCellCount.z; ++slice )
+	for ( uint slice = 0; slice < dvdCellCount.z; ++slice )
 	{
 		uint3 cellID = uint3( screenTile, slice );
-		uint clusterIndex = DecalVolume_GetCellFlatIndex( cellID, uint3( dvCellCount.xy, 1 ) );
+		uint clusterIndex = DecalVolume_GetCellFlatIndex( cellID, uint3( dvdCellCount.xy, 1 ) );
 
 		uint node = inDecalVolumeIndices[clusterIndex];
 		uint cellDecalCount;
@@ -170,7 +171,7 @@ vs_output DecalVolumeFarPlaneVp( uint vertexId : SV_VertexID )
 {
 	vs_output OUT = (vs_output)0;
 
-	float farPlane = nearFarPlane.y;
+	float farPlane = dvdNearFarPlane.y;
 
 	if ( vertexId == 0 )
 	{
@@ -216,7 +217,7 @@ float4 DecalVolumesAccumFp( in vs_output IN ) : SV_Target
 {
 	//float v = 0.25f;
 	//return float4( v.xxxx );
-	return colorMultiplier;
+	return dvdColorMultiplier;
 	//return float4( 1, 0, 0, 1 );
 	//return float4( 1, 0, 0, 1 );
 }

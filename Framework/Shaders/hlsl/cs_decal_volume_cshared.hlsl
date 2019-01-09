@@ -1,50 +1,45 @@
 #ifndef CS_DECAL_VOLUME_CSHARED_HLSL
 #define CS_DECAL_VOLUME_CSHARED_HLSL
 
-#include "decal_volume_cshared.h"
+#include "HlslFrameworkInterop.h"
 
 #define REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS					MAKE_REGISTER_CBUFFER( 0 )
 
-#define REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION			MAKE_REGISTER_SRV( 3 )
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS						MAKE_REGISTER_SRV( 0 )
 #define REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST					MAKE_REGISTER_SRV( 0 )
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT				MAKE_REGISTER_SRV( 1 )
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES				MAKE_REGISTER_SRV( 2 )
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION			MAKE_REGISTER_SRV( 3 )
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT		MAKE_REGISTER_SRV( 4 )
 
 #define REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES				MAKE_REGISTER_UAV( 0 )
-#define REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION			MAKE_REGISTER_UAV( 1 )
-#define REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT		MAKE_REGISTER_UAV( 2 )
-#define REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT		MAKE_REGISTER_UAV( 3 )
+#define REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT		MAKE_REGISTER_UAV( 1 )
+#define REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION			MAKE_REGISTER_UAV( 2 )
+#define REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT		MAKE_REGISTER_UAV( 3 )
+
 #define REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS						MAKE_REGISTER_UAV( 0 )
 #define REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_COUNT				MAKE_REGISTER_UAV( 1 )
 #define REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_TEST				MAKE_REGISTER_UAV( 2 )
+
+#define REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS				MAKE_REGISTER_UAV( 0 )
+
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET				MAKE_REGISTER_SRV( 5 )
 #define REGISTER_BUFFER_DECAL_VOLUME_OUT_GROUP_TO_BUCKET			MAKE_REGISTER_UAV( 0 )
 
-#define REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT		MAKE_REGISTER_SRV( 4 )
-#define REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET				MAKE_REGISTER_SRV( 5 )
+#define DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP						256
+#define DECAL_VOLUME_USE_XYW_CORNERS								1
 
-//#define DECAL_VOLUME_TILE_SIZE_X					8
-//#define DECAL_VOLUME_TILE_SIZE_Y					8
-//
-//#define DECAL_VOLUME_TILING_NUM_PASSES				2
-//#define DECAL_VOLUME_TILING_LAST_PASS				(DECAL_VOLUME_TILING_NUM_PASSES-1)
-
-//#define DECAL_VOLUME_CLUSTER_SIZE_X					32
-//#define DECAL_VOLUME_CLUSTER_SIZE_Y					32
-//#define DECAL_VOLUME_CLUSTER_CELLS_Z				32
-
-//#define DECAL_VOLUME_CLUSTERING_NUM_PASSES			5
-//#define DECAL_VOLUME_CLUSTERING_LAST_PASS			(DECAL_VOLUME_CLUSTERING_NUM_PASSES-1)
-
-#define DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP		256
 
 MAKE_FLAT_CBUFFER( DecalVolumeCsConstants, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS )
 {
 	CBUFFER_FLOAT4X4( dvViewMatrix );
-	//CBUFFER_FLOAT4( renderTargetSize ); // rcp in zw
 	CBUFFER_FLOAT4( dvTanHalfFov ); // rcp in zw
 	CBUFFER_FLOAT4( dvNearFar ); // x - near, y - far, z - far over near
 	CBUFFER_UINT4( dvCellCount ); // w = dvCellCount.x * dvCellCount.y * dvCellCount.z
 	CBUFFER_FLOAT4( dvCellCountRcp ); // w - unused
 	CBUFFER_UINT4( dvPassLimits ); // x - max output decal indices, y - max cell indirections per bucket, z - max cell indirections per bucket for previous pass, w - bucket index
 };
+
 
 MAKE_FLAT_CBUFFER( DecalVolumeCsCullConstants, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS )
 {
@@ -80,19 +75,63 @@ struct IndirectDispatchArgs
 	uint numGroupsZ;
 };
 
-#ifndef __cplusplus
 
-void DecalVolume_UnpackGroupToBucket( GroupToBucket gtb, out uint bucket, out uint firstGroup )
+struct DecalVolume
 {
-	bucket = gtb.packedBucketAndFirstGroup & 0xf;
-	firstGroup = gtb.packedBucketAndFirstGroup >> 4;
+	float3 position;
+	float3 halfSize;
+	float3 x;
+	float3 y;
+	float3 z;
+};
+
+
+// Positions in clip space
+struct DecalVolumeTest
+{
+#if DECAL_VOLUME_USE_XYW_CORNERS
+	// every vector has clip space x, y and w
+	// see cs_decal_volume_culling for the box's corner layout
+	float3 v0;
+	float3 v4;
+	float3 v5;
+	float3 v7;
+#else // DECAL_VOLUME_USE_XYW_CORNERS
+	// every vector has clip space x, y, z and w
+	float4 v0;
+	float4 v4;
+	float4 v5;
+	float4 v7;
+
+	//float4  v1;
+	//float4  v2;
+	//float4  v3;
+	//float4  v6;
+#endif // #else // DECAL_VOLUME_USE_XYW_CORNERS
+};
+
+
+#if COMPILING_SHADER_CODE
+
+uint DecalVolume_PackHeader( uint decalCount, uint offsetToFirstDecalIndex )
+{
+	return ( decalCount & 0x3ff ) | ( ( offsetToFirstDecalIndex & 0xffffff ) << 10 );
 }
 
-void DecalVolume_PackGroupToBucket( uint bucket, uint firstGroup, out GroupToBucket gtb )
+
+void DecalVolume_UnpackHeader( uint packedHeader, out uint decalCount, out uint offsetToFirstDecalIndex )
 {
-	gtb.packedBucketAndFirstGroup = bucket | ( firstGroup << 4 );
+	decalCount = packedHeader & 0x3ff;
+	offsetToFirstDecalIndex = packedHeader >> 10;
 }
 
-#endif // #ifndef __cplusplus
+
+uint DecalVolume_GetCellFlatIndex( uint3 cellID, uint3 numCells )
+{
+	return mad24( cellID.z, mul24( numCells.x, numCells.y ), mad24( cellID.y, numCells.x, cellID.x ) );
+}
+
+#endif // #if COMPILING_SHADER_CODE
+
 
 #endif // CS_DECAL_VOLUME_CSHARED_HLSL

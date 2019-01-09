@@ -3,6 +3,8 @@
 
 #ifdef __cplusplus
 
+#define COMPILING_SHADER_CODE 0
+
 #include <Util\Vectormath.h>
 #include <Gfx\Math\DirectXMathWrap.h>
 
@@ -24,6 +26,8 @@ typedef spad::dxmath::Float3 float3;
 #define CBUFFER_FLOAT4( name )									Vector4 name
 
 #else
+
+#define COMPILING_SHADER_CODE 1
 
 //#define REGISTER_B(exp) : register(b##exp) // constant buffer
 //#define REGISTER_T(exp) : register(t##exp) // texture or buffer

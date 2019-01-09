@@ -2715,23 +2715,23 @@ namespace spad
 
 		if ( currentView_ == GpuHeatmap )
 		{
-			decalVolumeRenderingConstants_.data.renderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
+			decalVolumeRenderingConstants_.data.dvdRenderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
 
 			if ( appMode_ == Tiling )
 			{
-				decalVolumeRenderingConstants_.data.dvCellCount[0] = tiling_->tilingPasses_.back().nCellsX;
-				decalVolumeRenderingConstants_.data.dvCellCount[1] = tiling_->tilingPasses_.back().nCellsY;
-				decalVolumeRenderingConstants_.data.dvCellCount[2] = 1;
-				decalVolumeRenderingConstants_.data.dvCellCount[3] = 0;
+				decalVolumeRenderingConstants_.data.dvdCellCount[0] = tiling_->tilingPasses_.back().nCellsX;
+				decalVolumeRenderingConstants_.data.dvdCellCount[1] = tiling_->tilingPasses_.back().nCellsY;
+				decalVolumeRenderingConstants_.data.dvdCellCount[2] = 1;
+				decalVolumeRenderingConstants_.data.dvdCellCount[3] = 0;
 
 				srvs[0] = tiling_->tilingPasses_.back().decalIndices.getSRV();
 			}
 			else
 			{
-				decalVolumeRenderingConstants_.data.dvCellCount[0] = clustering_->clusteringPasses_.back().nCellsX;
-				decalVolumeRenderingConstants_.data.dvCellCount[1] = clustering_->clusteringPasses_.back().nCellsY;
-				decalVolumeRenderingConstants_.data.dvCellCount[2] = clustering_->clusteringPasses_.back().nCellsZ;
-				decalVolumeRenderingConstants_.data.dvCellCount[3] = 0;
+				decalVolumeRenderingConstants_.data.dvdCellCount[0] = clustering_->clusteringPasses_.back().nCellsX;
+				decalVolumeRenderingConstants_.data.dvdCellCount[1] = clustering_->clusteringPasses_.back().nCellsY;
+				decalVolumeRenderingConstants_.data.dvdCellCount[2] = clustering_->clusteringPasses_.back().nCellsZ;
+				decalVolumeRenderingConstants_.data.dvdCellCount[3] = 0;
 
 				srvs[0] = clustering_->clusteringPasses_.back().decalIndices.getSRV();
 			}
@@ -2798,7 +2798,7 @@ namespace spad
 		passConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_PASS_CONSTANTS );
 		passConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_PASS_CONSTANTS );
 
-		decalVolumeRenderingConstants_.data.colorMultiplier = Vector4( 0.25f );
+		decalVolumeRenderingConstants_.data.dvdColorMultiplier = Vector4( 0.25f );
 		decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
 		decalVolumeRenderingConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
 
@@ -2838,7 +2838,7 @@ namespace spad
 		deviceContext.context->DrawIndexedInstancedIndirect( boxIndirectArgs_.getDxBuffer(), 0 );
 
 		// Draw wireframe
-		decalVolumeRenderingConstants_.data.colorMultiplier = Vector4( 0.0f );
+		decalVolumeRenderingConstants_.data.dvdColorMultiplier = Vector4( 0.0f );
 		decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
 
 		deviceContext.context->RSSetState( RasterizerStates::WireframeBackFaceCull() );
@@ -2916,7 +2916,7 @@ namespace spad
 		Vector4 ndc = projMatrixForCamera_ * Vector4( 0, 0, -decalVolumeFarPlane_, 1 );
 		float farPlaneNDC = ndc.getZ().getAsFloat() / ndc.getW().getAsFloat();
 
-		decalVolumeRenderingConstants_.data.nearFarPlane[1] = farPlaneNDC;
+		decalVolumeRenderingConstants_.data.dvdNearFarPlane[1] = farPlaneNDC;
 		decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
 		decalVolumeRenderingConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
 

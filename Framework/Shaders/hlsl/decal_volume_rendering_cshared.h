@@ -1,7 +1,7 @@
 #ifndef DECAL_VOLUME_RENDERING_CSHARED_H
 #define DECAL_VOLUME_RENDERING_CSHARED_H
 
-#include "decal_volume_cshared.h"
+#include "HlslFrameworkInterop.h"
 
 #define REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS				MAKE_REGISTER_CBUFFER( 2 )
 
@@ -10,10 +10,10 @@
 
 MAKE_FLAT_CBUFFER( CbDecalVolumeRenderingConstants, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS )
 {
-	CBUFFER_FLOAT4( renderTargetSize ); // rcp in zw
-	CBUFFER_UINT4( dvCellCount );
-	CBUFFER_FLOAT4( colorMultiplier );
-	CBUFFER_FLOAT4( nearFarPlane );
+	CBUFFER_FLOAT4( dvdRenderTargetSize ); // rcp in zw
+	CBUFFER_UINT4( dvdCellCount );
+	CBUFFER_FLOAT4( dvdColorMultiplier );
+	CBUFFER_FLOAT4( dvdNearFarPlane );
 };
 
 #endif // DECAL_VOLUME_RENDERING_CSHARED_H
