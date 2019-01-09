@@ -55,6 +55,16 @@ void DecalVolumeCulling( uint3 dtid : SV_DispatchThreadID )
 		float3 v3 = center - xs + ys + zs;
 		float3 v6 = center + xs + ys - zs;
 
+#if DECAL_VOLUME_USE_XYW_CORNERS
+
+		DecalVolumeTest dvt;
+		dvt.v0 = mul( ViewProjMatrix, float4( v0, 1 ) ).xyw;
+		dvt.v4 = mul( ViewProjMatrix, float4( v4, 1 ) ).xyw;
+		dvt.v5 = mul( ViewProjMatrix, float4( v5, 1 ) ).xyw;
+		dvt.v7 = mul( ViewProjMatrix, float4( v7, 1 ) ).xyw;
+
+#else // #if DECAL_VOLUME_USE_XYW_CORNERS
+
 		DecalVolumeTest dvt;
 		dvt.v0 = mul( ViewProjMatrix, float4( v0, 1 ) );
 		dvt.v4 = mul( ViewProjMatrix, float4( v4, 1 ) );
@@ -65,6 +75,8 @@ void DecalVolumeCulling( uint3 dtid : SV_DispatchThreadID )
 		//dvt.v2 = mul( ViewProjMatrix, float4( v2, 1 ) );
 		//dvt.v3 = mul( ViewProjMatrix, float4( v3, 1 ) );
 		//dvt.v6 = mul( ViewProjMatrix, float4( v6, 1 ) );
+
+#endif // #else // #if DECAL_VOLUME_USE_XYW_CORNERS
 
 		outDecalVolumesTest[globalIndex] = dvt;
 	}

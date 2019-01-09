@@ -211,8 +211,8 @@ namespace spad
 		};
 
 		//AppMode appMode_ = Tiling;
-		//AppMode appMode_ = Clustering;
-		AppMode appMode_ = Scene;
+		AppMode appMode_ = Clustering;
+		//AppMode appMode_ = Scene;
 
 		enum OutputView : int
 		{

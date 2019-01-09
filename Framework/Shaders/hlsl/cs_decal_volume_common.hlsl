@@ -227,25 +227,44 @@ uint DecalVolume_TestFrustumWorldSpace( in DecalVolume dv, in Frustum frustum, b
 
 void DecalVolume_GetCornersClipSpace( DecalVolumeTest dv, out float4 dvCornersXYW[8] )
 {
+#if DECAL_VOLUME_USE_XYW_CORNERS
+
+	float3 ex = dv.v5 - dv.v4;
+	float3 ey = dv.v7 - dv.v4;
+	float3 v1 = dv.v0 + ex;
+
+	dvCornersXYW[0].xyw = dv.v0.xyz;
+	dvCornersXYW[1].xyw = v1;
+	dvCornersXYW[2].xyw = ( v1 + ey );
+	dvCornersXYW[3].xyw = ( dv.v0 + ey );
+
+	dvCornersXYW[4].xyw = dv.v4;
+	dvCornersXYW[5].xyw = dv.v5;
+	dvCornersXYW[6].xyw = ( dv.v5 + ey );
+	dvCornersXYW[7].xyw = dv.v7;
+
+#else // #if DECAL_VOLUME_USE_XYW_CORNERS
+
 	float4 ex = dv.v5 - dv.v4;
 	float4 ey = dv.v7 - dv.v4;
-
 	float4 v1 = dv.v0 + ex;
 
 	dvCornersXYW[0] = dv.v0;
 	dvCornersXYW[1] = v1;
-	dvCornersXYW[2] = (v1 + ey);
-	dvCornersXYW[3] = (dv.v0 + ey);
+	dvCornersXYW[2] = ( v1 + ey );
+	dvCornersXYW[3] = ( dv.v0 + ey );
 
 	dvCornersXYW[4] = dv.v4;
 	dvCornersXYW[5] = dv.v5;
-	dvCornersXYW[6] = (dv.v5 + ey);
+	dvCornersXYW[6] = ( dv.v5 + ey );
 	dvCornersXYW[7] = dv.v7;
 
 	//dvCornersXYW[1] = dv.v1;
 	//dvCornersXYW[2] = dv.v2;
 	//dvCornersXYW[3] = dv.v3;
 	//dvCornersXYW[6] = dv.v6;
+
+#endif // #else // #if DECAL_VOLUME_USE_XYW_CORNERS
 }
 
 
