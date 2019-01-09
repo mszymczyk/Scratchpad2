@@ -3,10 +3,10 @@
 
 #include "HlslFrameworkInterop.h"
 
-#define DECAL_VOLUME_IN_DECALS_BINDING				0
-#define DECAL_VOLUME_IN_DECALS_COUNT_BINDING		1
-#define DECAL_VOLUME_IN_DECAL_INDICES_BINDING		2
-#define DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING		0
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS				MAKE_REGISTER_SRV( 0 )
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT		MAKE_REGISTER_SRV( 1 )
+#define REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES		MAKE_REGISTER_SRV( 2 )
+#define REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS		MAKE_REGISTER_UAV( 0 )
 
 #define DECAL_VOLUME_USE_XYW_CORNERS 1
 
@@ -61,7 +61,7 @@ void DecalVolume_UnpackHeader( uint packedHeader, out uint decalCount, out uint 
 
 uint DecalVolume_GetCellFlatIndex( uint3 cellID, uint3 numCells )
 {
-	return ( cellID.z * numCells.x * numCells.y + cellID.y * numCells.x + cellID.x );
+	return mad24( cellID.z, mul24( numCells.x, numCells.y ), mad24( cellID.y, numCells.x, cellID.x ) );
 }
 #endif // #ifndef __cplusplus
 

@@ -6,9 +6,9 @@
 // follows vector math convention, matrices are column major
 // multiplication must be done: vecResult = mat * vec
 
-#define CbDebugRendererConstantsRegister 1
+#define REGISTER_CBUFFER_DEBUG_RENDERER_CONSTANTS		MAKE_REGISTER_CBUFFER( 1 )
 
-CBUFFER CbDebugRendererConstants REGISTER_B(CbDebugRendererConstantsRegister)
+MAKE_FLAT_CBUFFER( CbDebugRendererConstants, REGISTER_CBUFFER_DEBUG_RENDERER_CONSTANTS )
 {
 	float4x4 WorldViewProjection; // proj * view * world, object to clip space
 	float4 Color;

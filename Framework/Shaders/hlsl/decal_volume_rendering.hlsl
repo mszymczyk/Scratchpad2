@@ -41,13 +41,13 @@ passes :
 #include "PassConstants.h"
 #include "decal_volume_rendering_cshared.h"
 
-StructuredBuffer<DecalVolume> inDecalVolumes		REGISTER_T( DECAL_VOLUME_IN_DECALS_BINDING );
-StructuredBuffer<uint> inDecalVolumesCount			REGISTER_T( DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
-StructuredBuffer<uint> inDecalVolumeIndices				REGISTER_T( DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
-RWByteAddressBuffer outIndirectArgs					REGISTER_U( DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
+StructuredBuffer<DecalVolume> inDecalVolumes		REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS;
+StructuredBuffer<uint> inDecalVolumesCount			REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT;
+StructuredBuffer<uint> inDecalVolumeIndices			REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES;
+RWByteAddressBuffer outIndirectArgs					REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS;
 
-Texture2D diffuseTex								REGISTER_T( DIFFUSE_TEXTURE_REGISTER_BINDING );
-SamplerState diffuseTexSamp							REGISTER_S( DIFFUSE_SAMPLER_REGISTER_BINDING );
+Texture2D diffuseTex								REGISTER_TEXTURE_DIFFUSE_TEXTURE;
+SamplerState diffuseTexSamp							REGISTER_SAMPLER_DIFFUSE_SAMPLER;
 
 
 [numthreads( 1, 1, 1 )]

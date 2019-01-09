@@ -51,6 +51,17 @@ namespace spad
 			RenderTargetSizeCount
 		};
 
+		enum TileSize : int
+		{
+			TileSize_128x128,
+			TileSize_64x64,
+			TileSize_48x48,
+			TileSize_32x32,
+			TileSize_16x16,
+			TileSize_8x8,
+			TileSizeCount
+		};
+
 		void ShutDown();
 		void StartUpBox();
 		void StartUpAxes();
@@ -87,6 +98,10 @@ namespace spad
 		RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
 		//RenderTargetSize rtSize_ = RTW_128_128;
+		TileSize tileSizeForTiling_ = TileSize_32x32;
+		TileSize tileSizeForClustering_ = TileSize_32x32;
+		int numPassesForTiling_ = 4;
+		int numPassesForClustering_ = 5;
 
 		HlslShaderPtr decalVolumeRenderingShader_;
 		HlslShaderPtr decalVolumeCullShader_;
@@ -153,6 +168,7 @@ namespace spad
 			bool dynamicBuckets_ = false;
 			bool dynamicBucketsMerge_ = true;
 			bool enablePassTiming_ = true;
+			bool needsReset_ = false;
 		};
 
 		void PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeShared &shared, std::vector<DecalVolumeClusteringPass> &passes );
@@ -226,8 +242,9 @@ namespace spad
 
 		DecalVolumeTilingDataPtr DecalVolumeTilingStartUp();
 		void DecalVolumeTilingRun( Dx11DeviceContext& deviceContext );
-
-		void CalculateCellCount( uint rtWidth, uint rtHeight, uint &outCellsX, uint &outCellsY, uint &outCellsZ );
+		
+		static void GetTileSize( TileSize tileSize, uint &outTileSize );
+		void CalculateCellCount( uint rtWidth, uint rtHeight, uint tileSize, uint numPasses, uint &outCellsX, uint &outCellsY, uint &outCellsZ );
 		DecalVolumeClusteringDataPtr DecalVolumeClusteringStartUp();
 		void DecalVolumeClusteringRun( Dx11DeviceContext& deviceContext );
 	};

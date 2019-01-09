@@ -49,7 +49,23 @@ namespace spad
 #endif // #if USE_Z_01
 	}
 
+	// This produces a reversed clip depth perspective matrix, i.e. clip depth = 0 at the far clip plane and clip depth = 1 at the near clip plane.
+	Matrix4 InfinitePerspectiveMatrix( float tanHalfFovX, float tanHalfFovY, float zNear )
+	{
+		SPAD_ASSERT( zNear > 0 );
+		SPAD_ASSERT( tanHalfFovX > 0 );
+		SPAD_ASSERT( tanHalfFovY > 0 );
 
+		Matrix4 mtx;
+		memset( &mtx, 0, sizeof( mtx ) );
+
+		mtx[0][0] = 1.0f / tanHalfFovX;
+		mtx[1][1] = 1.0f / tanHalfFovY;
+		mtx[2][3] = 1.0f;
+		mtx[3][2] = zNear;
+
+		return mtx;
+	}
 
 	void extractFrustumCorners( Vector3 dst[8], const Matrix4& viewProjection, bool dxStyleZProjection )
 	{
@@ -1102,6 +1118,33 @@ namespace spad
 
 		if ( appMode_ == Tiling )
 		{
+			const char* items[] = { "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
+			if ( ImGui::Combo( "Tile size (tiling)", reinterpret_cast<int*>( &tileSizeForTiling_ ), items, IM_ARRAYSIZE( items ) ) )
+			{
+				tiling_ = DecalVolumeTilingStartUp();
+			}
+
+			if ( ImGui::SliderInt( "Num passes (tiling)", &numPassesForTiling_, 2, 6 ) )
+			{
+				tiling_ = DecalVolumeTilingStartUp();
+			}
+		}
+		else
+		{
+			const char* items[] = { "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
+			if ( ImGui::Combo( "Tile size (clustering)", reinterpret_cast<int*>( &tileSizeForClustering_ ), items, IM_ARRAYSIZE( items ) ) )
+			{
+				clustering_ = DecalVolumeClusteringStartUp();
+			}
+
+			if ( ImGui::SliderInt( "Num passes (clustering)", &numPassesForClustering_, 2, 6 ) )
+			{
+				clustering_ = DecalVolumeClusteringStartUp();
+			}
+		}
+
+		if ( appMode_ == Tiling )
+		{
 			ImGuiPrintClusteringInfo( tiling_->tiling_, tiling_->tilingPasses_, tiling_->decalVolumesTilingTimer_ );
 		}
 		else if ( appMode_ == Clustering || appMode_ == Scene )
@@ -1112,6 +1155,16 @@ namespace spad
 		{
 			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum" };
 			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
+		}
+
+		if ( tiling_->tiling_.needsReset_ )
+		{
+			tiling_ = DecalVolumeTilingStartUp();
+		}
+
+		if ( clustering_->clustering_.needsReset_ )
+		{
+			clustering_ = DecalVolumeClusteringStartUp();
 		}
 	}
 
@@ -1182,7 +1235,7 @@ namespace spad
 		objectConstants_.updateGpu( deviceContext.context );
 		objectConstants_.setVS( deviceContext.context, 1 );
 
-		context->PSSetSamplers( DIFFUSE_SAMPLER_REGISTER_BINDING, 1, &SamplerStates::anisotropic );
+		context->PSSetSamplers( REGISTER_SAMPLER_DIFFUSE_SAMPLER, 1, &SamplerStates::anisotropic );
 
 		Dx11InputLayoutCache& inputLayoutCache = deviceContext.inputLayoutCache;
 
@@ -1215,7 +1268,7 @@ namespace spad
 					material.DiffuseMap
 				};
 
-				context->PSSetShaderResources( DIFFUSE_SAMPLER_REGISTER_BINDING, 1, psTextures );
+				context->PSSetShaderResources( REGISTER_SAMPLER_DIFFUSE_SAMPLER, 1, psTextures );
 				context->DrawIndexed( part.IndexCount, part.IndexStart, 0 );
 			}
 		}
@@ -1252,12 +1305,12 @@ namespace spad
 		decalVolumeCullConstants_.data.numDecalsToCull[2] = 0;
 		decalVolumeCullConstants_.data.numDecalsToCull[3] = 0;
 		decalVolumeCullConstants_.updateGpu( deviceContext.context );
-		decalVolumeCullConstants_.setCS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
+		decalVolumeCullConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
 
-		decalVolumesGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
-		decalVolumesCulledGPU_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_BINDING );
-		decalVolumesCulledCountGPU_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_COUNT_BINDING );
-		decalVolumesTestCulledGPU_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECALS_TEST_BINDING );
+		decalVolumesGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
+		decalVolumesCulledGPU_.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS );
+		decalVolumesCulledCountGPU_.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_COUNT );
+		decalVolumesTestCulledGPU_.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_TEST );
 
 		uint nGroupsX = ( numDecalVolumes_ + DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP - 1 ) / DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP;
 		deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -1381,14 +1434,14 @@ namespace spad
 
 			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 8 );
 
-			////GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
+			//GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
 
-			////Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
-			////Vector4 xsClip = viewProj * xs;
-			////Vector4 ysClip = viewProj * ys;
-			////Vector4 zsClip = viewProj * zs;
+			//Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
+			//Vector4 xsClip = viewProj * xs;
+			//Vector4 ysClip = viewProj * ys;
+			//Vector4 zsClip = viewProj * zs;
 
-			////GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 16 );
+			//GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 16 );
 
 			//for ( uint iCellsZ = 0; iCellsZ < 2; ++iCellsZ )
 			//{
@@ -2004,7 +2057,7 @@ namespace spad
 				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_clear_header" );
 				fxPass.setCS( deviceContext.context );
 
-				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
+				p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
 
 				uint nGroupsX = ( p.nCellsX * p.nCellsY + 256 - 1 ) / 256;
 				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -2015,7 +2068,7 @@ namespace spad
 			//const HlslShaderPass& fxPassClear = *decalVolumeTilingShader_->getPass( "DecalTilingClearIndirectArgs" );
 			//fxPassClear.setCS( deviceContext.context );
 
-			//p.indirectArgs.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
+			//p.indirectArgs.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
 			//deviceContext.context->Dispatch( 1, 1, 1 );
 
 			//char passName[128];
@@ -2065,41 +2118,41 @@ namespace spad
 
 				tiling_->tilingConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
-				//pp.countPerCell.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_COUNT_PER_CELL_BINDING );
-				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
-				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
-				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
+				//pp.countPerCell.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_COUNT_PER_CELL );
+				pp.decalIndices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES );
+				pp.cellIndirection.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION );
+				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
 			}
 
 			tiling_->tilingConstants_.updateGpu( deviceContext.context );
-			tiling_->tilingConstants_.setCS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
+			tiling_->tilingConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
 
-			//decalVolumesGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
+			//decalVolumesGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
 			if ( tiling_->tiling_.intersectionMethod_ )
 			{
-				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_TEST_BINDING );
+				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST );
 			}
 			else
 			{
-				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
+				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
 			}
-			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
+			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT );
 
 			if ( !lastPass )
 			{
-				//p.countPerCell.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_COUNT_PER_CELL_BINDING );
-				p.cellIndirection.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_CELL_INDIRECTION_BINDING );
-				p.cellIndirectionCount.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT_BINDING );
+				//p.countPerCell.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_COUNT_PER_CELL );
+				p.cellIndirection.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION );
+				p.cellIndirectionCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT );
 			}
 
 			if ( lastPass )
 			{
 				DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass - 1];
-				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
+				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
 			}
 
-			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
-			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_COUNT_BINDING );
+			p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
+			p.memAlloc.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
 
 			if ( firstPass )
 			{
@@ -2128,8 +2181,8 @@ namespace spad
 					fxPassCopy.setCS( deviceContext.context );
 				}
 
-				p.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
-				p.indirectArgs.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
+				p.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
+				p.indirectArgs.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
 
 				deviceContext.context->Dispatch( 1, 1, 1 );
 
@@ -2162,12 +2215,42 @@ namespace spad
 	}
 
 
-	void SettingsTestApp::CalculateCellCount( uint rtWidth, uint rtHeight, uint &outCellsX, uint &outCellsY, uint &outCellsZ )
+	void SettingsTestApp::GetTileSize( TileSize tileSize, uint &outTileSize )
 	{
-		uint nCellsXBase = ( rtWidth + DECAL_VOLUME_CLUSTER_SIZE_X - 1 ) / DECAL_VOLUME_CLUSTER_SIZE_X;
-		uint nCellsYBase = ( rtHeight + DECAL_VOLUME_CLUSTER_SIZE_Y - 1 ) / DECAL_VOLUME_CLUSTER_SIZE_Y;
+		switch ( tileSize )
+		{
+		case spad::SettingsTestApp::TileSize_128x128:
+			outTileSize = 128;
+			break;
+		case spad::SettingsTestApp::TileSize_64x64:
+			outTileSize = 64;
+			break;
+		case spad::SettingsTestApp::TileSize_48x48:
+			outTileSize = 48;
+			break;
+		case spad::SettingsTestApp::TileSize_32x32:
+			outTileSize = 32;
+			break;
+		case spad::SettingsTestApp::TileSize_16x16:
+			outTileSize = 16;
+			break;
+		case spad::SettingsTestApp::TileSize_8x8:
+			outTileSize = 8;
+			break;
+		default:
+			SPAD_NOT_IMPLEMENTED;
+			outTileSize = 32;
+		}
+	}
 
-		const uint maxDivider = 1 << ( DECAL_VOLUME_CLUSTERING_NUM_PASSES - 1 );
+	void SettingsTestApp::CalculateCellCount( uint rtWidth, uint rtHeight, uint tileSize, uint numPasses, uint &outCellsX, uint &outCellsY, uint &outCellsZ )
+	{
+		SPAD_ASSERT( numPasses > 0 );
+
+		uint nCellsXBase = ( rtWidth + tileSize - 1 ) / tileSize;
+		uint nCellsYBase = ( rtHeight + tileSize - 1 ) / tileSize;
+
+		const uint maxDivider = 1 << ( numPasses - 1 );
 		const uint a = nCellsYBase / maxDivider;
 		if ( a * maxDivider != nCellsYBase )
 		{
@@ -2182,12 +2265,16 @@ namespace spad
 
 		outCellsX = nCellsXBase;
 		outCellsY = nCellsYBase;
-		outCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
+		//outCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
+		outCellsZ = 32;
 	}
 
 	SettingsTestApp::DecalVolumeClusteringDataPtr SettingsTestApp::DecalVolumeClusteringStartUp()
 	{
 		std::cout << std::endl;
+
+		uint tileSize;
+		GetTileSize( tileSizeForClustering_, tileSize );
 
 		for ( uint rtSize = RTW_64_64; rtSize < RenderTargetSizeCount; ++rtSize )
 		{
@@ -2197,7 +2284,7 @@ namespace spad
 			uint nCellsX;
 			uint nCellsY;
 			uint nCellsZ;
-			CalculateCellCount( rtWidth, rtHeight, nCellsX, nCellsY, nCellsZ );
+			CalculateCellCount( rtWidth, rtHeight, tileSize, static_cast<uint>(numPassesForClustering_), nCellsX, nCellsY, nCellsZ );
 
 			uint cellCount = nCellsX * nCellsY * nCellsZ;
 			uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( cellCount ) ) );
@@ -2212,7 +2299,7 @@ namespace spad
 		clusteringPtr->decalVolumesClusteringTimer_.Initialize( dxDevice );
 		clusteringPtr->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
 
-		clusteringPtr->clusteringPasses_.resize( DECAL_VOLUME_CLUSTERING_NUM_PASSES );
+		clusteringPtr->clusteringPasses_.resize( numPassesForClustering_ );
 
 		uint rtWidth, rtHeight;
 		GetRenderTargetSize( rtWidth, rtHeight );
@@ -2220,7 +2307,7 @@ namespace spad
 		uint nCellsX;
 		uint nCellsY;
 		uint nCellsZ;
-		CalculateCellCount( rtWidth, rtHeight, nCellsX, nCellsY, nCellsZ );
+		CalculateCellCount( rtWidth, rtHeight, tileSize, numPassesForClustering_, nCellsX, nCellsY, nCellsZ );
 
 		uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( nCellsX * nCellsY * nCellsZ ) ) );
 
@@ -2342,7 +2429,7 @@ namespace spad
 				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_clear_header" );
 				fxPass.setCS( deviceContext.context );
 
-				p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
+				p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
 
 				uint nGroupsX = (p.nCellsX * p.nCellsY * p.nCellsZ + 256 - 1) / 256;
 				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
@@ -2417,42 +2504,42 @@ namespace spad
 
 				clustering_->clusteringConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
-				pp.decalIndices.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
-				pp.cellIndirection.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
+				pp.decalIndices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES );
+				pp.cellIndirection.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION );
 				if ( bucketsMergeEnabled )
 				{
-					p.groupToBucket.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
+					p.groupToBucket.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET );
 				}
 			}
 
 			if ( lastPass )
 			{
 				DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
-				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
+				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
 			}
 
 			clustering_->clusteringConstants_.updateGpu( deviceContext.context );
-			clustering_->clusteringConstants_.setCS( deviceContext.context, DECAL_VOLUME_CS_CONSTANTS_BINDING );
+			clustering_->clusteringConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
 
 			if ( clustering_->clustering_.intersectionMethod_ )
 			{
-				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_TEST_BINDING );
+				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST );
 			}
 			else
 			{
-				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_BINDING );
+				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
 			}
 
-			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
+			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT );
 
 			if ( !lastPass )
 			{
-				p.cellIndirection.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_CELL_INDIRECTION_BINDING );
-				p.cellIndirectionCount.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT_BINDING );
+				p.cellIndirection.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION );
+				p.cellIndirectionCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT );
 			}
 
-			p.decalIndices.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
-			p.memAlloc.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_DECAL_INDICES_COUNT_BINDING );
+			p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
+			p.memAlloc.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
 
 			if ( firstPass )
 			{
@@ -2542,8 +2629,8 @@ namespace spad
 					}
 				}
 
-				p.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
-				p.indirectArgs.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
+				p.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
+				p.indirectArgs.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
 
 				deviceContext.context->Dispatch( 1, 1, 1 );
 
@@ -2558,8 +2645,8 @@ namespace spad
 				//	const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_assign_bucket" );
 				//	fxPassCopy.setCS( deviceContext.context );
 
-				//	p.cellIndirectionCount.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
-				//	np.groupToBucket.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_GROUP_TO_BUCKET_BINDING );
+				//	p.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
+				//	np.groupToBucket.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_GROUP_TO_BUCKET );
 
 				//	deviceContext.context->DispatchIndirect( p.indirectArgs.getDxBuffer(), 12 );
 
@@ -2649,8 +2736,8 @@ namespace spad
 				srvs[0] = clustering_->clusteringPasses_.back().decalIndices.getSRV();
 			}
 			decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
-			decalVolumeRenderingConstants_.setVS( deviceContext.context, DECAL_VOLUME_CONSTANTS_BINDING );
-			decalVolumeRenderingConstants_.setPS( deviceContext.context, DECAL_VOLUME_CONSTANTS_BINDING );
+			decalVolumeRenderingConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
+			decalVolumeRenderingConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
 		}
 		else
 		{
@@ -2658,7 +2745,7 @@ namespace spad
 			//srvs[0] = decalVolumesLinkedListCPU_.getSRV();
 		}
 
-		context->PSSetShaderResources( DECAL_VOLUME_IN_DECAL_INDICES_BINDING, 1, srvs );
+		context->PSSetShaderResources( REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES, 1, srvs );
 
 		context->Draw( 3, 0 );
 
@@ -2668,13 +2755,13 @@ namespace spad
 	{
 		deviceContext.BeginMarker( "DrawBoxesAndAxesFillIndirectArgs" );
 
-		decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
+		decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT );
 
 		{
 			const HlslShaderPass& fxPass = *decalVolumeRenderingShader_->getPass( "DecalVolumeCopyIndirectArgsIndexed" );
 			fxPass.setCS( deviceContext.context );
 
-			boxIndirectArgs_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
+			boxIndirectArgs_.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
 			deviceContext.context->Dispatch( 1, 1, 1 );
 		}
 
@@ -2682,7 +2769,7 @@ namespace spad
 			const HlslShaderPass& fxPass = *decalVolumeRenderingShader_->getPass( "cs_decal_volume_indirect_args" );
 			fxPass.setCS( deviceContext.context );
 
-			axesIndirectArgs_.setCS_UAV( deviceContext.context, DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
+			axesIndirectArgs_.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
 			deviceContext.context->Dispatch( 1, 1, 1 );
 		}
 
@@ -2708,12 +2795,12 @@ namespace spad
 		passConstants_.data.View = viewMatrixForDecalVolumes_;
 		passConstants_.data.ViewProjection = projMatrixForDecalVolumes_ * viewMatrixForDecalVolumes_;
 		passConstants_.updateGpu( deviceContext.context );
-		passConstants_.setVS( deviceContext.context, CB_PASS_CONSTANTS_REGISTER );
-		passConstants_.setPS( deviceContext.context, CB_PASS_CONSTANTS_REGISTER );
+		passConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_PASS_CONSTANTS );
+		passConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_PASS_CONSTANTS );
 
 		decalVolumeRenderingConstants_.data.colorMultiplier = Vector4( 0.25f );
 		decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
-		decalVolumeRenderingConstants_.setPS( deviceContext.context, DECAL_VOLUME_CONSTANTS_BINDING );
+		decalVolumeRenderingConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
 
 		//objectConstants_.setVS( deviceContext.context, CB_OBJECT_CONSTANTS_REGISTER );
 
@@ -2744,8 +2831,8 @@ namespace spad
 		deviceContext.context->IASetVertexBuffers( 0, 1, &vb, &stride, &offset );
 		deviceContext.context->IASetIndexBuffer( boxIndexBuffer_, DXGI_FORMAT_R16_UINT, 0 );
 
-		deviceContext.context->VSSetShaderResources( DECAL_VOLUME_IN_DECALS_BINDING, 1, decalVolumesCulledGPU_.getSRVs() );
-		deviceContext.context->PSSetShaderResources( DECAL_VOLUME_IN_DECALS_BINDING, 1, decalVolumesCulledGPU_.getSRVs() );
+		deviceContext.context->VSSetShaderResources( REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS, 1, decalVolumesCulledGPU_.getSRVs() );
+		deviceContext.context->PSSetShaderResources( REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS, 1, decalVolumesCulledGPU_.getSRVs() );
 
 		//deviceContext.context->DrawIndexedInstanced( 36, numDecalVolumes_, 0, 0, 0 );
 		deviceContext.context->DrawIndexedInstancedIndirect( boxIndirectArgs_.getDxBuffer(), 0 );
@@ -2787,8 +2874,8 @@ namespace spad
 		passConstants_.data.View = viewMatrixForDecalVolumes_;
 		passConstants_.data.ViewProjection = projMatrixForDecalVolumes_ * viewMatrixForDecalVolumes_;
 		passConstants_.updateGpu( deviceContext.context );
-		passConstants_.setVS( deviceContext.context, CB_PASS_CONSTANTS_REGISTER );
-		passConstants_.setPS( deviceContext.context, CB_PASS_CONSTANTS_REGISTER );
+		passConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_PASS_CONSTANTS );
+		passConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_PASS_CONSTANTS );
 
 		const HlslShaderPass& fxPass = *decalVolumeRenderingShader_->getPass( "DecalVolumeAxes" );
 		fxPass.setVS( deviceContext.context );
@@ -2813,8 +2900,8 @@ namespace spad
 		ID3D11Buffer *vb = axesVertexBuffer_;
 		deviceContext.context->IASetVertexBuffers( 0, 1, &vb, &stride, &offset );
 
-		deviceContext.context->VSSetShaderResources( DECAL_VOLUME_IN_DECALS_BINDING, 1, decalVolumesCulledGPU_.getSRVs() );
-		deviceContext.context->PSSetShaderResources( DECAL_VOLUME_IN_DECALS_BINDING, 1, decalVolumesCulledGPU_.getSRVs() );
+		deviceContext.context->VSSetShaderResources( REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS, 1, decalVolumesCulledGPU_.getSRVs() );
+		deviceContext.context->PSSetShaderResources( REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS, 1, decalVolumesCulledGPU_.getSRVs() );
 
 		//deviceContext.context->DrawInstanced( 6, numDecalVolumes_, 0, 0 );
 		deviceContext.context->DrawInstancedIndirect( axesIndirectArgs_.getDxBuffer(), 0 );
@@ -2831,7 +2918,7 @@ namespace spad
 
 		decalVolumeRenderingConstants_.data.nearFarPlane[1] = farPlaneNDC;
 		decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
-		decalVolumeRenderingConstants_.setVS( deviceContext.context, DECAL_VOLUME_CONSTANTS_BINDING );
+		decalVolumeRenderingConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
 
 		const HlslShaderPass& fxPass = *decalVolumeRenderingShader_->getPass( "DecalVolumeFarPlane" );
 		fxPass.setVS( deviceContext.context );

@@ -1,4 +1,101 @@
 
+#if DECAL_VOLUME_CLUSTER_GCN
+
+#if DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP != 64
+#error this variant works only on group size 64
+#endif // #if DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP != 64
+
+void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+{
+	// every n threads process single cell, for instance group of 64 threads can process 2, 4, 8, 16, 32 or 64 cells
+
+	uint threadIndex = groupThreadID.x; // warp/wave index
+	uint localCellIndex = groupThreadID.x / numThreadsPerCell; // cell index, e.g., every 4 threads process one cell, in this case, whole group is processing 16 cells
+	uint cellThreadIndex = groupThreadID.x % numThreadsPerCell; // thread within 'cell'
+	uint firstCellIndex = localCellIndex * numThreadsPerCell;
+
+	// allocate speculatively one chunk per cell, might cause overallocation
+	uint offsetToFirstDecalIndexPerCell = 0;
+	if ( cellValid && cellThreadIndex == 0 )
+	{
+		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, offsetToFirstDecalIndexPerCell );
+	}
+
+	//GroupMemoryBarrierWithGroupSync(); // not needed, group size is 64
+
+	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
+	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
+	uint cellCount = DecalVolume_CellCountCurrentPass();
+	uint3 cellXYZ = DecalVolume_DecodeCellCoord( encodedCellXYZ );
+	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
+
+	uint cellOffsetToFirstDecalIndex = 0;
+	uint decalIndex = 0;
+	uint intersects = 0;
+
+	if ( cellValid )
+	{
+		//cellOffsetToFirstDecalIndex = sharedOffsetToFirstDecalIndexPerCell[localCellIndex];
+		cellOffsetToFirstDecalIndex = ReadLane( offsetToFirstDecalIndexPerCell, firstCellIndex );
+
+#if DECAL_VOLUME_CLUSTER_LAST_PASS
+		cellOffsetToFirstDecalIndex += cellCount;
+#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
+
+		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
+
+		uint iGlobalDecalBase = 0;
+
+		// every thread calculates intersection with one decal
+#if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		decalIndex = cellThreadIndex < passDecalCount ? iGlobalDecalBase + cellThreadIndex : 0xffffffff;
+#else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		uint index = iGlobalDecalBase + cellThreadIndex;
+		decalIndex = index < passDecalCount ? inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + index] : 0xffffffff;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
+
+		// Compare against frustum number of decals
+		if ( decalIndex < frustumDecalCount )
+		{
+			intersects = DecalVolume_TestFrustum( frustum, decalIndex );
+		}
+	}
+
+	if ( cellValid )
+	{
+		//uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 ); // (1 << 32) - 1 is undefined when operating on uint
+		ulong cellMask = shlU64( 1, numThreadsPerCell ) - 1; // BitFieldMask
+		ulong visibleMask = BallotMask( intersects );
+		//uint cellVisibility = ( sharedVisibility[firstCellIndex/32] >> (firstCellIndex - threadWordIndex * 32) ) & cellMask;
+		//uint cellVisibility = ( visibleMask >> firstCellIndex ) & cellMask; // only cell relevant bits
+		ulong cellVisibility = andU64( shrU64( visibleMask, firstCellIndex ), cellMask );
+
+		uint cellThreadBit = 1 << cellThreadIndex;
+		if ( cellValid && cmpNeqU64( andU64( cellVisibility, cellThreadBit ), 0 ) )
+		{
+			ulong cellLowerBits = andU64( cellVisibility, cellThreadBit - 1 );
+			uint localIndex = CountSetBits64( cellLowerBits );
+
+			uint cellIndex = localIndex;
+			uint globalIndex = cellOffsetToFirstDecalIndex + cellIndex;
+			if ( globalIndex < maxDecalIndices )
+			{
+				outDecalVolumeIndices[cellOffsetToFirstDecalIndex + cellIndex] = decalIndex;
+			}
+		}
+
+		if ( cellThreadIndex == 0 )
+		{
+			// One output per cell
+			uint cellDecalCount = CountSetBits64( cellVisibility );
+			DecalVolume_OutputCellIndirection( cellXYZ, encodedCellXYZ, cellDecalCount, cellOffsetToFirstDecalIndex, numCellsXYZ );
+		}
+	}
+}
+
+
+#else // #if DECAL_VOLUME_CLUSTER_GCN
+
 groupshared uint sharedOffsetToFirstDecalIndexPerCell[DECAL_VOLUME_CLUSTER_SHARED_MEM_WORDS];
 groupshared uint sharedVisibility[2];
 groupshared uint sharedMemAlloc;
@@ -245,3 +342,5 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 grou
 //
 //	DecalVolume_OutputCellIndirection( cellThreadIndex, cellXYZ, flatCellIndex, cellTotalDecalCount, cellOffsetToFirstDecalIndex, numCellsXYZ );
 //}
+
+#endif // #else // #if DECAL_VOLUME_CLUSTER_GCN

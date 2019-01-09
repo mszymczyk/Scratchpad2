@@ -6,7 +6,7 @@
 // follows vector math convention, matrices are column major
 // multiplication must be done: vecResult = mat * vec
 
-CBUFFER CbTextRendererConstants REGISTER_B(0)
+MAKE_FLAT_CBUFFER( CbTextRendererConstants, MAKE_REGISTER_CBUFFER(0) )
 {
 	float4x4 Transform; // world to view/camera
 	float4 ViewportSize; // width, height, 1.0f/width, 1.0f/height

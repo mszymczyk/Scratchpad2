@@ -11,9 +11,9 @@ passes :
 
 #include "cs_decal_volume_common.hlsl"
 
-RWStructuredBuffer<DecalVolume> outDecalVolumes				REGISTER_U( DECAL_VOLUME_OUT_DECALS_BINDING );
-RWStructuredBuffer<DecalVolumeTest> outDecalVolumesTest		REGISTER_U( DECAL_VOLUME_OUT_DECALS_TEST_BINDING );
-RWStructuredBuffer<uint> outDecalVolumeCount				REGISTER_U( DECAL_VOLUME_OUT_DECALS_COUNT_BINDING );
+RWStructuredBuffer<DecalVolume> outDecalVolumes				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS;
+RWStructuredBuffer<DecalVolumeTest> outDecalVolumesTest		REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_TEST;
+RWStructuredBuffer<uint> outDecalVolumeCount				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_COUNT;
 
 [numthreads( DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP, 1, 1 )]
 void DecalVolumeCulling( uint3 dtid : SV_DispatchThreadID )

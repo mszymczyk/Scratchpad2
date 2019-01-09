@@ -1,4 +1,79 @@
 
+#if DECAL_VOLUME_CLUSTER_GCN
+
+#if DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP != 64
+#error this variant works only on group size 64
+#endif // #if DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP != 64
+
+groupshared uint sharedOffsetToFirstDecalIndex;
+
+void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+{
+	// every thread group processes one cell
+
+	uint groupThreadIndex = groupThreadID.x;
+
+	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
+	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
+	uint cellCount = DecalVolume_CellCountCurrentPass();
+	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
+	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
+
+	uint cellDecalCount = 0; // doesn't need to be in groupshared, all threads have the same value
+
+	if ( groupThreadIndex == 0 )
+	{
+		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, sharedOffsetToFirstDecalIndex );
+
+#if DECAL_VOLUME_CLUSTER_LAST_PASS
+		sharedOffsetToFirstDecalIndex += cellCount;
+#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
+	}
+
+	//GroupMemoryBarrierWithGroupSync(); // not needed, group size is 64
+
+	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
+
+	for ( uint iGlobalDecalBase = 0; iGlobalDecalBase < passDecalCount; iGlobalDecalBase += DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP )
+	{
+		uint iGlobalDecal = iGlobalDecalBase + groupThreadIndex;
+
+		// every thread calculates intersection with one decal
+#if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		uint decalIndex = iGlobalDecal;
+#else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		uint decalIndex = iGlobalDecal < passDecalCount ? inDecalVolumeIndices[prevPassOffsetToFirstDecalIndex + iGlobalDecal] : 0xffffffff;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
+
+		// Compare against frustum number of decals
+		uint intersects = 0;
+		if ( decalIndex < frustumDecalCount )
+		{
+			intersects = DecalVolume_TestFrustum( frustum, decalIndex );
+		}
+
+		ulong visibleMask = BallotMask( intersects );
+		uint visibleCount = CountSetBits64( visibleMask );
+		uint localIndex = MaskBitCnt( visibleMask );
+
+		uint dstIndex = sharedOffsetToFirstDecalIndex + cellDecalCount + localIndex;
+		if ( intersects && dstIndex < maxDecalIndices )
+		{
+			outDecalVolumeIndices[dstIndex] = decalIndex;
+		}
+
+		cellDecalCount += visibleCount;
+	}
+
+	if ( groupThreadIndex == 0 )
+	{
+		// One output per all threads
+		DecalVolume_OutputCellIndirection( cellXYZ, flatCellIndex, cellDecalCount, sharedOffsetToFirstDecalIndex, numCellsXYZ );
+	}
+}
+
+#else // #if DECAL_VOLUME_CLUSTER_GCN
+
 #define DECAL_VOLUME_CLUSTER_WORD_COUNT (DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP / 32)
 
 groupshared uint sharedWordVisibility[DECAL_VOLUME_CLUSTER_WORD_COUNT];
@@ -137,3 +212,5 @@ void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passD
 		DecalVolume_OutputCellIndirection( cellXYZ, flatCellIndex, sharedGroupOffset, sharedOffsetToFirstDecalIndex, numCellsXYZ );
 	}
 }
+
+#endif // #else // #if DECAL_VOLUME_CLUSTER_GCN

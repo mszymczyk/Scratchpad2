@@ -402,8 +402,8 @@ namespace debugDraw
 
 		context->RSSetState( RasterizerStates::NoCull() );
 		context->OMSetBlendState( BlendStates::blendDisabled , nullptr, 0xffffffff );
-		_gImpl->constantBuffer_.setVS( context, CbDebugRendererConstantsRegister );
-		_gImpl->constantBuffer_.setPS( context, CbDebugRendererConstantsRegister );
+		_gImpl->constantBuffer_.setVS( context, REGISTER_CBUFFER_DEBUG_RENDERER_CONSTANTS );
+		_gImpl->constantBuffer_.setPS( context, REGISTER_CBUFFER_DEBUG_RENDERER_CONSTANTS );
 
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{

@@ -1,21 +1,21 @@
 #include "cs_decal_volume_cshared.hlsl"
 
-StructuredBuffer<DecalVolume> inDecalVolumes REGISTER_T( DECAL_VOLUME_IN_DECALS_BINDING );
-StructuredBuffer<DecalVolumeTest> inDecalVolumesTest REGISTER_T( DECAL_VOLUME_IN_DECALS_TEST_BINDING );
-StructuredBuffer<uint> inDecalVolumesCount REGISTER_T( DECAL_VOLUME_IN_DECALS_COUNT_BINDING );
-StructuredBuffer<uint> inDecalVolumeIndices REGISTER_T( DECAL_VOLUME_IN_DECAL_INDICES_BINDING );
-StructuredBuffer<CellIndirection> inCellIndirection REGISTER_T( DECAL_VOLUME_IN_CELL_INDIRECTION_BINDING );
-StructuredBuffer<uint> inCellIndirectionCount REGISTER_T( DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT_BINDING );
+StructuredBuffer<DecalVolume> inDecalVolumes           REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS;
+StructuredBuffer<DecalVolumeTest> inDecalVolumesTest   REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST;
+StructuredBuffer<uint> inDecalVolumesCount             REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT;
+StructuredBuffer<uint> inDecalVolumeIndices            REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES;
+StructuredBuffer<CellIndirection> inCellIndirection    REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION;
+StructuredBuffer<uint> inCellIndirectionCount          REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT;
 
 
-RWStructuredBuffer<CellIndirection> outCellIndirection REGISTER_U( DECAL_VOLUME_OUT_CELL_INDIRECTION_BINDING );
-RWStructuredBuffer<uint> outCellIndirectionCount REGISTER_U( DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT_BINDING );
-RWStructuredBuffer<uint> outDecalVolumeIndicesCount REGISTER_U( DECAL_VOLUME_OUT_DECAL_INDICES_COUNT_BINDING );
-RWByteAddressBuffer outIndirectArgs REGISTER_U( DECAL_VOLUME_OUT_INDIRECT_ARGS_BINDING );
-RWStructuredBuffer<uint> outDecalVolumeIndices REGISTER_U( DECAL_VOLUME_OUT_DECAL_INDICES_BINDING );
+RWStructuredBuffer<CellIndirection> outCellIndirection REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION;
+RWStructuredBuffer<uint> outCellIndirectionCount       REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT;
+RWStructuredBuffer<uint> outDecalVolumeIndicesCount    REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT;
+RWByteAddressBuffer outIndirectArgs                    REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS;
+RWStructuredBuffer<uint> outDecalVolumeIndices         REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES;
 
-StructuredBuffer<GroupToBucket> inGroupToBucket REGISTER_T( DECAL_VOLUME_IN_GROUP_TO_BUCKET_BINDING );
-RWStructuredBuffer<GroupToBucket> outGroupToBucket REGISTER_U( DECAL_VOLUME_OUT_GROUP_TO_BUCKET_BINDING );
+StructuredBuffer<GroupToBucket> inGroupToBucket        REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET;
+RWStructuredBuffer<GroupToBucket> outGroupToBucket     REGISTER_BUFFER_DECAL_VOLUME_OUT_GROUP_TO_BUCKET;
 
 
 struct Frustum
@@ -595,3 +595,16 @@ uint DecalVolume_TestFrustum( const Frustum frustum, uint decalIndex )
 
 	return intersects;
 }
+
+
+#if DECAL_VOLUME_CLUSTER_GCN
+#define ulong uint2
+ulong BallotMask( const in uint condition ) { return condition.xx; }
+uint CountSetBits64( const in ulong v ) { return countbits( v.x ) + countbits( v.y ); }
+uint MaskBitCnt( const in ulong mask ) { return countbits( mask.x ) + countbits( mask.y ); }
+uint ReadLane( const in uint _val, const in uint _laneID ) { return _val; }
+ulong shlU64( const ulong u0, const uint  u1 ) { return u0.xy << u1; }
+ulong shrU64( const ulong u0, const uint  u1 ) { return u0.xy >> u1; }
+ulong andU64( const ulong u0, const ulong u1 ) { return uint2( u0.x & u1.x, u0.y & u1.y ); }
+bool cmpNeqU64( const ulong u0, const ulong u1 ) { return u0.x != u1.x || u0.y != u1.y; }
+#endif // #if DECAL_VOLUME_CLUSTER_GCN
