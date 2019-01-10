@@ -1376,6 +1376,18 @@ namespace spad
 		}
 
 		Matrix4 viewProj = projMatrixForDecalVolumes_ * viewMatrixForDecalVolumes_;
+
+		//Matrix4 proj = InfinitePerspectiveMatrix(
+		//	1.0f / projMatrixForDecalVolumes_.getElem( 0, 0 ).getAsFloat(),
+		//	1.0f / projMatrixForDecalVolumes_.getElem( 1, 1 ).getAsFloat(),
+		//	testFrustumNearPlane
+		//);
+
+		//viewProj = proj * viewMatrixForDecalVolumes_;
+
+		//Vector4 pp = viewProj * Vector4( 0, 0, testFrustumNearPlane, 1 );
+		//pp.setXYZ( pp.getXYZ() / pp.getW() );
+
 		Matrix4 viewProjInv = inverse( viewProj );
 
 		std::default_random_engine generator( 1973U );
@@ -1416,23 +1428,23 @@ namespace spad
 			dv.y = rot.getCol1();
 			dv.z = rot.getCol2();
 
-			//Vector4 boxVertices[8];
-			//Vector4 xs = Vector4( dv.x.x * dv.halfSize.x, dv.x.y * dv.halfSize.x, dv.x.z * dv.halfSize.x, 1.0f );
-			//Vector4 ys = Vector4( dv.y.x * dv.halfSize.y, dv.y.y * dv.halfSize.y, dv.y.z * dv.halfSize.y, 1.0f );
-			//Vector4 zs = Vector4( dv.z.x * dv.halfSize.z, dv.z.y * dv.halfSize.z, dv.z.z * dv.halfSize.z, 1.0f );
-			//GetBoxCorners( Vector4( pos, 1.0f ), xs, ys, zs, boxVertices );
+			Vector4 boxVertices[8];
+			Vector4 xs = Vector4( dv.x.x * dv.halfSize.x, dv.x.y * dv.halfSize.x, dv.x.z * dv.halfSize.x, 1.0f );
+			Vector4 ys = Vector4( dv.y.x * dv.halfSize.y, dv.y.y * dv.halfSize.y, dv.y.z * dv.halfSize.y, 1.0f );
+			Vector4 zs = Vector4( dv.z.x * dv.halfSize.z, dv.z.y * dv.halfSize.z, dv.z.z * dv.halfSize.z, 1.0f );
+			GetBoxCorners( Vector4( pos, 1.0f ), xs, ys, zs, boxVertices );
 
-			//for ( uint ib = 0; ib < 8; ++ib )
-			//{
-			//	clipPoints[ib] = viewProj * Vector4( boxVertices[ib].getXYZ(), 1.0f );
-			//}
+			for ( uint ib = 0; ib < 8; ++ib )
+			{
+				clipPoints[ib] = viewProj * Vector4( boxVertices[ib].getXYZ(), 1.0f );
+			}
 
-			//Vector4 v0 = viewProj * Vector4( boxVertices[0].getXYZ(), 1.0f );
-			//Vector4 v4 = viewProj * Vector4( boxVertices[4].getXYZ(), 1.0f );
-			//Vector4 v5 = viewProj * Vector4( boxVertices[5].getXYZ(), 1.0f );
-			//Vector4 v7 = viewProj * Vector4( boxVertices[7].getXYZ(), 1.0f );
+			Vector4 v0 = viewProj * Vector4( boxVertices[0].getXYZ(), 1.0f );
+			Vector4 v4 = viewProj * Vector4( boxVertices[4].getXYZ(), 1.0f );
+			Vector4 v5 = viewProj * Vector4( boxVertices[5].getXYZ(), 1.0f );
+			Vector4 v7 = viewProj * Vector4( boxVertices[7].getXYZ(), 1.0f );
 
-			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 8 );
+			GetBoxCorners2( v4, v5, v7, v0, clipPoints + 8 );
 
 			//GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
 
@@ -1808,9 +1820,9 @@ namespace spad
 				p.cellIndirection.CPUReadbackEnd( deviceContext.context );
 			}
 
-			const u32 *memAlloc = p.memAlloc.CPUReadbackStart( deviceContext.context );
+			const u32 *memAlloc = p.decalIndicesCount.CPUReadbackStart( deviceContext.context );
 			p.stats.memAllocated = memAlloc[0] * sizeof( uint );
-			p.memAlloc.CPUReadbackEnd( deviceContext.context );
+			p.decalIndicesCount.CPUReadbackEnd( deviceContext.context );
 
 			//for ( int i = 0; i < (int)p.stats.countPerCellHistogram.size(); ++i )
 			//{
@@ -2037,11 +2049,11 @@ namespace spad
 			//p.cellIndirectionCount.clearUAVUint( deviceContext.context, p.nTilesX * p.nTilesY * 4 );
 			//p.countPerCell.clearUAVUint( deviceContext.context, 0 );
 			//p.decalPerCell.clearUAVUint( deviceContext.context, 0 );
-			p.memAlloc.clearUAVUint( deviceContext.context, 0 );
+			p.decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
 		}
 
 		//tilingPasses_.back().decalPerCell.clearUAVUint( deviceContext.context, 0 );
-		tiling_->tilingPasses_.back().memAlloc.clearUAVUint( deviceContext.context, 0 );
+		tiling_->tilingPasses_.back().decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
 
 		for ( size_t iPass = 0; iPass < tiling_->tilingPasses_.size(); ++iPass )
 		{
@@ -2152,7 +2164,7 @@ namespace spad
 			}
 
 			p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
-			p.memAlloc.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
+			p.decalIndicesCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
 
 			if ( firstPass )
 			{
@@ -2373,7 +2385,7 @@ namespace spad
 				passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, maxBuckets, nullptr, false, true, true );
 				passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3 * maxBuckets, nullptr, false, true, true, true );
 			}
-			passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );
+			passTotalMemory += p.decalIndicesCount.Initialize( dxDevice, 1, nullptr, false, true, true );
 			if ( !firstPass )
 			{
 				passTotalMemory += p.groupToBucket.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ, nullptr, false, true, true );
@@ -2404,11 +2416,11 @@ namespace spad
 			p.cellIndirectionCount.clearUAVUint( deviceContext.context, 0 );
 			//p.cellIndirection.clearUAVUint( deviceContext.context, 0 );
 			//p.countPerCell.clearUAVUint( deviceContext.context, 0 );
-			p.memAlloc.clearUAVUint( deviceContext.context, 0 );
+			p.decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
 		}
 
 		//clusteringPasses_.back().decalPerCell.clearUAVUint( deviceContext.context, 0 );
-		clustering_->clusteringPasses_.back().memAlloc.clearUAVUint( deviceContext.context, 0 );
+		clustering_->clusteringPasses_.back().decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
 		
 		for ( size_t iPass = 0; iPass < clustering_->clusteringPasses_.size(); ++iPass )
 		{
@@ -2512,11 +2524,11 @@ namespace spad
 				}
 			}
 
-			if ( lastPass )
-			{
-				DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
-				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
-			}
+			//if ( !lastPass )
+			//{
+			//	DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
+			//	pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
+			//}
 
 			clustering_->clusteringConstants_.updateGpu( deviceContext.context );
 			clustering_->clusteringConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
@@ -2539,7 +2551,7 @@ namespace spad
 			}
 
 			p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
-			p.memAlloc.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
+			p.decalIndicesCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
 
 			if ( firstPass )
 			{

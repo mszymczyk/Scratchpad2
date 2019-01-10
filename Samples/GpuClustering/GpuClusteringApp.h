@@ -153,7 +153,7 @@ namespace spad
 			StructuredBuffer<CellIndirection> cellIndirection;
 			StructuredBuffer<uint> cellIndirectionCount;
 			StructuredBuffer<uint> indirectArgs;
-			StructuredBuffer<uint> memAlloc;
+			StructuredBuffer<uint> decalIndicesCount;
 			StructuredBuffer<GroupToBucket> groupToBucket;
 			GpuTimerQuery timer;
 
