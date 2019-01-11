@@ -391,6 +391,12 @@ uint AlignPowerOfTwo( uint value, uint alignment )
 }
 
 
+// divider must be power of two
+uint ModuloPowerOfTwo( uint x, uint divider )
+{
+	return x & ( divider - 1 );
+}
+
 uint RoundUpToPowerOfTwo( uint v )
 {
 	v--;

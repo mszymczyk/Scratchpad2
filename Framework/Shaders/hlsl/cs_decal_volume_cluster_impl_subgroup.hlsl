@@ -1,18 +1,23 @@
 
+#define DECAL_VOLUME_CLUSTER_LATE_DECAL_INDICES_ALLOC 1
+
 #if DECAL_VOLUME_CLUSTER_GCN
 
 #if DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP != 64
 #error this variant works only on group size 64
 #endif // #if DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP != 64
 
-void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilitySubGroup( uint numThreadsPerCell, uint bucket, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
 	// every n threads process single cell, for instance group of 64 threads can process 2, 4, 8, 16, 32 or 64 cells
 
 	uint threadIndex = groupThreadID.x; // warp/wave index
-	uint localCellIndex = groupThreadID.x / numThreadsPerCell; // cell index, e.g., every 4 threads process one cell, in this case, whole group is processing 16 cells
-	uint cellThreadIndex = groupThreadID.x % numThreadsPerCell; // thread within 'cell'
-	uint firstCellIndex = localCellIndex * numThreadsPerCell;
+	//uint localCellIndex = groupThreadID.x / numThreadsPerCell; // cell index, e.g., every 4 threads process one cell, in this case, whole group is processing 16 cells
+	//uint cellThreadIndex = groupThreadID.x % numThreadsPerCell; // thread within 'cell'
+	//uint firstCellIndex = localCellIndex * numThreadsPerCell;
+	uint localCellIndex = groupThreadID.x >> bucket;
+	uint cellThreadIndex = ModuloPowerOfTwo( groupThreadID.x, numThreadsPerCell );
+	uint firstCellIndex = localCellIndex << bucket;
 
 	// allocate speculatively one chunk per cell, might cause overallocation
 	uint offsetToFirstDecalIndexPerCell = 0;
@@ -103,13 +108,17 @@ groupshared uint sharedMemAllocGlobalBase;
 
 #define USE_TWO_LEVEL_MEM_ALLOC 0
 
-void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
+void DecalVisibilitySubGroup( uint numThreadsPerCell, uint bucket, bool cellValid, uint3 groupThreadID, uint encodedCellXYZ, uint passDecalCount, uint frustumDecalCount, uint prevPassOffsetToFirstDecalIndex )
 {
 	// every n threads process single cell, for instance group of 64 threads can process 2, 4, 8, 16, 32 or 64 cells
 
 	uint threadIndex = groupThreadID.x; // warp/wave index
-	uint localCellIndex = groupThreadID.x / numThreadsPerCell; // cell index, e.g., every 4 threads process one cell, in this case, whole group is processing 16 cells
-	uint cellThreadIndex = groupThreadID.x % numThreadsPerCell; // thread within 'cell'
+	//uint localCellIndex = groupThreadID.x / numThreadsPerCell; // cell index, e.g., every 4 threads process one cell, in this case, whole group is processing 16 cells
+	//uint cellThreadIndex = groupThreadID.x % numThreadsPerCell; // thread within 'cell'
+	//uint firstCellIndex = localCellIndex * numThreadsPerCell;
+	uint localCellIndex = groupThreadID.x >> bucket;
+	uint cellThreadIndex = ModuloPowerOfTwo( groupThreadID.x, numThreadsPerCell );
+	uint firstCellIndex = localCellIndex << bucket;
 	uint threadWordIndex = threadIndex / 32; // selects which sharedVisibility index to write to
 	uint bitIndex = threadIndex - threadWordIndex * 32;
 
@@ -144,11 +153,13 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 grou
 
 #else // #if USE_TWO_LEVEL_MEM_ALLOC
 
+#if !DECAL_VOLUME_CLUSTER_LATE_DECAL_INDICES_ALLOC
 	// allocate speculatively one chunk per cell, might cause overallocation
 	if ( cellValid && cellThreadIndex == 0 )
 	{
 		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, sharedOffsetToFirstDecalIndexPerCell[localCellIndex] );
 	}
+#endif // #if !DECAL_VOLUME_CLUSTER_LATE_DECAL_INDICES_ALLOC
 
 #endif // #else // #if USE_TWO_LEVEL_MEM_ALLOC
 
@@ -166,15 +177,15 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 grou
 	
 	if ( cellValid )
 	{
-		cellOffsetToFirstDecalIndex = sharedOffsetToFirstDecalIndexPerCell[localCellIndex];
-
-#if USE_TWO_LEVEL_MEM_ALLOC
-		cellOffsetToFirstDecalIndex += sharedMemAllocGlobalBase;
-#endif // #if USE_TWO_LEVEL_MEM_ALLOC
-
-#if DECAL_VOLUME_CLUSTER_LAST_PASS
-		cellOffsetToFirstDecalIndex += cellCount;
-#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
+//		cellOffsetToFirstDecalIndex = sharedOffsetToFirstDecalIndexPerCell[localCellIndex];
+//
+//#if USE_TWO_LEVEL_MEM_ALLOC
+//		cellOffsetToFirstDecalIndex += sharedMemAllocGlobalBase;
+//#endif // #if USE_TWO_LEVEL_MEM_ALLOC
+//
+//#if DECAL_VOLUME_CLUSTER_LAST_PASS
+//		cellOffsetToFirstDecalIndex += cellCount;
+//#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
 		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
 
@@ -205,12 +216,39 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 grou
 	// wait for all writes to sharedVisibility
 	GroupMemoryBarrierWithGroupSync();
 
+	uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 ); // (1 << 32) - 1 is undefined when operating on uint
+	//uint cellVisibility = ( sharedVisibility[firstCellIndex/32] >> (firstCellIndex - threadWordIndex * 32) ) & cellMask;
+	uint cellVisibility = ( sharedVisibility[threadWordIndex] >> ( firstCellIndex - threadWordIndex * 32 ) ) & cellMask; // only cell relevant bits
+	uint cellDecalCount = countbits( cellVisibility );
+
+#if DECAL_VOLUME_CLUSTER_LATE_DECAL_INDICES_ALLOC
+
+	// allocate speculatively one chunk per cell, might cause overallocation
+	if ( cellVisibility && cellThreadIndex == 0 )
+	{
+		InterlockedAdd( outDecalVolumeIndicesCount[0], cellDecalCount, sharedOffsetToFirstDecalIndexPerCell[localCellIndex] );
+	}
+
+	// wait for memory allocation
+	GroupMemoryBarrierWithGroupSync();
+
+#endif // #if DECAL_VOLUME_CLUSTER_LATE_DECAL_INDICES_ALLOC
+
 	if ( cellValid )
 	{
-		uint firstCellIndex = localCellIndex * numThreadsPerCell;
-		uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 ); // (1 << 32) - 1 is undefined when operating on uint
-		//uint cellVisibility = ( sharedVisibility[firstCellIndex/32] >> (firstCellIndex - threadWordIndex * 32) ) & cellMask;
-		uint cellVisibility = ( sharedVisibility[threadWordIndex] >> ( firstCellIndex - threadWordIndex * 32 ) ) & cellMask; // only cell relevant bits
+		cellOffsetToFirstDecalIndex = sharedOffsetToFirstDecalIndexPerCell[localCellIndex];
+
+#if USE_TWO_LEVEL_MEM_ALLOC
+		cellOffsetToFirstDecalIndex += sharedMemAllocGlobalBase;
+#endif // #if USE_TWO_LEVEL_MEM_ALLOC
+
+#if DECAL_VOLUME_CLUSTER_LAST_PASS
+		cellOffsetToFirstDecalIndex += cellCount;
+#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
+
+		//uint cellMask = numThreadsPerCell == 32 ? 0xffffffff : ( ( 1 << numThreadsPerCell ) - 1 ); // (1 << 32) - 1 is undefined when operating on uint
+		////uint cellVisibility = ( sharedVisibility[firstCellIndex/32] >> (firstCellIndex - threadWordIndex * 32) ) & cellMask;
+		//uint cellVisibility = ( sharedVisibility[threadWordIndex] >> ( firstCellIndex - threadWordIndex * 32 ) ) & cellMask; // only cell relevant bits
 
 		uint cellThreadBit = 1 << cellThreadIndex;
 		if ( cellValid && ( cellVisibility & cellThreadBit ) )
@@ -229,7 +267,7 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, bool cellValid, uint3 grou
 		if ( cellThreadIndex == 0 )
 		{
 			// One output per cell
-			uint cellDecalCount = countbits( cellVisibility );
+			//uint cellDecalCount = countbits( cellVisibility );
 			DecalVolume_OutputCellIndirection( cellXYZ, encodedCellXYZ, cellDecalCount, cellOffsetToFirstDecalIndex, numCellsXYZ );
 		}
 	}

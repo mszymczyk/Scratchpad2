@@ -282,7 +282,7 @@ namespace spad
 		float a = f * nmf;
 		float b = n * f * nmf;
 
-		for ( uint i = 0; i < 24; ++i )
+		for ( uint i = 0; i < 25; ++i )
 		{
 			float zLog = calcZ( nearPlane, farPlane, i, 24 );
 			float zUniform = calcZ2( nearPlane, farPlane, i, 24 );
@@ -1744,10 +1744,10 @@ namespace spad
 				const u32 *cellIndirectionCount = p.cellIndirectionCount.CPUReadbackStart( deviceContext.context );
 				const u32 *args = p.indirectArgs.CPUReadbackStart( deviceContext.context );
 				const GroupToBucket *groupToBucket = nullptr;
-				if ( !firstPass )
-				{
-					groupToBucket = p.groupToBucket.CPUReadbackStart( deviceContext.context );
-				}
+				//if ( !firstPass )
+				//{
+				//	groupToBucket = p.groupToBucket.CPUReadbackStart( deviceContext.context );
+				//}
 
 				for ( float & i : p.stats.countPerCellHistogram )
 				{
@@ -1811,10 +1811,10 @@ namespace spad
 				p.stats.maxDecalsPerCell = maxCount;
 				p.stats.minDecalsPerCell = minCount;
 
-				if ( !firstPass )
-				{
-					p.groupToBucket.CPUReadbackEnd( deviceContext.context );
-				}
+				//if ( !firstPass )
+				//{
+				//	p.groupToBucket.CPUReadbackEnd( deviceContext.context );
+				//}
 				p.indirectArgs.CPUReadbackEnd( deviceContext.context );
 				p.cellIndirectionCount.CPUReadbackEnd( deviceContext.context );
 				p.cellIndirection.CPUReadbackEnd( deviceContext.context );
@@ -1887,7 +1887,7 @@ namespace spad
 				{
 					ImGui::Text( "Pass mem %u [kB], %u [MB]", p.stats.totalMem / 1024, p.stats.totalMem / ( 1024 * 1024 ) );
 					ImGui::Text( "Decal indices mem %u [kB], %u [MB]", p.maxDecalIndices * sizeof(uint) / 1024, p.maxDecalIndices * sizeof( uint ) / ( 1024 * 1024 ) );
-					ImGui::Text( "Cells indirection mem %u [kB], %u [MB]", (p.maxCellIndirectionsPerBucket * maxBuckets) / 1024, p.maxCellIndirectionsPerBucket * maxBuckets / ( 1024 * 1024 ) );
+					ImGui::Text( "Cells indirection mem %u [kB], %u [MB]", (p.maxCellIndirectionsPerBucket * maxBuckets * sizeof( CellIndirection ) ) / 1024, ( p.maxCellIndirectionsPerBucket * maxBuckets * sizeof( CellIndirection ) ) / ( 1024 * 1024 ) );
 					if ( lastPass )
 					{
 						ImGui::Text( "Decal indices used (+header) [kB] %u / %u", ( p.stats.memAllocated + totalCells * sizeof(uint) ) / 1024, ( p.maxDecalIndices * sizeof( uint ) ) / 1024 );
@@ -2266,13 +2266,16 @@ namespace spad
 		const uint a = nCellsYBase / maxDivider;
 		if ( a * maxDivider != nCellsYBase )
 		{
-			nCellsYBase = spadAlignU32_2( nCellsYBase - maxDivider - 1, maxDivider );
+			//nCellsYBase = spadAlignU32_2( nCellsYBase - maxDivider - 1, maxDivider );
+			nCellsYBase = spadAlignU32_2( nCellsYBase, maxDivider );
 		}
 
 		const uint b = nCellsXBase / maxDivider;
 		if ( b * maxDivider != nCellsXBase )
 		{
-			nCellsXBase = spadAlignU32_2( nCellsXBase - maxDivider - 1, maxDivider );
+			//nCellsXBase = spadAlignU32_2( nCellsXBase - maxDivider - 1, maxDivider );
+			nCellsXBase = spadAlignU32_2( nCellsXBase, maxDivider );
+
 		}
 
 		outCellsX = nCellsXBase;
@@ -2356,11 +2359,11 @@ namespace spad
 			}
 			else if ( lastPass )
 			{
-				p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / (2048), 1 ) );
+				p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
 			}
 			else
 			{
-				p.maxDecalIndices = (cellCountSqr / 8) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / 2048, 1 ) );
+				p.maxDecalIndices = (cellCountSqr / 8) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
 			}
 
 			if ( lastPass )
@@ -2386,10 +2389,10 @@ namespace spad
 				passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3 * maxBuckets, nullptr, false, true, true, true );
 			}
 			passTotalMemory += p.decalIndicesCount.Initialize( dxDevice, 1, nullptr, false, true, true );
-			if ( !firstPass )
-			{
-				passTotalMemory += p.groupToBucket.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ, nullptr, false, true, true );
-			}
+			//if ( !firstPass )
+			//{
+			//	passTotalMemory += p.groupToBucket.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.nCellsZ, nullptr, false, true, true );
+			//}
 
 			p.timer.Initialize( dxDevice );
 
@@ -2518,10 +2521,10 @@ namespace spad
 
 				pp.decalIndices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION );
-				if ( bucketsMergeEnabled )
-				{
-					p.groupToBucket.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET );
-				}
+				//if ( bucketsMergeEnabled )
+				//{
+				//	p.groupToBucket.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET );
+				//}
 			}
 
 			//if ( !lastPass )
