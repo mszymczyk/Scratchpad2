@@ -53,6 +53,8 @@ namespace spad
 
 		enum TileSize : int
 		{
+			TileSize_512x512,
+			TileSize_256x256,
 			TileSize_128x128,
 			TileSize_64x64,
 			TileSize_48x48,
@@ -118,6 +120,7 @@ namespace spad
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
+		float decalVolumesRandomScale_ = 1.0f;
 		float decalVolumeFarPlane_ = 1000.0f;
 		DecalVolume *decalVolumesCPU_ = nullptr;
 		StructuredBuffer<DecalVolume> decalVolumesGPU_;

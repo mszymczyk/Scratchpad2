@@ -128,7 +128,7 @@ void DecalVolume_UnpackHeader( uint packedHeader, out uint decalCount, out uint 
 
 uint DecalVolume_GetCellFlatIndex( uint3 cellID, uint3 numCells )
 {
-	return mad24( cellID.z, mul24( numCells.x, numCells.y ), mad24( cellID.y, numCells.x, cellID.x ) );
+	return safe_mad24( cellID.z, safe_mul24( numCells.x, numCells.y ), safe_mad24( cellID.y, numCells.x, cellID.x ) );
 }
 
 #endif // #if COMPILING_SHADER_CODE

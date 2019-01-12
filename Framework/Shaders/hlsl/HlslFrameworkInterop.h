@@ -49,8 +49,15 @@ typedef spad::dxmath::Float3 float3;
 #define CBUFFER_UINT4( name )									uint4 name
 #define CBUFFER_FLOAT4( name )									float4 name
 
-#define mul24( x, y ) (x * y )
-#define mad24( x, y, a ) ( x * y + a )
+//#define safe_mul24( x, y ) ( x * y )
+//#define safe_mad24( x, y, a ) ( x * y + a )
+
+//#define safe_mul24( x, y ) mul( x, y )
+//#define safe_mad24( x, y, a ) mad( x, y, a )
+
+uint safe_mul24( uint x, uint y )         { return mul( x, y ); }
+uint safe_mad24( uint x, uint y, uint a ) { return mad( x, y, a ); }
+
 
 #endif //
 

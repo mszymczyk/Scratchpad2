@@ -26,6 +26,19 @@ passes :
 		ComputeProgram = "cs_decal_volume_assign_bucket";
 	}
 
+	cs_decal_volume_cluster_single_pass = {
+		ComputeProgram = {
+			EntryName = "cs_decal_volume_cluster_first_pass";
+			cdefines = {
+				DECAL_VOLUME_CLUSTER_SINGLE_PASS = ( "1" );
+				DECAL_VOLUME_CLUSTER_FIRST_PASS = ( "1" );
+				DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
+				DECAL_VOLUME_INTERSECTION_METHOD = ( "1" );
+				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0" );
+			}
+		}
+	}
+
 	cs_decal_volume_cluster_first_pass = {
 		ComputeProgram = {
 			EntryName = "cs_decal_volume_cluster_first_pass";
@@ -253,7 +266,7 @@ void cs_decal_volume_cluster_first_pass( uint3 groupThreadID : SV_GroupThreadID,
 #endif // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
 
 
-#if DECAL_VOLUME_CLUSTER_MID_PASS || DECAL_VOLUME_CLUSTER_LAST_PASS
+#if ( DECAL_VOLUME_CLUSTER_MID_PASS || DECAL_VOLUME_CLUSTER_LAST_PASS ) && !DECAL_VOLUME_CLUSTER_SINGLE_PASS
 
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_MID_LAST_PASS
 
@@ -280,20 +293,20 @@ CellIndirection DecalVolumeGetCellIndirection( uint cellIndex, uint cellBucket )
 	uint dataIndex = cellIndex / 8;
 	uint childIndex = cellIndex % 8;
 
-	CellIndirection ci = inCellIndirection[ mad24( cellBucket, DecalVolume_GetMaxPrevOutCellIndirections(), dataIndex ) ];
+	CellIndirection ci = inCellIndirection[ safe_mad24( cellBucket, DecalVolume_GetMaxPrevOutCellIndirections(), dataIndex ) ];
 
 	uint3 parentCellXYZ = DecalVolume_DecodeCell3D( ci.cellIndex );
 
 	uint slice = childIndex / 4;
-	uint sliceSize = mul24( dvCellCount.x, dvCellCount.y );
+	uint sliceSize = safe_mul24( dvCellCount.x, dvCellCount.y );
 	uint tile = childIndex % 4;
 	uint row = tile / 2;
 	uint col = tile % 2;
-	ci.cellIndex = DecalVolume_EncodeCell3D( uint3( mad24( parentCellXYZ.x, 2, col ), mad24( parentCellXYZ.y, 2, row ), mad24( parentCellXYZ.z, 2, slice ) ) );
+	ci.cellIndex = DecalVolume_EncodeCell3D( uint3( safe_mad24( parentCellXYZ.x, 2, col ), safe_mad24( parentCellXYZ.y, 2, row ), safe_mad24( parentCellXYZ.z, 2, slice ) ) );
 
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
-	CellIndirection ci = inCellIndirection[ mad24( cellBucket, DecalVolume_CellCountCurrentPass(), cellIndex ) ];
+	CellIndirection ci = inCellIndirection[safe_mad24( cellBucket, DecalVolume_CellCountCurrentPass(), cellIndex ) ];
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
@@ -410,4 +423,4 @@ void cs_decal_volume_cluster_mid_pass( uint3 groupThreadID : SV_GroupThreadID, u
 
 #endif // #else // #elif DECAL_VOLUME_CLUSTER_SUB_WORD == 32
 }
-#endif // #if DECAL_VOLUME_CLUSTER_MID_PASS || DECAL_VOLUME_CLUSTER_LAST_PASS
+#endif // #if ( DECAL_VOLUME_CLUSTER_MID_PASS || DECAL_VOLUME_CLUSTER_LAST_PASS ) && !DECAL_VOLUME_CLUSTER_SINGLE_PASS

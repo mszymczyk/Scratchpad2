@@ -1095,6 +1095,16 @@ namespace spad
 				}
 			}
 		}
+		else if ( appMode_ == Tiling || appMode_ == Clustering )
+		{
+			if ( ImGui::CollapsingHeader( "Random", nullptr, ImGuiTreeNodeFlags_DefaultOpen ) )
+			{
+				if ( ImGui::SliderFloat( "Decal volume scale", &decalVolumesRandomScale_, 0.01f, 20.0f ) )
+				{
+					GenDecalVolumesRandom();
+				}
+			}
+		}
 
 		{
 			const char* items[] = {
@@ -1118,7 +1128,7 @@ namespace spad
 
 		if ( appMode_ == Tiling )
 		{
-			const char* items[] = { "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
+			const char* items[] = { "512x512", "256x256", "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
 			if ( ImGui::Combo( "Tile size (tiling)", reinterpret_cast<int*>( &tileSizeForTiling_ ), items, IM_ARRAYSIZE( items ) ) )
 			{
 				tiling_ = DecalVolumeTilingStartUp();
@@ -1131,7 +1141,7 @@ namespace spad
 		}
 		else
 		{
-			const char* items[] = { "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
+			const char* items[] = { "512x512", "256x256", "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
 			if ( ImGui::Combo( "Tile size (clustering)", reinterpret_cast<int*>( &tileSizeForClustering_ ), items, IM_ARRAYSIZE( items ) ) )
 			{
 				clustering_ = DecalVolumeClusteringStartUp();
@@ -1417,6 +1427,9 @@ namespace spad
 			hsX *= 0.25f;
 			hsY *= 0.25f;
 			hsZ *= 0.25f;
+			hsX *= decalVolumesRandomScale_;
+			hsY *= decalVolumesRandomScale_;
+			hsZ *= decalVolumesRandomScale_;
 
 			Vector3 pos = unprojectNormalizedDx( Vector3( nX, nY, nZ ), viewProjInv );
 			dv.position = Float3( pos );
@@ -2231,6 +2244,12 @@ namespace spad
 	{
 		switch ( tileSize )
 		{
+		case spad::SettingsTestApp::TileSize_512x512:
+			outTileSize = 512;
+			break;
+		case spad::SettingsTestApp::TileSize_256x256:
+			outTileSize = 256;
+			break;
 		case spad::SettingsTestApp::TileSize_128x128:
 			outTileSize = 128;
 			break;
@@ -2457,8 +2476,16 @@ namespace spad
 
 			if ( firstPass )
 			{
-				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled } );
-				fxPass.setCS( deviceContext.context );
+				if ( numPassesForClustering_ == 1 )
+				{
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_single_pass" );
+					fxPass.setCS( deviceContext.context );
+				}
+				else
+				{
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled } );
+					fxPass.setCS( deviceContext.context );
+				}
 			}
 			else if ( lastPass )
 			{

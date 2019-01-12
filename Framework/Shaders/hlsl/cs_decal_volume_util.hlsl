@@ -467,10 +467,8 @@ float3 DecalVolume_CellCountXYZRcp()
 uint DecalVolume_CellCountCurrentPass()
 {
 #if DECAL_VOLUME_CLUSTER_3D
-	//return mul24( mul24( dvCellCount.x, dvCellCount.y ), dvCellCount.z );
 	return dvCellCount.w;
 #else // #if DECAL_VOLUME_CLUSTER_3D
-	//return mul24( dvCellCount.x, dvCellCount.y );
 	return dvCellCount.w;
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 }
