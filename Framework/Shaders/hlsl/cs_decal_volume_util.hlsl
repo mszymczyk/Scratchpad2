@@ -1,4 +1,4 @@
-#include "lib/cs_decal_volume_cshared.hlsl"
+#include "cs_decal_volume_cshared.hlsl"
 
 StructuredBuffer<DecalVolume> inDecalVolumes           REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS;
 StructuredBuffer<DecalVolumeTest> inDecalVolumesTest   REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST;

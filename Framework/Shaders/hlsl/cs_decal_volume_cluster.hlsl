@@ -57,7 +57,8 @@ passes :
 				DECAL_VOLUME_CLUSTER_MID_PASS = ( "1" );
 				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
 				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-				DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
+				//DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
+				DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "-2" );
 			}
 		}
 	}
@@ -69,7 +70,8 @@ passes :
 				DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
 				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
 				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-				DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
+				//DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
+				DECAL_VOLUME_CLUSTER_SUB_WORD = ( "1", "-2" );
 			}
 		}
 	}

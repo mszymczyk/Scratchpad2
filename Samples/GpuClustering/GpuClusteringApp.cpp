@@ -1899,11 +1899,11 @@ namespace spad
 				if ( ImGui::CollapsingHeader( passName, nullptr, ImGuiTreeNodeFlags_DefaultOpen ) )
 				{
 					ImGui::Text( "Pass mem %u [kB], %u [MB]", p.stats.totalMem / 1024, p.stats.totalMem / ( 1024 * 1024 ) );
-					ImGui::Text( "Decal indices mem %u [kB], %u [MB]", p.maxDecalIndices * sizeof(uint) / 1024, p.maxDecalIndices * sizeof( uint ) / ( 1024 * 1024 ) );
+					ImGui::Text( "Decal indices mem %u [kB] (header %u [kB]), %u [MB]", p.maxDecalIndices * sizeof(uint) / 1024, ( totalCells * sizeof( uint ) ) / 1024, p.maxDecalIndices * sizeof( uint ) / ( 1024 * 1024 ) );
 					ImGui::Text( "Cells indirection mem %u [kB], %u [MB]", (p.maxCellIndirectionsPerBucket * maxBuckets * sizeof( CellIndirection ) ) / 1024, ( p.maxCellIndirectionsPerBucket * maxBuckets * sizeof( CellIndirection ) ) / ( 1024 * 1024 ) );
 					if ( lastPass )
 					{
-						ImGui::Text( "Decal indices used (+header) [kB] %u / %u", ( p.stats.memAllocated + totalCells * sizeof(uint) ) / 1024, ( p.maxDecalIndices * sizeof( uint ) ) / 1024 );
+						ImGui::Text( "Decal indices used [kB] %u / %u, +header %u / %u", p.stats.memAllocated / 1024, (p.maxDecalIndices - totalCells) * sizeof( uint ) / 1024, ( p.stats.memAllocated + totalCells * sizeof(uint) ) / 1024, ( p.maxDecalIndices * sizeof( uint ) ) / 1024 );
 					}
 					else
 					{
@@ -2491,7 +2491,7 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
@@ -2507,7 +2507,7 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 8 } );
+					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )

@@ -64,6 +64,10 @@ bool Dx11::StartUp( const Param& param )
 		pAdapter->GetDesc( &adapterDesc );
 		//if ( i == 1 )
 
+		//if ( StrStrW( adapterDesc.Description, L"Intel" ) )
+		//{
+		//	break;
+		//}
 		if ( StrStrW( adapterDesc.Description, L"NVIDIA" ) )
 		{
 			break;
