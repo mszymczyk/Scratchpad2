@@ -131,6 +131,37 @@ uint DecalVolume_GetCellFlatIndex( uint3 cellID, uint3 numCells )
 	return safe_mad24( cellID.z, safe_mul24( numCells.x, numCells.y ), safe_mad24( cellID.y, numCells.x, cellID.x ) );
 }
 
+
+float LogBase( float base, float x )
+{
+	return log2( x ) * rcp( log2( base ) );
+}
+
+
+// pixelPosition is in range <0, renderTargetSize>
+uint2 DecalVolume_GetCellXYFromScreenPosition( float2 pixelPosition, float2 renderTargetSizeRcp, float2 nCellsXY )
+{
+	float2 pixelUV = pixelPosition * renderTargetSizeRcp;
+	uint2 tileXY = uint2( pixelUV * nCellsXY );
+	return min( tileXY, uint2( nCellsXY - 1 ) );
+}
+
+
+uint DecalVolume_GetCellZFromCameraZ( float cameraZ, float nearPlaneRcp, float farPlaneOverNearPlane, float nCellsZ )
+{
+	float base = farPlaneOverNearPlane;
+	return ( uint ) min( floor( LogBase( base, cameraZ * nearPlaneRcp ) * nCellsZ ), nCellsZ - 1 );
+}
+
+
+uint3 DecalVolume_GetCellFromViewPos( float2 pixelPosition, float cameraZ, float2 renderTargetSizeRcp, float3 nCellsXYZ, float nearPlaneRcp, float farPlaneOverNearPlane )
+{
+	return uint3(
+		DecalVolume_GetCellXYFromScreenPosition( pixelPosition, renderTargetSizeRcp, nCellsXYZ.xy ),
+		DecalVolume_GetCellZFromCameraZ( cameraZ, nearPlaneRcp, farPlaneOverNearPlane, nCellsXYZ.z )
+		);
+}
+
 #endif // #if COMPILING_SHADER_CODE
 
 
