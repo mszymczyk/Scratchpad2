@@ -34,7 +34,10 @@ void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passD
 
 	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
 
-	for ( uint iGlobalDecalBase = 0; iGlobalDecalBase < passDecalCount; iGlobalDecalBase += DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP )
+	// Make sure that all threads execute the loop
+	// Looks like putting Ballot in a branch will confuse fxc, leading to cluster/decal flickering
+	uint passDecalCountAligned = AlignPowerOfTwo( passDecalCount, DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP );
+	for ( uint iGlobalDecalBase = 0; iGlobalDecalBase < passDecalCountAligned; iGlobalDecalBase += DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP )
 	{
 		uint iGlobalDecal = iGlobalDecalBase + groupThreadIndex;
 

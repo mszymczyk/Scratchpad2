@@ -1,4 +1,4 @@
-#include "cs_decal_volume_cshared.hlsl"
+#include "lib/cs_decal_volume_cshared.hlsl"
 
 StructuredBuffer<DecalVolume> inDecalVolumes           REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS;
 StructuredBuffer<DecalVolumeTest> inDecalVolumesTest   REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST;
@@ -537,8 +537,11 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 {
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
-	uint flatCellIndex = DecalVolume_GetCellFlatIndex( cellXYZ, dvCellCount.xyz );
-	outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
+	if ( cellDecalCount > 0 )
+	{
+		uint flatCellIndex = DecalVolume_GetCellFlatIndex( cellXYZ, dvCellCount.xyz );
+		outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
+	}
 
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 
