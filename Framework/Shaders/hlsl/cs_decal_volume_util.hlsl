@@ -17,6 +17,10 @@ RWStructuredBuffer<uint> outDecalVolumeIndices         REGISTER_BUFFER_DECAL_VOL
 StructuredBuffer<GroupToBucket> inGroupToBucket        REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET;
 RWStructuredBuffer<GroupToBucket> outGroupToBucket     REGISTER_BUFFER_DECAL_VOLUME_OUT_GROUP_TO_BUCKET;
 
+#define DECAL_VOLUME_CLUSTER_GCN								0
+
+#define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
+//#define DECAL_VOLUME_INTERSECTION_METHOD						0
 
 struct Frustum
 {
@@ -84,12 +88,18 @@ void extractFrustumCorners( out float3 frustumCorners[8], float4 frustumPlanes[6
 }
 
 
-void DecalVolume_BuildSubFrustumWorldSpace( out Frustum frustum, const float3 cellCount, const float3 cellCountRcp, float3 cellIndex, float2 tanHalfFovRcp, float4x4 viewMatrix, float nearPlane, float farPlaneOverNearPlane )
+void DecalVolume_BuildSubFrustumWorldSpace( out Frustum frustum, const float3 cellCount, const float3 cellCountRcp, float3 cellIndex, float2 tanHalfFovRcp, float4x4 viewMatrix, float nearPlane, float farPlane, float farPlaneOverNearPlane )
 {
 	frustum = (Frustum)0;
 
-	float n = nearPlane * pow( abs(farPlaneOverNearPlane), (float)( cellIndex.z     ) / cellCount.z );
-	float f = nearPlane * pow( abs(farPlaneOverNearPlane), (float)( cellIndex.z + 1 ) / cellCount.z );
+#if DECAL_VOLUME_CLUSTER_3D
+	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
+	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+#else // #if DECAL_VOLUME_CLUSTER_3D
+	float n = nearPlane;
+	float f = farPlane;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
+
 	float nmf = 1.0f / ( n - f );
 	float a = f * nmf;
 	float b = n * f * nmf;
@@ -270,12 +280,17 @@ void DecalVolume_GetCornersClipSpace( DecalVolumeTest dv, out float4 dvCornersXY
 
 #define USE_Z_01 0
 
-void DecalVolume_BuildSubFrustumClipSpace( out Frustum frustum, const float3 cellCount, const float3 cellCountRcp, float3 cellIndex, float nearPlane, float farPlaneOverNearPlane )
+void DecalVolume_BuildSubFrustumClipSpace( out Frustum frustum, const float3 cellCount, const float3 cellCountRcp, float3 cellIndex, float nearPlane, float farPlane, float farPlaneOverNearPlane )
 {
 	frustum = (Frustum)0;
 
-	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
+#if DECAL_VOLUME_CLUSTER_3D
+	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
 	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+#else // #if DECAL_VOLUME_CLUSTER_3D
+	float n = nearPlane;
+	float f = farPlane;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 
 	frustum.clipSpacePlanes[0] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x     );
 	frustum.clipSpacePlanes[1] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x + 1 );
@@ -359,9 +374,9 @@ Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCells
 	Frustum outFrustum = (Frustum)0;
 
 #if DECAL_VOLUME_INTERSECTION_METHOD == 0
-	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.z );
+	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.y, dvNearFar.z );
 #else // DECAL_VOLUME_INTERSECTION_METHOD == 0
-	DecalVolume_BuildSubFrustumClipSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvNearFar.x, dvNearFar.z );
+	DecalVolume_BuildSubFrustumClipSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvNearFar.x, dvNearFar.y, dvNearFar.z );
 #endif // #else // DECAL_VOLUME_INTERSECTION_METHOD == 0
 
 	return outFrustum;
@@ -539,7 +554,12 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 	if ( cellDecalCount > 0 )
 	{
-		uint flatCellIndex = DecalVolume_GetCellFlatIndex( cellXYZ, dvCellCount.xyz );
+#if DECAL_VOLUME_CLUSTER_3D
+		uint flatCellIndex = DecalVolume_GetCellFlatIndex3D( cellXYZ, dvCellCount.xyz );
+#else // #if DECAL_VOLUME_CLUSTER_3D
+		uint flatCellIndex = DecalVolume_GetCellFlatIndex2D( cellXYZ.xy, dvCellCount.xy );
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
+
 		outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
 	}
 
@@ -555,7 +575,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 		ci.decalCount = cellDecalCount;
 
 #if DECAL_VOLUME_CLUSTER_BUCKETS
-		uint np2 = min( RoundUpToPowerOfTwo( cellDecalCount ), 64 );
+		uint np2 = min( RoundUpToPowerOfTwo( cellDecalCount ), 64 ); // 64 == 1 << (DECAL_VOLUME_CLUSTER_MAX_BUCKETS-1)
 		uint cellSlot = firstbitlow( np2 );
 #else // #if DECAL_VOLUME_CLUSTER_BUCKETS
 		uint cellSlot = 0;
@@ -563,7 +583,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 #if DECAL_VOLUME_CLUSTER_3D
 
-		// Could use append buffer
+		// Could use counter/GDS
 		uint cellIndirectionIndex;
 		InterlockedAdd( outCellIndirectionCount[cellSlot], 8, cellIndirectionIndex );
 
@@ -572,7 +592,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 			ci.cellIndex = encodedCellXYZ;
-			outCellIndirection[cellIndirectionIndex / 8 + cellSlot * maxCellIndirectionsPerBucket] = ci;
+			outCellIndirection[ safe_mad24( cellSlot, maxCellIndirectionsPerBucket, cellIndirectionIndex / 8 ) ] = ci;
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 			for ( uint i = 0; i < 8; ++i )
 			{
@@ -581,7 +601,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 				uint tile = i % 4;
 				uint row = tile / 2;
 				uint col = tile % 2;
-				ci.cellIndex = DecalVolume_EncodeCell3D( uint3( cellXYZ.x * 2 + col, cellXYZ.y * 2 + row, cellXYZ.z * 2 + slice ) );
+				ci.cellIndex = DecalVolume_EncodeCell3D( uint3( safe_mad24( cellXYZ.x, 2, col ), safe_mad24( cellXYZ.y, 2, row ), safe_mad24( cellXYZ.z, 2, slice ) ) );
 
 				outCellIndirection[cellIndirectionIndex + i + cellSlot * maxCellIndirectionsPerBucket * 8] = ci;
 			}
@@ -591,22 +611,26 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 #else // #if DECAL_VOLUME_CLUSTER_3D
 
-		// Could use append buffer
+		// Could use counter/GDS
 		uint cellIndirectionIndex;
 		InterlockedAdd( outCellIndirectionCount[cellSlot], 4, cellIndirectionIndex );
 
+		if ( cellIndirectionIndex / 8 < maxCellIndirectionsPerBucket )
+		{
+
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
-		ci.cellIndex = encodedCellXYZ;
-		outCellIndirection[cellIndirectionIndex / 4 + cellSlot * flatCellCount] = ci;
+			ci.cellIndex = encodedCellXYZ;
+			outCellIndirection[safe_mad24( cellSlot, maxCellIndirectionsPerBucket, cellIndirectionIndex / 4 )] = ci;
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 
-		for ( uint i = 0; i < 4; ++i )
-		{
-			uint row = i / 2;
-			uint col = i % 2;
-			ci.cellIndex = ( cellXYZ.y * 2 + row ) * numCellsXYZ.x * 2 + cellXYZ.x * 2 + col;
+			for ( uint i = 0; i < 4; ++i )
+			{
+				uint row = i / 2;
+				uint col = i % 2;
+				ci.cellIndex = DecalVolume_EncodeCell2D( uint2( safe_mad24( cellXYZ.x, 2, col ), safe_mad24( cellXYZ.y, 2, row ) ) );
 
-			outCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
+				outCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
+			}
 		}
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1

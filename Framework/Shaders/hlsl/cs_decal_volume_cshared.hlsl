@@ -29,8 +29,9 @@
 #define DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP						256
 #define DECAL_VOLUME_USE_XYW_CORNERS								1
 
+#define DECAL_VOLUME_CLUSTER_MAX_BUCKETS							7
 #define DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED					1
-
+#define DECAL_VOLUME_CLUSTER_CLEAR_HEADER_NUM_GROUPS				64
 
 MAKE_FLAT_CBUFFER( DecalVolumeCsConstants, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS )
 {
@@ -128,9 +129,15 @@ void DecalVolume_UnpackHeader( uint packedHeader, out uint decalCount, out uint 
 }
 
 
-uint DecalVolume_GetCellFlatIndex( uint3 cellID, uint3 numCells )
+uint DecalVolume_GetCellFlatIndex3D( uint3 cellID, uint3 numCells )
 {
 	return safe_mad24( cellID.z, safe_mul24( numCells.x, numCells.y ), safe_mad24( cellID.y, numCells.x, cellID.x ) );
+}
+
+
+uint DecalVolume_GetCellFlatIndex2D( uint2 cellID, uint2 numCells )
+{
+	return safe_mad24( cellID.y, numCells.x, cellID.x );
 }
 
 

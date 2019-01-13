@@ -153,7 +153,6 @@
     <FxCompilerFile Include="cs_decal_volume_util.hlsl" />
     <FxCompilerFile Include="decal_volume_rendering.hlsl" />
     <FxCompilerFile Include="FxDoc.hlsl" />
-    <FxCompilerFile Include="gpuClustering_visibility.hlsl" />
     <FxCompilerFile Include="texture.hlsl">
       <FileType>Document</FileType>
     </FxCompilerFile>

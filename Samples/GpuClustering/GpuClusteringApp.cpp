@@ -2465,7 +2465,7 @@ namespace spad
 
 				p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
 
-				uint nGroupsX = (p.nCellsX * p.nCellsY * p.nCellsZ + 256 - 1) / 256;
+				uint nGroupsX = (p.nCellsX * p.nCellsY * p.nCellsZ + DECAL_VOLUME_CLUSTER_CLEAR_HEADER_NUM_GROUPS - 1) / DECAL_VOLUME_CLUSTER_CLEAR_HEADER_NUM_GROUPS;
 				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
 
 				deviceContext.UnbindCSUAVs();

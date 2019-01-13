@@ -30,7 +30,7 @@ passes :
 			cdefines = {
 				DECAL_VOLUME_CLUSTER_MID_PASS = ( "1" );
 				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
-				//DECAL_VOLUME_CLUSTER_SUB_WORD = ( "0", "2", "4", "8", "16" );
+				//DECAL_VOLUME_CLUSTER_SUBGROUP = ( "0", "2", "4", "8", "16" );
 			}
 		}
 	}
@@ -101,27 +101,27 @@ void DecalVolumeTilingFirstPass( uint3 cellThreadID : SV_GroupThreadID, uint3 ce
 
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP		DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_MID_LAST_PASS
 
-#if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
+#if DECAL_VOLUME_CLUSTER_SUBGROUP == 0
 #include "cs_decal_volume_impl.hlsl"
-#else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
-#define DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL	DECAL_VOLUME_CLUSTER_SUB_WORD
+#else // #if DECAL_VOLUME_CLUSTER_SUBGROUP == 0
+#define DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL	DECAL_VOLUME_CLUSTER_SUBGROUP
 #define DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP	(32 / DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL)
 #include "cs_decal_volume_impl_subword.hlsl"
-#endif // #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
+#endif // #else // #if DECAL_VOLUME_CLUSTER_SUBGROUP == 0
 
 [numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
 void DecalVolumeTilingMidPass( uint3 cellThreadID : SV_GroupThreadID, uint3 cellID : SV_GroupID )
 {
 	uint decalCountInFrustum = inDecalVolumesCount[0];
 
-#if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
+#if DECAL_VOLUME_CLUSTER_SUBGROUP == 0
 	CellIndirection ci = inCellIndirection[cellID.x];
 	DecalVisibilityGeneric( cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, DECAL_VOLUME_INTERSECTION_METHOD );
-#else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
+#else // #if DECAL_VOLUME_CLUSTER_SUBGROUP == 0
 	uint cellIndex = cellID.x * DECAL_VOLUME_CLUSTER_NUM_CELLS_PER_GROUP + cellThreadID.x / DECAL_VOLUME_CLUSTER_NUM_THREADS_PER_CELL;
 	CellIndirection ci = inCellIndirection[cellIndex];
 	DecalVisibilitySubGroup( cellThreadID, ci.cellIndex, ci.decalCount, decalCountInFrustum, maxCountPerCell.x, ci.offsetToFirstDecalIndex, DECAL_VOLUME_INTERSECTION_METHOD );
-#endif // #else // #if DECAL_VOLUME_CLUSTER_SUB_WORD == 0
+#endif // #else // #if DECAL_VOLUME_CLUSTER_SUBGROUP == 0
 }
 
 #endif // #if DECAL_VOLUME_CLUSTER_MID_PASS
