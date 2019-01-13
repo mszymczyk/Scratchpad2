@@ -631,9 +631,10 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 				outCellIndirection[cellIndirectionIndex + i + cellSlot * flatCellCount * 4] = ci;
 			}
-		}
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
+
+		}
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 	}

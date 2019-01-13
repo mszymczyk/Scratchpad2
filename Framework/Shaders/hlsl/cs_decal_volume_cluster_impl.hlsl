@@ -1,85 +1,3 @@
-#ifdef FX_HEADER
-#ifdef FX_PASSES
-passes :
-{
-	cs_decal_volume_clear_header = {
-		ComputeProgram = "cs_decal_volume_clear_header";
-	}
-
-	cs_decal_volume_indirect_args = {
-		ComputeProgram = "cs_decal_volume_indirect_args";
-	}
-
-	cs_decal_volume_indirect_args_last_pass = {
-		ComputeProgram = "cs_decal_volume_indirect_args_last_pass";
-	}
-
-	cs_decal_volume_indirect_args_buckets = {
-		ComputeProgram = "cs_decal_volume_indirect_args_buckets";
-	}
-
-	cs_decal_volume_indirect_args_buckets_merged = {
-		ComputeProgram = "cs_decal_volume_indirect_args_buckets_merged";
-	}
-
-	cs_decal_volume_assign_bucket = {
-		ComputeProgram = "cs_decal_volume_assign_bucket";
-	}
-
-	cs_decal_volume_cluster_single_pass = {
-		ComputeProgram = {
-			EntryName = "cs_decal_volume_cluster_first_pass";
-			cdefines = {
-				DECAL_VOLUME_CLUSTER_SINGLE_PASS = ( "1" );
-				DECAL_VOLUME_CLUSTER_FIRST_PASS = ( "1" );
-				DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
-				DECAL_VOLUME_INTERSECTION_METHOD = ( "1" );
-				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0" );
-			}
-		}
-	}
-
-	cs_decal_volume_cluster_first_pass = {
-		ComputeProgram = {
-			EntryName = "cs_decal_volume_cluster_first_pass";
-			cdefines = {
-				DECAL_VOLUME_CLUSTER_FIRST_PASS = ( "1" );
-				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
-				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-			}
-		}
-	}
-
-	cs_decal_volume_cluster_mid_pass = {
-		ComputeProgram = {
-			EntryName = "cs_decal_volume_cluster_mid_pass";
-			cdefines = {
-				DECAL_VOLUME_CLUSTER_MID_PASS = ( "1" );
-				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
-				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-				//DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
-				DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "-2" );
-			}
-		}
-	}
-
-	cs_decal_volume_cluster_last_pass = {
-		ComputeProgram = {
-			EntryName = "cs_decal_volume_cluster_mid_pass";
-			cdefines = {
-				DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
-				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1" );
-				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-				//DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
-				DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "-2" );
-			}
-		}
-	}
-};
-#endif // FX_PASSES
-#endif // FX_HEADER
-
-#define DECAL_VOLUME_CLUSTER_3D									1
 
 #include "cs_decal_volume_util.hlsl"
 
@@ -92,6 +10,7 @@ passes :
 #define DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP_MID_LAST_PASS	64
 
 #define DECAL_VOLUME_CLUSTER_INDIRECT_ARGS_PARALLEL				0
+
 
 [numthreads( DECAL_VOLUME_CLUSTER_CLEAR_HEADER_NUM_GROUPS, 1, 1 )]
 void cs_decal_volume_clear_header( uint3 dtid : SV_DispatchThreadID )
@@ -338,11 +257,11 @@ CellIndirection DecalVolumeGetCellIndirection( uint cellIndex, uint cellBucket )
 
 	CellIndirection ci = inCellIndirection[safe_mad24( cellBucket, DecalVolume_GetMaxPrevOutCellIndirections(), dataIndex )];
 
-	uint3 parentCellXYZ = DecalVolume_DecodeCell2D( ci.cellIndex );
+	uint2 parentCellXY = DecalVolume_DecodeCell2D( ci.cellIndex );
 
 	uint row = childIndex / 2;
 	uint col = childIndex % 2;
-	ci.cellIndex = DecalVolume_EncodeCell2D( uint2( safe_mad24( parentCellXYZ.x, 2, col ), safe_mad24( parentCellXYZ.y, 2, row ) ) );
+	ci.cellIndex = DecalVolume_EncodeCell2D( uint2( safe_mad24( parentCellXY.x, 2, col ), safe_mad24( parentCellXY.y, 2, row ) ) );
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 
