@@ -25,6 +25,18 @@ public:
 	void Initialize( ID3D11Device* device, ID3D11DeviceContext* context );
 	void DeInitialize();
 
+
+	void setCS_SRV( u32 slot, ID3D11ShaderResourceView *srv ) const
+	{
+		context->CSSetShaderResources( slot, 1, &srv );
+	}
+
+	void setCS_UAV( u32 slot, ID3D11UnorderedAccessView *uav ) const
+	{
+		UINT initialCounts = 0;
+		context->CSSetUnorderedAccessViews( slot, 1, &uav, &initialCounts );
+	}
+
 	void UnbindCSUAV( uint slot )
 	{
 		ID3D11UnorderedAccessView* uavsClear[1] = { nullptr };

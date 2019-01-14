@@ -281,7 +281,7 @@ void DepthStencil::Initialize( ID3D11Device* device, u32 width, u32 height, u32 
 		}
 
 		DXCall( device->CreateShaderResourceView( texture_, &srvDesc, &srv_ ) );
-		debug::Dx11SetDebugName3( dsvReadOnly_, "DepthStencil %s SRV", debugName_.c_str() );
+		debug::Dx11SetDebugName3( srv_, "DepthStencil %s SRV", debugName_.c_str() );
 	}
 
 	this->width_ = width;
@@ -315,7 +315,7 @@ CodeTexture::~CodeTexture()
 	DeInitialize();
 }
 
-void CodeTexture::Initialize( ID3D11Device* device, u32 width, u32 height, u32 depth, DXGI_FORMAT format, u32 numMipLevels /*= 1*/, u32 arraySize /*= 1*/, bool cubeMap /*= false */, const D3D11_SUBRESOURCE_DATA *const initData /*= nullptr*/ )
+void CodeTexture::Initialize( ID3D11Device* device, u32 width, u32 height, u32 depth, DXGI_FORMAT format, u32 numMipLevels /*= 1*/, u32 arraySize /*= 1*/, bool cubeMap /*= false */, const D3D11_SUBRESOURCE_DATA *const initData /*= nullptr*/, bool uav /*= false*/ )
 {
 	SPAD_ASSERT2( !texture_, "CodeTexture already initialized" );
 	SPAD_ASSERT2( depth == 0 || depth == 1, "Only 2D texture implemented" );
@@ -326,6 +326,10 @@ void CodeTexture::Initialize( ID3D11Device* device, u32 width, u32 height, u32 d
 	desc.Height = height;
 	desc.ArraySize = arraySize;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	if ( uav )
+	{
+		desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+	}
 	desc.SampleDesc.Count = 1;
 	desc.SampleDesc.Quality = 0;
 	desc.CPUAccessFlags = 0;
@@ -343,13 +347,36 @@ void CodeTexture::Initialize( ID3D11Device* device, u32 width, u32 height, u32 d
 
 	debug::Dx11SetDebugName3( texture_, "CodeTexture %s", debugName_.c_str() );
 
-	DXCall( device->CreateShaderResourceView( texture_, nullptr, &srv_ ) );
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	ZeroMemory( &srvDesc, sizeof( srvDesc ) );
+	srvDesc.Format = format;
+	if ( arraySize == 1 )
+	{
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = (UINT)-1;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+	}
+	else
+	{
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Texture2DArray.ArraySize = arraySize;
+		srvDesc.Texture2DArray.FirstArraySlice = 0;
+		srvDesc.Texture2DArray.MipLevels = (UINT)-1;
+		srvDesc.Texture2DArray.MostDetailedMip = 0;
+	}
+
+	DXCall( device->CreateShaderResourceView( texture_, &srvDesc, &srv_ ) );
 	debug::Dx11SetDebugName3( srv_, "CodeTexture %s, SRV", debugName_.c_str() );
+
+	srvMips_.resize( arraySize * numMipLevels );
+	if ( uav )
+		uavMips_.resize( arraySize * numMipLevels );
 
 	for ( u32 i = 0; i < arraySize; ++i )
 	{
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		srvDesc.Format = format;
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+		ZeroMemory( &uavDesc, sizeof( uavDesc ) );
+		uavDesc.Format = format;
 
 		if ( arraySize == 1 )
 		{
@@ -370,6 +397,46 @@ void CodeTexture::Initialize( ID3D11Device* device, u32 width, u32 height, u32 d
 		DXCall( device->CreateShaderResourceView( texture_, &srvDesc, &srView ) );
 		debug::Dx11SetDebugName3( srView, "CodeTexture %s, SRV(%u)", debugName_.c_str(), i );
 		srvArraySlices_.push_back( srView );
+
+		for ( uint iMip = 0; iMip < numMipLevels; ++iMip )
+		{
+			if ( arraySize == 1 )
+			{
+				srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Texture2D.MipLevels = (UINT)1;
+				srvDesc.Texture2D.MostDetailedMip = iMip;
+
+				uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+				uavDesc.Texture2DArray.ArraySize = 1;
+				uavDesc.Texture2DArray.FirstArraySlice = i;
+				uavDesc.Texture2DArray.MipSlice = iMip;
+			}
+			else
+			{
+				srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+				srvDesc.Texture2DArray.ArraySize = 1;
+				srvDesc.Texture2DArray.FirstArraySlice = i;
+				srvDesc.Texture2DArray.MipLevels = (UINT)1;
+				srvDesc.Texture2DArray.MostDetailedMip = iMip;
+
+				uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+				uavDesc.Texture2DArray.ArraySize = 1;
+				uavDesc.Texture2DArray.FirstArraySlice = i;
+				uavDesc.Texture2DArray.MipSlice = iMip;
+			}
+
+			DXCall( device->CreateShaderResourceView( texture_, &srvDesc, &srView ) );
+			debug::Dx11SetDebugName3( srView, "CodeTexture %s, SRV(slice %u, mip %u)", debugName_.c_str(), i, iMip );
+			srvMips_[i * numMipLevels + iMip] = srView;
+
+			if ( uav )
+			{
+				ID3D11UnorderedAccessView *uaView;
+				DXCall( device->CreateUnorderedAccessView( texture_, &uavDesc, &uaView ) );
+				debug::Dx11SetDebugName3( srView, "CodeTexture %s, UAV(slice %u, mip %u)", debugName_.c_str(), i, iMip );
+				uavMips_[i * numMipLevels + iMip] = uaView;
+			}
+		}
 	}
 
 	this->width_ = width;
@@ -388,6 +455,7 @@ void CodeTexture::DeInitialize()
 	DX_SAFE_RELEASE( srv_ );
 
 	spad::clear_cont( srvArraySlices_, [&]( ID3D11ShaderResourceView* h ) { h->Release(); } );
+	spad::clear_cont( srvMips_, [&]( ID3D11ShaderResourceView* h ) { h->Release(); } );
 
 	width_ = 0;
 	height_ = 0;

@@ -76,6 +76,7 @@ namespace spad
 		void ModelStartUp();
 		void ModelRender( Dx11DeviceContext& deviceContext );
 		void CullDecalVolumes( Dx11DeviceContext& deviceContext );
+		void DownsampleDepth( Dx11DeviceContext& deviceContext );
 
 		void GenDecalVolumesRandom();
 		void GenDecalVolumesModel();
@@ -85,6 +86,7 @@ namespace spad
 
 		//void RenderFrustum2();
 		void DrawClusteringHeatmap( Dx11DeviceContext& deviceContext );
+		void DrawDepth( Dx11DeviceContext& deviceContext );
 		void DrawBoxesAndAxesFillIndirectArgs( Dx11DeviceContext& deviceContext );
 		void DrawDecalBoxes( Dx11DeviceContext& deviceContext );
 		void DrawDecalAxes( Dx11DeviceContext& deviceContext );
@@ -96,6 +98,7 @@ namespace spad
 
 		RenderTarget2D mainRT_ = RenderTarget2D( "mainRT_" );
 		DepthStencil mainDS_ = DepthStencil( "mainDS_" );
+		CodeTexture clusterDS_ = CodeTexture( "clusterDS_" );
 
 		RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
@@ -229,9 +232,9 @@ namespace spad
 			AppModeCount
 		};
 
-		AppMode appMode_ = Tiling;
+		//AppMode appMode_ = Tiling;
 		//AppMode appMode_ = Clustering;
-		//AppMode appMode_ = Scene;
+		AppMode appMode_ = Scene;
 
 		enum OutputView : int
 		{
@@ -239,10 +242,12 @@ namespace spad
 			GpuHeatmap,
 			CpuHeatmap,
 			DecalVolumesAccum,
+			DepthBuffer,
 			OutputViewCount
 		};
 
-		OutputView currentView_ = GpuHeatmap;
+		//OutputView currentView_ = GpuHeatmap;
+		OutputView currentView_ = DepthBuffer;
 
 		bool showExtendedStats_ = true;
 

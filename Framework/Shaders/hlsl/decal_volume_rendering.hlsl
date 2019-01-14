@@ -146,10 +146,12 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 	float2 pixelCoordNormalized = pixelCoord * dvdRenderTargetSize.zw;
 	uint2 screenTile = min( uint2( pixelCoordNormalized * float2( dvdCellCount.xy ) ), dvdCellCount.xy - 1 );
 
-	uint decalCount = 0;
+	uint mode = dvdMode.x;
 
-	if ( dvdMode.x == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_3D )
+	if ( mode == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_3D )
 	{
+		uint decalCount = 0;
+
 		for ( uint slice = 0; slice < dvdCellCount.z; ++slice )
 		{
 			uint3 cellID = uint3( screenTile, slice );
@@ -162,8 +164,11 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 
 			decalCount += cellDecalCount;
 		}
+
+		float3 color = GetColorMap( decalCount );
+		return float4( color, 0.25f );
 	}
-	else if ( dvdMode.x == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_2D )
+	else if ( mode == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_2D )
 	{
 		uint clusterIndex = DecalVolume_GetCellFlatIndex2D( screenTile, dvdCellCount.xy );
 
@@ -172,12 +177,19 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 		uint offsetToFirstDecalIndex;
 		DecalVolume_UnpackHeader( node, cellDecalCount, offsetToFirstDecalIndex );
 
-		decalCount += cellDecalCount;
+		uint decalCount = cellDecalCount;
+
+		float3 color = GetColorMap( decalCount );
+		return float4( color, 0.25f );
+	}
+	else if ( mode == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_DEPTH )
+	{
+		float4 t = diffuseTex.SampleLevel( diffuseTexSamp, pixelCoordNormalized, dvdMode.y );
+
+		return float4( t.xxx, 1 );
 	}
 
-	float3 color = GetColorMap( decalCount );
-
-	return float4( color, 0.25f );
+	return float4( 1, 0, 1, 1 );
 }
 
 

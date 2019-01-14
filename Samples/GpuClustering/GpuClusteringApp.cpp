@@ -373,7 +373,7 @@ namespace spad
 
 		ID3D11Device* dxDevice = dx11_->getDevice();
 
-		mainDS_.Initialize( dxDevice, dx11_->getBackBufferWidth(), dx11_->getBackBufferHeight() );
+		mainDS_.Initialize( dxDevice, dx11_->getBackBufferWidth(), dx11_->getBackBufferHeight(), 1, DXGI_FORMAT_D24_UNORM_S8_UINT, 1, 0, true );
 
 		//gpuClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\gpuClustering.hlslc_packed" );
 		decalVolumeRenderingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\decal_volume_rendering.hlslc_packed" );
@@ -1025,6 +1025,10 @@ namespace spad
 			DecalVolumeClusteringRun( immediateContextWrapper, *clustering_ );
 
 			ModelRender( immediateContextWrapper );
+
+			immediateContext->OMSetRenderTargets( 1, rtviews, nullptr );
+
+			DownsampleDepth( immediateContextWrapper );
 		}
 
 		//RenderFrustum2();
@@ -1048,6 +1052,7 @@ namespace spad
 		//DrawDecalFarPlane( immediateContextWrapper );
 
 		DrawClusteringHeatmap( immediateContextWrapper );
+		DrawDepth( immediateContextWrapper );
 
 		Vector4 plane( 0, 1, 0, 0 );
 		debugDraw::AddPlaneWS( plane, 6, 6, 6, 6, 0xff0000ff, 1, false );
@@ -1185,6 +1190,22 @@ namespace spad
 		}
 	}
 
+	u32 GetMipMapCountFromDimesions( u32 mipW, u32 mipH, u32 mipD )
+	{
+		//unsigned int max=(imageWidth>imageHeight)?imageWidth:imageHeight;
+		//max=(max>imageDepth)?max:imageDepth;
+		u32 max = maxOfTriple( (i32)mipW, (i32)mipH, (i32)mipD );
+		u16 i = 0;
+
+		while ( max > 0 )
+		{
+			max >>= 1;
+			i++;
+		}
+
+		return i;
+	}
+
 	void SettingsTestApp::SceneReset()
 	{
 		if ( appMode_ == Tiling || appMode_ == Clustering )
@@ -1202,9 +1223,34 @@ namespace spad
 			viewMatrixForDecalVolumes_ = viewMatrixForCamera_;
 			projMatrixForDecalVolumes_ = projMatrixForCamera_;
 
+			uint rtWidth, rtHeight;
+			GetRenderTargetSize( rtWidth, rtHeight );
+
+			uint nMips = GetMipMapCountFromDimesions( rtWidth, rtHeight, 1 );
+
+			clusterDS_.DeInitialize();
+			clusterDS_.Initialize( dx11_->getDevice(), rtWidth, rtHeight, 1, DXGI_FORMAT_R16_FLOAT, nMips, 1, false, nullptr, true );
+
 			ModelStartUp();
 			GenDecalVolumesModel();
 		}
+
+		//Matrix4 proj = InfinitePerspectiveMatrix(
+		//	1.0f / projMatrixForDecalVolumes_.getElem( 0, 0 ).getAsFloat(),
+		//	1.0f / projMatrixForDecalVolumes_.getElem( 1, 1 ).getAsFloat(),
+		//	testFrustumNearPlane
+		//);
+
+		//Vector4 projMatrixParams = Vector4(
+		//	  proj.getElem( 0, 0 )
+		//	, proj.getElem( 1, 1 )
+		//	, proj.getElem( 2, 2 )
+		//	, proj.getElem( 3, 2 )
+		//);
+
+		//float linearDepth = projMatrixParams.w / (nonLinearDepth + projMatrixParams.z);
+		// float linearDepth = testFrustumNearPlane / nonLinearDepth; // for InfinitePerspectiveMatrix
+
 	}
 
 	void SettingsTestApp::ModelStartUp()
@@ -1285,7 +1331,7 @@ namespace spad
 					material.DiffuseMap
 				};
 
-				context->PSSetShaderResources( REGISTER_SAMPLER_DIFFUSE_SAMPLER, 1, psTextures );
+				context->PSSetShaderResources( REGISTER_TEXTURE_DIFFUSE_TEXTURE, 1, psTextures );
 				context->DrawIndexed( part.IndexCount, part.IndexStart, 0 );
 			}
 		}
@@ -1303,7 +1349,7 @@ namespace spad
 			return;
 		}
 
-		const HlslShaderPass& fxPass = *decalVolumeCullShader_->getPass( "DecalVolumeCulling" );
+		const HlslShaderPass& fxPass = *decalVolumeCullShader_->getPass( "cs_decal_volume_culling" );
 		fxPass.setCS( deviceContext.context );
 
 		Vector4 frustumPlanes[6];
@@ -1337,6 +1383,58 @@ namespace spad
 		//const u32 *numDecalsVisible = decalVolumesCulledCountGPU_.CPUReadbackStart( deviceContext.context );
 		//decalVolumesCulledCount_ = *numDecalsVisible;
 		//decalVolumesCulledCountGPU_.CPUReadbackEnd( deviceContext.context );
+
+		deviceContext.EndMarker();
+	}
+
+	void SettingsTestApp::DownsampleDepth( Dx11DeviceContext& deviceContext )
+	{
+		deviceContext.BeginMarker( "DownsampleDepth" );
+
+		const HlslShaderPass* fxPass = decalVolumeCullShader_->getPass( "cs_copy_depth" );
+		fxPass->setCS( deviceContext.context );
+
+		Vector4 projMatrixParams = Vector4(
+			  projMatrixForDecalVolumes_.getElem( 0, 0 )
+			, projMatrixForDecalVolumes_.getElem( 1, 1 )
+			, projMatrixForDecalVolumes_.getElem( 2, 2 )
+			, projMatrixForDecalVolumes_.getElem( 3, 2 )
+		);
+
+		decalVolumeCullConstants_.data.dvcRenderTargetSize = Vector4( (float)clusterDS_.width_, (float)clusterDS_.height_, 1.0f / (float)clusterDS_.width_, 1.0f / (float)clusterDS_.height_ );
+		decalVolumeCullConstants_.data.dvcProjMatrixParams = projMatrixParams;
+		decalVolumeCullConstants_.updateGpu( deviceContext.context );
+		decalVolumeCullConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
+
+		deviceContext.setCS_SRV( REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH, mainDS_.srv_ );
+		deviceContext.context->CSSetSamplers( REGISTER_SAMPLER_DECAL_VOLUME_IN_DEPTH, 1, &SamplerStates::point );
+		deviceContext.setCS_UAV( REGISTER_TEXTURE_DECAL_VOLUME_OUT_DEPTH, clusterDS_.GetUAV( 0, 0 ) );
+
+		uint nGroupsX = ( clusterDS_.width_ + 8 - 1 ) / 8;
+		uint nGroupsY = ( clusterDS_.height_ + 8 - 1 ) / 8;
+		deviceContext.context->Dispatch( nGroupsX, nGroupsY, 1 );
+
+		deviceContext.UnbindCSUAVs();
+
+		fxPass = decalVolumeCullShader_->getPass( "cs_downsample_depth" );
+		fxPass->setCS( deviceContext.context );
+
+		uint w = clusterDS_.width_ / 2;
+		uint h = clusterDS_.height_ / 2;
+		for ( uint iMip = 1; iMip < 5; ++iMip )
+		{
+			deviceContext.setCS_SRV( REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH, clusterDS_.GetSRV( 0, iMip - 1 ) );
+			deviceContext.setCS_UAV( REGISTER_TEXTURE_DECAL_VOLUME_OUT_DEPTH, clusterDS_.GetUAV( 0, iMip ) );
+
+			nGroupsX = ( w + 8 - 1 ) / 8;
+			nGroupsY = ( h + 8 - 1 ) / 8;
+			deviceContext.context->Dispatch( nGroupsX, nGroupsY, 1 );
+
+			deviceContext.UnbindCSUAVs();
+
+			w = maxOfPair( w / 2, 1U );
+			h = maxOfPair( h / 2, 1U );
+		}
 
 		deviceContext.EndMarker();
 	}
@@ -2408,8 +2506,8 @@ namespace spad
 				}
 				else
 				{
-					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
-					p.maxDecalIndices = ( cellCountSqr / 8 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
+					p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					//p.maxDecalIndices = ( cellCountSqr / 4 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
 				}
 			}
 
@@ -2828,6 +2926,45 @@ namespace spad
 
 		context->Draw( 3, 0 );
 
+	}
+
+	void SettingsTestApp::DrawDepth( Dx11DeviceContext& deviceContext )
+	{
+		if ( !(currentView_ == DepthBuffer && appMode_ == Scene) )
+		{
+			return;
+		}
+
+		ID3D11DeviceContext* context = deviceContext.context;
+
+		const HlslShaderPass& fxPass = *decalVolumeRenderingShader_->getPass( "DecalVolumeHeatmapTile" );
+		fxPass.setVS( context );
+		fxPass.setPS( context );
+
+		context->RSSetState( RasterizerStates::NoCull() );
+		context->OMSetBlendState( BlendStates::alphaBlend, nullptr, 0xffffffff );
+		context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+		context->OMSetDepthStencilState( DepthStencilStates::DepthDisabled(), 0 );
+		context->IASetInputLayout( nullptr );
+
+		uint rtWidth = dx11_->getBackBufferWidth();
+		uint rtHeight = dx11_->getBackBufferHeight();
+
+		decalVolumeRenderingConstants_.data.dvdRenderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
+		decalVolumeRenderingConstants_.data.dvdMode[0] = DECAL_VOLUME_CLUSTER_DISPLAY_MODE_DEPTH;
+		decalVolumeRenderingConstants_.data.dvdMode[1] = 0;
+		decalVolumeRenderingConstants_.data.dvdMode[2] = 0;
+		decalVolumeRenderingConstants_.data.dvdMode[3] = 0;
+		decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
+		decalVolumeRenderingConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
+		decalVolumeRenderingConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
+
+		context->PSSetSamplers( REGISTER_SAMPLER_DIFFUSE_SAMPLER, 1, &SamplerStates::point );
+		//ID3D11ShaderResourceView *srvs[1] = { clusterDS_.GetSRV( 0, 4 ) };
+		ID3D11ShaderResourceView *srvs[1] = { clusterDS_.srv_ };
+		context->PSSetShaderResources( REGISTER_TEXTURE_DIFFUSE_TEXTURE, 1, srvs );
+
+		context->Draw( 3, 0 );
 	}
 
 	void SettingsTestApp::DrawBoxesAndAxesFillIndirectArgs( Dx11DeviceContext& deviceContext )

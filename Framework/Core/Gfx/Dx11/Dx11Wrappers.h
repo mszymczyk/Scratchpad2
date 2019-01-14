@@ -98,6 +98,8 @@ struct CodeTexture
 	DXGI_FORMAT format_ = DXGI_FORMAT_UNKNOWN;
 	bool cubeMap_ = false;
 	std::vector<ID3D11ShaderResourceView*> srvArraySlices_;
+	std::vector<ID3D11ShaderResourceView*> srvMips_;
+	std::vector<ID3D11UnorderedAccessView*> uavMips_;
 
 	std::string debugName_;
 
@@ -115,10 +117,23 @@ struct CodeTexture
 		u32 numMipLevels = 1,
 		u32 arraySize = 1,
 		bool cubeMap = false,
-		const D3D11_SUBRESOURCE_DATA *const initData = nullptr
+		const D3D11_SUBRESOURCE_DATA *const initData = nullptr,
+		bool uav = false
 	);
 
 	void DeInitialize();
+
+	ID3D11ShaderResourceView *GetSRV( uint slice, uint mip ) const
+	{
+		SPAD_ASSERT( slice * numMipLevels_ + mip < srvMips_.size() );
+		return srvMips_[slice * numMipLevels_ + mip];
+	}
+
+	ID3D11UnorderedAccessView *GetUAV( uint slice, uint mip )
+	{
+		SPAD_ASSERT( slice * numMipLevels_ + mip < uavMips_.size() );
+		return uavMips_[slice * numMipLevels_ + mip];
+	}
 };
 
 
