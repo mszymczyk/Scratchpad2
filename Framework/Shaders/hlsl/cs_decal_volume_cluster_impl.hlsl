@@ -284,7 +284,7 @@ CellIndirection DecalVolumeGetCellIndirection( uint cellIndex, uint cellBucket )
 [numthreads( DECAL_VOLUME_CLUSTER_THREADS_PER_GROUP, 1, 1 )]
 void cs_decal_volume_cluster_first_pass( uint3 groupThreadID : SV_GroupThreadID, uint3 groupID : SV_GroupID )
 {
-	uint flatCellIndex = DecalVolume_EncodeCell3D( groupID.xyz );
+	uint flatCellIndex = DecalVolume_EncodeCellCoord( groupID.xyz );
 	uint decalCountInFrustum = inDecalVolumesCount[0];
 	DecalVisibilityGeneric( groupThreadID, flatCellIndex, decalCountInFrustum, decalCountInFrustum, 0 );
 }

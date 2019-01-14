@@ -523,15 +523,23 @@ uint2 DecalVolume_DecodeCell2D( uint flatCellIndex )
 }
 
 
+uint DecalVolume_EncodeCellCoord( uint3 cellXYZ )
+{
+#if DECAL_VOLUME_CLUSTER_3D
+	return DecalVolume_EncodeCell3D( cellXYZ );
+#else // #if DECAL_VOLUME_CLUSTER_3D
+	return DecalVolume_EncodeCell2D( cellXYZ.xy );
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
+}
+
+
 uint3 DecalVolume_DecodeCellCoord( uint flatCellIndex )
 {
 #if DECAL_VOLUME_CLUSTER_3D
-	uint3 cellXYZ = DecalVolume_DecodeCell3D( flatCellIndex );
-	return cellXYZ;
+	return DecalVolume_DecodeCell3D( flatCellIndex );
 #else // #if DECAL_VOLUME_CLUSTER_3D
-	uint2 cellXY = DecalVolume_DecodeCell2D( flatCellIndex );
-	return uint3( cellXY, 0 );
-#endif // #if DECAL_VOLUME_CLUSTER_3D
+	return uint3( DecalVolume_DecodeCell2D( flatCellIndex ), 0 );
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 }
 
 
@@ -615,7 +623,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 		uint cellIndirectionIndex;
 		InterlockedAdd( outCellIndirectionCount[cellSlot], 4, cellIndirectionIndex );
 
-		if ( cellIndirectionIndex / 8 < maxCellIndirectionsPerBucket )
+		if ( cellIndirectionIndex / 4 < maxCellIndirectionsPerBucket )
 		{
 
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1

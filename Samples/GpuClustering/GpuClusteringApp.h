@@ -100,9 +100,9 @@ namespace spad
 		RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
 		//RenderTargetSize rtSize_ = RTW_128_128;
-		TileSize tileSizeForTiling_ = TileSize_32x32;
+		TileSize tileSizeForTiling_ = TileSize_8x8;
 		TileSize tileSizeForClustering_ = TileSize_32x32;
-		int numPassesForTiling_ = 4;
+		int numPassesForTiling_ = 5;
 		int numPassesForClustering_ = 5;
 
 		HlslShaderPtr decalVolumeRenderingShader_;
@@ -116,7 +116,7 @@ namespace spad
 		ConstantBuffer<CbDecalVolumeRenderingConstants> decalVolumeRenderingConstants_;
 
 		// Decal volumes
-		int maxDecalVolumes_ = 1024;// 1024 * 4;
+		int maxDecalVolumes_ = 1024 * 4;
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
@@ -163,10 +163,36 @@ namespace spad
 			Stats stats;
 		};
 
-		struct DecalVolumeShared
+		//struct DecalVolumeShared
+		//{
+		//	uint totalMemUsed_ = 0;
+		//	IntersectionMethod intersectionMethod_ = ClipSpace;
+		//	bool enableBuckets_ = true;
+		//	bool dynamicBuckets_ = false;
+		//	bool dynamicBucketsMerge_ = true;
+		//	bool enablePassTiming_ = true;
+		//	bool needsReset_ = false;
+		//};
+
+		//struct DecalVolumeTilingData
+		//{
+		//	std::vector<DecalVolumeClusteringPass> tilingPasses_;
+		//	ConstantBuffer<DecalVolumeCsConstants> tilingConstants_;
+		//	GpuTimerQuery decalVolumesTilingTimer_;
+		//	HlslShaderPtr decalVolumesTilingShader_;
+		//	DecalVolumeShared tiling_;
+		//};
+
+		struct DecalVolumeClusteringData
 		{
+			std::vector<DecalVolumeClusteringPass> passes_;
+			ConstantBuffer<DecalVolumeCsConstants> constants_;
+			GpuTimerQuery timer_;
+			HlslShaderPtr shader_;
+			//DecalVolumeShared clustering_;
 			uint totalMemUsed_ = 0;
 			IntersectionMethod intersectionMethod_ = ClipSpace;
+			bool clustering__ = true;
 			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;
 			bool dynamicBucketsMerge_ = true;
@@ -174,32 +200,9 @@ namespace spad
 			bool needsReset_ = false;
 		};
 
-		void PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeShared &shared, std::vector<DecalVolumeClusteringPass> &passes );
-		void ImGuiPrintClusteringInfo( DecalVolumeShared &shared, const std::vector<DecalVolumeClusteringPass> &passes, const GpuTimerQuery &totalTimer );
-
-		struct DecalVolumeTilingData
-		{
-			std::vector<DecalVolumeClusteringPass> tilingPasses_;
-			ConstantBuffer<DecalVolumeCsConstants> tilingConstants_;
-			GpuTimerQuery decalVolumesTilingTimer_;
-			HlslShaderPtr decalVolumesTilingShader_;
-			DecalVolumeShared tiling_;
-		};
-
-		typedef std::unique_ptr<DecalVolumeTilingData> DecalVolumeTilingDataPtr;
-		DecalVolumeTilingDataPtr tiling_;
-
-		struct DecalVolumeClusteringData
-		{
-			std::vector<DecalVolumeClusteringPass> clusteringPasses_;
-			ConstantBuffer<DecalVolumeCsConstants> clusteringConstants_;
-			GpuTimerQuery decalVolumesClusteringTimer_;
-			HlslShaderPtr decalVolumesClusteringShader_;
-			DecalVolumeShared clustering_;
-		};
-
 		typedef std::unique_ptr<DecalVolumeClusteringData> DecalVolumeClusteringDataPtr;
 		DecalVolumeClusteringDataPtr clustering_;
+		DecalVolumeClusteringDataPtr tiling_;
 
 		FpsCounter fpsCounter_;
 		RingBuffer vertices_;
@@ -226,8 +229,8 @@ namespace spad
 			AppModeCount
 		};
 
-		//AppMode appMode_ = Tiling;
-		AppMode appMode_ = Clustering;
+		AppMode appMode_ = Tiling;
+		//AppMode appMode_ = Clustering;
 		//AppMode appMode_ = Scene;
 
 		enum OutputView : int
@@ -243,13 +246,16 @@ namespace spad
 
 		bool showExtendedStats_ = true;
 
-		DecalVolumeTilingDataPtr DecalVolumeTilingStartUp();
-		void DecalVolumeTilingRun( Dx11DeviceContext& deviceContext );
-		
+		void PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeClusteringData &data );
+		void ImGuiPrintClusteringInfo( DecalVolumeClusteringData &data );
+
 		static void GetTileSize( TileSize tileSize, uint &outTileSize );
 		void CalculateCellCount( uint rtWidth, uint rtHeight, uint tileSize, uint numPasses, uint &outCellsX, uint &outCellsY, uint &outCellsZ );
-		DecalVolumeClusteringDataPtr DecalVolumeClusteringStartUp();
-		void DecalVolumeClusteringRun( Dx11DeviceContext& deviceContext );
+		DecalVolumeClusteringDataPtr DecalVolumeClusteringStartUp( bool clustering );
+		void DecalVolumeClusteringRun( Dx11DeviceContext& deviceContext, DecalVolumeClusteringData &data );
+
+		//DecalVolumeTilingDataPtr DecalVolumeTilingStartUp();
+		//void DecalVolumeTilingRun( Dx11DeviceContext& deviceContext );
 	};
 }
 

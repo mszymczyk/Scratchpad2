@@ -398,8 +398,9 @@ namespace spad
 
 		SceneReset();
 
-		tiling_ = DecalVolumeTilingStartUp();
-		clustering_ = DecalVolumeClusteringStartUp();
+		//tiling_ = DecalVolumeTilingStartUp();
+		tiling_ = DecalVolumeClusteringStartUp( false );
+		clustering_ = DecalVolumeClusteringStartUp( true );
 
 		return true;
 	}
@@ -956,8 +957,8 @@ namespace spad
 			//gpuClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\gpuClustering.hlslc_packed" );
 			decalVolumeRenderingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\decal_volume_rendering.hlslc_packed" );
 			decalVolumeCullShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_culling.hlslc_packed" );
-			//tiling_->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
-			clustering_->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
+			tiling_->shader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
+			clustering_->shader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
 		}
 	}
 
@@ -1008,9 +1009,10 @@ namespace spad
 			CullDecalVolumes( immediateContextWrapper );
 
 			if ( appMode_ == Tiling )
-				DecalVolumeTilingRun( immediateContextWrapper );
+				//DecalVolumeTilingRun( immediateContextWrapper );
+				DecalVolumeClusteringRun( immediateContextWrapper, *tiling_ );
 			else if ( appMode_ == Clustering )
-				DecalVolumeClusteringRun( immediateContextWrapper );
+				DecalVolumeClusteringRun( immediateContextWrapper, *clustering_ );
 		}
 		else if ( appMode_ == Scene )
 		{
@@ -1020,7 +1022,7 @@ namespace spad
 
 			CullDecalVolumes( immediateContextWrapper );
 
-			DecalVolumeClusteringRun( immediateContextWrapper );
+			DecalVolumeClusteringRun( immediateContextWrapper, *clustering_ );
 
 			ModelRender( immediateContextWrapper );
 		}
@@ -1062,8 +1064,9 @@ namespace spad
 
 		if ( ImGui::SliderInt( "Max decal volumes", &maxDecalVolumes_, 1, 16 * 1024 ) )
 		{
-			tiling_ = DecalVolumeTilingStartUp();
-			clustering_ = DecalVolumeClusteringStartUp();
+			//tiling_ = DecalVolumeTilingStartUp();
+			tiling_ = DecalVolumeClusteringStartUp( false );
+			clustering_ = DecalVolumeClusteringStartUp( true );
 
 			if ( appMode_ == Scene )
 				GenDecalVolumesModel();
@@ -1121,8 +1124,9 @@ namespace spad
 
 			if ( ImGui::Combo( "RT Size", reinterpret_cast<int*>( &rtSize_ ), items, IM_ARRAYSIZE( items ) ) )
 			{
-				tiling_ = DecalVolumeTilingStartUp();
-				clustering_ = DecalVolumeClusteringStartUp();
+				//tiling_ = DecalVolumeTilingStartUp();
+				tiling_ = DecalVolumeClusteringStartUp( false );
+				clustering_ = DecalVolumeClusteringStartUp( true );
 			}
 		}
 
@@ -1131,12 +1135,14 @@ namespace spad
 			const char* items[] = { "512x512", "256x256", "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
 			if ( ImGui::Combo( "Tile size (tiling)", reinterpret_cast<int*>( &tileSizeForTiling_ ), items, IM_ARRAYSIZE( items ) ) )
 			{
-				tiling_ = DecalVolumeTilingStartUp();
+				//tiling_ = DecalVolumeTilingStartUp();
+				tiling_ = DecalVolumeClusteringStartUp( false );
 			}
 
-			if ( ImGui::SliderInt( "Num passes (tiling)", &numPassesForTiling_, 2, 6 ) )
+			if ( ImGui::SliderInt( "Num passes (tiling)", &numPassesForTiling_, 1, 6 ) )
 			{
-				tiling_ = DecalVolumeTilingStartUp();
+				//tiling_ = DecalVolumeTilingStartUp();
+				tiling_ = DecalVolumeClusteringStartUp( false );
 			}
 		}
 		else
@@ -1144,22 +1150,22 @@ namespace spad
 			const char* items[] = { "512x512", "256x256", "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
 			if ( ImGui::Combo( "Tile size (clustering)", reinterpret_cast<int*>( &tileSizeForClustering_ ), items, IM_ARRAYSIZE( items ) ) )
 			{
-				clustering_ = DecalVolumeClusteringStartUp();
+				clustering_ = DecalVolumeClusteringStartUp( true );
 			}
 
-			if ( ImGui::SliderInt( "Num passes (clustering)", &numPassesForClustering_, 2, 6 ) )
+			if ( ImGui::SliderInt( "Num passes (clustering)", &numPassesForClustering_, 1, 6 ) )
 			{
-				clustering_ = DecalVolumeClusteringStartUp();
+				clustering_ = DecalVolumeClusteringStartUp( true );
 			}
 		}
 
 		if ( appMode_ == Tiling )
 		{
-			ImGuiPrintClusteringInfo( tiling_->tiling_, tiling_->tilingPasses_, tiling_->decalVolumesTilingTimer_ );
+			ImGuiPrintClusteringInfo( *tiling_ );
 		}
 		else if ( appMode_ == Clustering || appMode_ == Scene )
 		{
-			ImGuiPrintClusteringInfo( clustering_->clustering_, clustering_->clusteringPasses_, clustering_->decalVolumesClusteringTimer_ );
+			ImGuiPrintClusteringInfo( *clustering_ );
 		}
 
 		{
@@ -1167,14 +1173,15 @@ namespace spad
 			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
-		if ( tiling_->tiling_.needsReset_ )
+		if ( tiling_->needsReset_ )
 		{
-			tiling_ = DecalVolumeTilingStartUp();
+			//tiling_ = DecalVolumeTilingStartUp();
+			tiling_ = DecalVolumeClusteringStartUp( false );
 		}
 
-		if ( clustering_->clustering_.needsReset_ )
+		if ( clustering_->needsReset_ )
 		{
-			clustering_ = DecalVolumeClusteringStartUp();
+			clustering_ = DecalVolumeClusteringStartUp( true );
 		}
 	}
 
@@ -1709,14 +1716,14 @@ namespace spad
 		return perspectiveProjectionDxStyle( deg2rad( 60.0f ), (float)rtWidth / (float)rtHeight, testFrustumNearPlane, decalVolumeFarPlane_ );
 	}
 
-	void SettingsTestApp::PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeShared &shared, std::vector<DecalVolumeClusteringPass> &passes )
+	void SettingsTestApp::PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeClusteringData &data )
 	{
-		for ( size_t iPass = 0; iPass < passes.size(); ++iPass )
+		for ( size_t iPass = 0; iPass < data.passes_.size(); ++iPass )
 		{
 			const bool firstPass = iPass == 0;
-			const bool lastPass = iPass == ( passes.size() - 1 );
+			const bool lastPass = iPass == ( data.passes_.size() - 1 );
 
-			DecalVolumeClusteringPass &p = passes[iPass];
+			DecalVolumeClusteringPass &p = data.passes_[iPass];
 
 			if ( lastPass )
 			{
@@ -1756,7 +1763,7 @@ namespace spad
 				const CellIndirection *cellIndirection = p.cellIndirection.CPUReadbackStart( deviceContext.context );
 				const u32 *cellIndirectionCount = p.cellIndirectionCount.CPUReadbackStart( deviceContext.context );
 				const u32 *args = p.indirectArgs.CPUReadbackStart( deviceContext.context );
-				const GroupToBucket *groupToBucket = nullptr;
+				//const GroupToBucket *groupToBucket = nullptr;
 				//if ( !firstPass )
 				//{
 				//	groupToBucket = p.groupToBucket.CPUReadbackStart( deviceContext.context );
@@ -1770,7 +1777,7 @@ namespace spad
 				uint sum = 0;
 				uint maxCount = 0;
 				uint minCount = 0xffffffff;
-				if ( shared.enableBuckets_ )
+				if ( data.enableBuckets_ )
 				{
 					p.stats.numWaves = 0;
 
@@ -1847,7 +1854,7 @@ namespace spad
 		}
 	}
 
-	void SettingsTestApp::ImGuiPrintClusteringInfo( DecalVolumeShared &shared, const std::vector<DecalVolumeClusteringPass> &passes, const GpuTimerQuery &totalTimer )
+	void SettingsTestApp::ImGuiPrintClusteringInfo( DecalVolumeClusteringData &data )
 	{
 		//ImGui::Columns( 4, "mycolumns" ); // 4-ways, with border
 		//ImGui::Separator();
@@ -1857,27 +1864,27 @@ namespace spad
 		//ImGui::Text( "Hovered" ); ImGui::NextColumn();
 
 		ImGui::Text( "Time [us]	 last    avg    min    max" );
-		ImGui::Text( "Total  time %6u %6u %6u %6u", totalTimer.getDurationUS(), totalTimer.getAvgDurationUS(), totalTimer.getMinDurationUS(), totalTimer.getMaxDurationUS() );
+		ImGui::Text( "Total  time %6u %6u %6u %6u", data.timer_.getDurationUS(), data.timer_.getAvgDurationUS(), data.timer_.getMinDurationUS(), data.timer_.getMaxDurationUS() );
 
-		for ( size_t iPass = 0; iPass < passes.size(); ++iPass )
+		for ( size_t iPass = 0; iPass < data.passes_.size(); ++iPass )
 		{
-			const DecalVolumeClusteringPass &p = passes[iPass];
+			const DecalVolumeClusteringPass &p = data.passes_[iPass];
 			ImGui::Text( "Pass %u time %6u %6u %6u %6u", (uint)iPass, p.timer.getDurationUS(), p.timer.getAvgDurationUS(), p.timer.getMinDurationUS(), p.timer.getMaxDurationUS() );
 		}
 
 		ImGui::Spacing();
 
-		ImGui::Text( "Total mem %u [B], %u [kB], %u [MB]", shared.totalMemUsed_, shared.totalMemUsed_ / 1024, shared.totalMemUsed_ / ( 1024 * 1024 ) );
+		ImGui::Text( "Total mem %u [B], %u [kB], %u [MB]", data.totalMemUsed_, data.totalMemUsed_ / 1024, data.totalMemUsed_ / ( 1024 * 1024 ) );
 
 		{
 			const char* items[] = { "World space optimized", "Clip space" };
-			ImGui::Combo( "Intersection method", reinterpret_cast<int*>( &shared.intersectionMethod_ ), items, IM_ARRAYSIZE( items ) );
+			ImGui::Combo( "Intersection method", reinterpret_cast<int*>( &data.intersectionMethod_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
-		ImGui::Checkbox( "Buckets", &shared.enableBuckets_ );
-		ImGui::Checkbox( "Dynamic buckets", &shared.dynamicBuckets_ );
-		ImGui::Checkbox( "Dynamic buckets merge", &shared.dynamicBucketsMerge_ );
-		ImGui::Checkbox( "Pass timing", &shared.enablePassTiming_ );
+		ImGui::Checkbox( "Buckets", &data.enableBuckets_ );
+		ImGui::Checkbox( "Dynamic buckets", &data.dynamicBuckets_ );
+		ImGui::Checkbox( "Dynamic buckets merge", &data.dynamicBucketsMerge_ );
+		ImGui::Checkbox( "Pass timing", &data.enablePassTiming_ );
 
 		showExtendedStats_ = false;
 
@@ -1885,12 +1892,12 @@ namespace spad
 		{
 			showExtendedStats_ = true;
 
-			for ( size_t iPass = 0; iPass < passes.size(); ++iPass )
+			for ( size_t iPass = 0; iPass < data.passes_.size(); ++iPass )
 			{
 				const bool firstPass = iPass == 0;
-				const bool lastPass = iPass == ( passes.size() - 1 );
+				const bool lastPass = iPass == ( data.passes_.size() - 1 );
 
-				const DecalVolumeClusteringPass &p = passes[iPass];
+				const DecalVolumeClusteringPass &p = data.passes_[iPass];
 				const uint totalCells = p.nCellsX * p.nCellsY * p.nCellsZ;
 
 				char passName[256];
@@ -1913,7 +1920,7 @@ namespace spad
 					if ( !lastPass )
 					{
 						// Cells indirection is not written out in last pass
-						if ( shared.enableBuckets_ )
+						if ( data.enableBuckets_ )
 						{
 							for ( uint iBucket = 0; iBucket < maxBuckets; ++iBucket )
 							{
@@ -1932,7 +1939,7 @@ namespace spad
 					}
 					else
 					{
-						const DecalVolumeClusteringPass &pp = passes[iPass - 1];
+						const DecalVolumeClusteringPass &pp = data.passes_[iPass - 1];
 						ImGui::Text( "Spawned waves %u", pp.stats.numWaves );
 					}
 
@@ -1966,278 +1973,278 @@ namespace spad
 		}
 	}
 
-	SettingsTestApp::DecalVolumeTilingDataPtr SettingsTestApp::DecalVolumeTilingStartUp()
-	{
-		//ID3D11Device* dxDevice = dx11_->getDevice();
+	//SettingsTestApp::DecalVolumeTilingDataPtr SettingsTestApp::DecalVolumeTilingStartUp()
+	//{
+	//	//ID3D11Device* dxDevice = dx11_->getDevice();
 
-		DecalVolumeTilingDataPtr tilingPtr = std::make_unique<DecalVolumeTilingData>();
+	//	DecalVolumeTilingDataPtr tilingPtr = std::make_unique<DecalVolumeTilingData>();
 
-		//tilingPtr->tilingConstants_.Initialize( dxDevice );
-		//tilingPtr->decalVolumesTilingTimer_.Initialize( dxDevice );
-		//tilingPtr->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
+	//	//tilingPtr->tilingConstants_.Initialize( dxDevice );
+	//	//tilingPtr->decalVolumesTilingTimer_.Initialize( dxDevice );
+	//	//tilingPtr->decalVolumesTilingShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
 
-		//tilingPtr->tilingPasses_.resize( DECAL_VOLUME_TILING_NUM_PASSES );
+	//	//tilingPtr->tilingPasses_.resize( DECAL_VOLUME_TILING_NUM_PASSES );
 
-		//uint rtWidth, rtHeight;
-		//GetRenderTargetSize( rtWidth, rtHeight );
+	//	//uint rtWidth, rtHeight;
+	//	//GetRenderTargetSize( rtWidth, rtHeight );
 
-		//uint nTilesXBase = ( rtWidth + DECAL_VOLUME_TILE_SIZE_X - 1 ) / DECAL_VOLUME_TILE_SIZE_X;
-		//uint nTilesYBase = ( rtHeight + DECAL_VOLUME_TILE_SIZE_Y - 1 ) / DECAL_VOLUME_TILE_SIZE_Y;
+	//	//uint nTilesXBase = ( rtWidth + DECAL_VOLUME_TILE_SIZE_X - 1 ) / DECAL_VOLUME_TILE_SIZE_X;
+	//	//uint nTilesYBase = ( rtHeight + DECAL_VOLUME_TILE_SIZE_Y - 1 ) / DECAL_VOLUME_TILE_SIZE_Y;
 
-		//const uint maxDivider = 1 << (DECAL_VOLUME_TILING_NUM_PASSES - 1);
-		//const uint a = nTilesYBase / maxDivider;
-		//if ( a * maxDivider != nTilesYBase )
-		//{
-		//	nTilesYBase = spadAlignU32_2( nTilesYBase - maxDivider - 1, maxDivider );
-		//}
+	//	//const uint maxDivider = 1 << (DECAL_VOLUME_TILING_NUM_PASSES - 1);
+	//	//const uint a = nTilesYBase / maxDivider;
+	//	//if ( a * maxDivider != nTilesYBase )
+	//	//{
+	//	//	nTilesYBase = spadAlignU32_2( nTilesYBase - maxDivider - 1, maxDivider );
+	//	//}
 
-		//const uint b = nTilesXBase / maxDivider;
-		//if ( b * maxDivider != nTilesXBase )
-		//{
-		//	nTilesXBase = spadAlignU32_2( nTilesXBase - maxDivider - 1, maxDivider );
-		//}
+	//	//const uint b = nTilesXBase / maxDivider;
+	//	//if ( b * maxDivider != nTilesXBase )
+	//	//{
+	//	//	nTilesXBase = spadAlignU32_2( nTilesXBase - maxDivider - 1, maxDivider );
+	//	//}
 
-		//uint nTilesX = nTilesXBase;
-		//uint nTilesY = nTilesYBase;
-		//uint nDecalsPerTile = 32;
+	//	//uint nTilesX = nTilesXBase;
+	//	//uint nTilesY = nTilesYBase;
+	//	//uint nDecalsPerTile = 32;
 
-		//uint totalMemoryUsed = 0;
+	//	//uint totalMemoryUsed = 0;
 
-		//for ( int iPass = (int)tilingPtr->tilingPasses_.size()-1; iPass >= 0; --iPass )
-		//{
-		//	DecalVolumeClusteringPass &p = tilingPtr->tilingPasses_[iPass];
-		//	p.nCellsX = nTilesX;
-		//	p.nCellsY = nTilesY;
-		//	p.nCellsZ = 1;
-		//	p.maxDecalsPerCell = nDecalsPerTile;
-		//	//p.maxDecalsPerCell = (iPass == tilingPasses_.size()-1) ? 32 : nDecalsPerTile;
+	//	//for ( int iPass = (int)tilingPtr->tilingPasses_.size()-1; iPass >= 0; --iPass )
+	//	//{
+	//	//	DecalVolumeClusteringPass &p = tilingPtr->tilingPasses_[iPass];
+	//	//	p.nCellsX = nTilesX;
+	//	//	p.nCellsY = nTilesY;
+	//	//	p.nCellsZ = 1;
+	//	//	p.maxDecalsPerCell = nDecalsPerTile;
+	//	//	//p.maxDecalsPerCell = (iPass == tilingPasses_.size()-1) ? 32 : nDecalsPerTile;
 
-		//	uint passTotalMemory = 0;
+	//	//	uint passTotalMemory = 0;
 
-		//	//totalMemoryUsed += p.countPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY, nullptr, false, true, true );
-		//	p.stats.decalsPerCellMem = p.decalPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.maxDecalsPerCell, nullptr, false, true, true );
-		//	passTotalMemory += p.stats.decalsPerCellMem;
-		//	passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * 4, nullptr, false, true, true );
-		//	passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, 1, nullptr, false, true, true );
-		//	passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3, nullptr, false, true, true, true );
-		//	passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );
+	//	//	//totalMemoryUsed += p.countPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY, nullptr, false, true, true );
+	//	//	p.stats.decalsPerCellMem = p.decalPerCell.Initialize( dxDevice, p.nCellsX * p.nCellsY * p.maxDecalsPerCell, nullptr, false, true, true );
+	//	//	passTotalMemory += p.stats.decalsPerCellMem;
+	//	//	passTotalMemory += p.cellIndirection.Initialize( dxDevice, p.nCellsX * p.nCellsY * 4, nullptr, false, true, true );
+	//	//	passTotalMemory += p.cellIndirectionCount.Initialize( dxDevice, 1, nullptr, false, true, true );
+	//	//	passTotalMemory += p.indirectArgs.Initialize( dxDevice, 3, nullptr, false, true, true, true );
+	//	//	passTotalMemory += p.memAlloc.Initialize( dxDevice, 1, nullptr, false, true, true );
 
-		//	p.timer.Initialize( dxDevice );
+	//	//	p.timer.Initialize( dxDevice );
 
-		//	p.stats.totalMem = passTotalMemory;
+	//	//	p.stats.totalMem = passTotalMemory;
 
-		//	totalMemoryUsed += passTotalMemory;
+	//	//	totalMemoryUsed += passTotalMemory;
 
-		//	p.stats.totalMem = passTotalMemory;
-		//	//p.stats.headerMem = p.nCellsX * p.nCellsY * p.nCellsZ * sizeof( uint );
+	//	//	p.stats.totalMem = passTotalMemory;
+	//	//	//p.stats.headerMem = p.nCellsX * p.nCellsY * p.nCellsZ * sizeof( uint );
 
-		//	p.stats.countPerCellHistogram.resize( p.maxDecalsPerCell );
+	//	//	p.stats.countPerCellHistogram.resize( p.maxDecalsPerCell );
 
-		//	nTilesX = (nTilesX + 1) / 2;
-		//	nTilesY = (nTilesY + 1) / 2;
-		//	//nTilesX /= 2;
-		//	//nTilesY /= 2;
-		//	//nTilesX = spadAlignU32_2( nTilesX / 2, 2 );
-		//	//nTilesY = spadAlignU32_2( nTilesY / 2, 2 );
-		//	nDecalsPerTile *= 2;
-		//}
+	//	//	nTilesX = (nTilesX + 1) / 2;
+	//	//	nTilesY = (nTilesY + 1) / 2;
+	//	//	//nTilesX /= 2;
+	//	//	//nTilesY /= 2;
+	//	//	//nTilesX = spadAlignU32_2( nTilesX / 2, 2 );
+	//	//	//nTilesY = spadAlignU32_2( nTilesY / 2, 2 );
+	//	//	nDecalsPerTile *= 2;
+	//	//}
 
-		////std::cout << "Total mem used tiling: " << totalMemoryUsed << " B, " << totalMemoryUsed / ( 1024 * 1024 ) << " MB" << std::endl;
-		//tilingPtr->tiling_.totalMemUsed_ = totalMemoryUsed;
+	//	////std::cout << "Total mem used tiling: " << totalMemoryUsed << " B, " << totalMemoryUsed / ( 1024 * 1024 ) << " MB" << std::endl;
+	//	//tilingPtr->tiling_.totalMemUsed_ = totalMemoryUsed;
 
-		return tilingPtr;
-	}
+	//	return tilingPtr;
+	//}
 
-	void SettingsTestApp::DecalVolumeTilingRun( Dx11DeviceContext& deviceContext )
-	{
-		//const uint rtWidth = 128;
-		//const uint rtHeight = 128;
+	//void SettingsTestApp::DecalVolumeTilingRun( Dx11DeviceContext& deviceContext )
+	//{
+	//	//const uint rtWidth = 128;
+	//	//const uint rtHeight = 128;
 
-		tiling_->decalVolumesTilingTimer_.begin( deviceContext.context );
+	//	tiling_->decalVolumesTilingTimer_.begin( deviceContext.context );
 
-		for ( size_t iPass = 0; iPass < tiling_->tilingPasses_.size() - 1; ++iPass )
-		{
-			DecalVolumeClusteringPass &p = tiling_->tilingPasses_[iPass];
-			p.cellIndirectionCount.clearUAVUint( deviceContext.context, 0 );
-			//p.cellIndirectionCount.clearUAVUint( deviceContext.context, p.nTilesX * p.nTilesY * 4 );
-			//p.countPerCell.clearUAVUint( deviceContext.context, 0 );
-			//p.decalPerCell.clearUAVUint( deviceContext.context, 0 );
-			p.decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
-		}
+	//	for ( size_t iPass = 0; iPass < tiling_->tilingPasses_.size() - 1; ++iPass )
+	//	{
+	//		DecalVolumeClusteringPass &p = tiling_->tilingPasses_[iPass];
+	//		p.cellIndirectionCount.clearUAVUint( deviceContext.context, 0 );
+	//		//p.cellIndirectionCount.clearUAVUint( deviceContext.context, p.nTilesX * p.nTilesY * 4 );
+	//		//p.countPerCell.clearUAVUint( deviceContext.context, 0 );
+	//		//p.decalPerCell.clearUAVUint( deviceContext.context, 0 );
+	//		p.decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
+	//	}
 
-		//tilingPasses_.back().decalPerCell.clearUAVUint( deviceContext.context, 0 );
-		tiling_->tilingPasses_.back().decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
+	//	//tilingPasses_.back().decalPerCell.clearUAVUint( deviceContext.context, 0 );
+	//	tiling_->tilingPasses_.back().decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
 
-		for ( size_t iPass = 0; iPass < tiling_->tilingPasses_.size(); ++iPass )
-		{
-			DecalVolumeClusteringPass &p = tiling_->tilingPasses_[iPass];
+	//	for ( size_t iPass = 0; iPass < tiling_->tilingPasses_.size(); ++iPass )
+	//	{
+	//		DecalVolumeClusteringPass &p = tiling_->tilingPasses_[iPass];
 
-			const bool firstPass = iPass == 0;
-			const bool lastPass = iPass == ( tiling_->tilingPasses_.size() - 1 );
+	//		const bool firstPass = iPass == 0;
+	//		const bool lastPass = iPass == ( tiling_->tilingPasses_.size() - 1 );
 
-			p.timer.begin( deviceContext.context );
+	//		p.timer.begin( deviceContext.context );
 
-			if ( lastPass )
-			{
-				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_clear_header" );
-				fxPass.setCS( deviceContext.context );
+	//		if ( lastPass )
+	//		{
+	//			const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_clear_header" );
+	//			fxPass.setCS( deviceContext.context );
 
-				p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
+	//			p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
 
-				uint nGroupsX = ( p.nCellsX * p.nCellsY + 256 - 1 ) / 256;
-				deviceContext.context->Dispatch( nGroupsX, 1, 1 );
+	//			uint nGroupsX = ( p.nCellsX * p.nCellsY + 256 - 1 ) / 256;
+	//			deviceContext.context->Dispatch( nGroupsX, 1, 1 );
 
-				deviceContext.UnbindCSUAVs();
-			}
+	//			deviceContext.UnbindCSUAVs();
+	//		}
 
-			//const HlslShaderPass& fxPassClear = *decalVolumeTilingShader_->getPass( "DecalTilingClearIndirectArgs" );
-			//fxPassClear.setCS( deviceContext.context );
+	//		//const HlslShaderPass& fxPassClear = *decalVolumeTilingShader_->getPass( "DecalTilingClearIndirectArgs" );
+	//		//fxPassClear.setCS( deviceContext.context );
 
-			//p.indirectArgs.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
-			//deviceContext.context->Dispatch( 1, 1, 1 );
+	//		//p.indirectArgs.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
+	//		//deviceContext.context->Dispatch( 1, 1, 1 );
 
-			//char passName[128];
-			//snprintf( passName, sizeof( passName ), "DecalTilingPass%u", (uint)iPass );
-			//const HlslShaderPass& fxPass = *decalVolumesTilingShader_->getPass( passName );
-			//fxPass.setCS( deviceContext.context );
-			if ( firstPass )
-			{
-				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalVolumeTilingFirstPass", { (uint)tiling_->tiling_.intersectionMethod_ } );
-				fxPass.setCS( deviceContext.context );
-			}
-			else if ( lastPass )
-			{
-				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalVolumeTilingLastPass", { (uint)tiling_->tiling_.intersectionMethod_ } );
-				fxPass.setCS( deviceContext.context );
-			}
-			else
-			{
-				const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalVolumeTilingMidPass", { (uint)tiling_->tiling_.intersectionMethod_ } );
-				fxPass.setCS( deviceContext.context );
-			}
+	//		//char passName[128];
+	//		//snprintf( passName, sizeof( passName ), "DecalTilingPass%u", (uint)iPass );
+	//		//const HlslShaderPass& fxPass = *decalVolumesTilingShader_->getPass( passName );
+	//		//fxPass.setCS( deviceContext.context );
+	//		if ( firstPass )
+	//		{
+	//			const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalVolumeTilingFirstPass", { (uint)tiling_->tiling_.intersectionMethod_ } );
+	//			fxPass.setCS( deviceContext.context );
+	//		}
+	//		else if ( lastPass )
+	//		{
+	//			const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalVolumeTilingLastPass", { (uint)tiling_->tiling_.intersectionMethod_ } );
+	//			fxPass.setCS( deviceContext.context );
+	//		}
+	//		else
+	//		{
+	//			const HlslShaderPass& fxPass = *tiling_->decalVolumesTilingShader_->getPass( "DecalVolumeTilingMidPass", { (uint)tiling_->tiling_.intersectionMethod_ } );
+	//			fxPass.setCS( deviceContext.context );
+	//		}
 
-			//tilingConstants_.data.BaseProjMatrix = testFrustumProj;
-			tiling_->tilingConstants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
-			tiling_->tilingConstants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
-			tiling_->tilingConstants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			tiling_->tilingConstants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			tiling_->tilingConstants_.data.dvTanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			tiling_->tilingConstants_.data.dvTanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			//tiling_->tilingConstants_.data.renderTargetSize = Vector4( 0 );
-			clustering_->clusteringConstants_.data.dvCellCount[0] = p.nCellsX;
-			clustering_->clusteringConstants_.data.dvCellCount[1] = p.nCellsY;
-			clustering_->clusteringConstants_.data.dvCellCount[2] = 1;
-			clustering_->clusteringConstants_.data.dvCellCount[3] = p.nCellsX * p.nCellsY;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[2] = 1;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[3] = 0;
-			tiling_->tilingConstants_.data.dvPassLimits[0] = p.maxDecalIndices;
-			tiling_->tilingConstants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
-			tiling_->tilingConstants_.data.dvPassLimits[2] = 0;
-			tiling_->tilingConstants_.data.dvPassLimits[3] = 0;
+	//		//tilingConstants_.data.BaseProjMatrix = testFrustumProj;
+	//		tiling_->tilingConstants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
+	//		tiling_->tilingConstants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
+	//		tiling_->tilingConstants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+	//		tiling_->tilingConstants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+	//		tiling_->tilingConstants_.data.dvTanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+	//		tiling_->tilingConstants_.data.dvTanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+	//		//tiling_->tilingConstants_.data.renderTargetSize = Vector4( 0 );
+	//		data.constants_.data.dvCellCount[0] = p.nCellsX;
+	//		data.constants_.data.dvCellCount[1] = p.nCellsY;
+	//		data.constants_.data.dvCellCount[2] = 1;
+	//		data.constants_.data.dvCellCount[3] = p.nCellsX * p.nCellsY;
+	//		data.constants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
+	//		data.constants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
+	//		data.constants_.data.dvCellCountRcp[2] = 1;
+	//		data.constants_.data.dvCellCountRcp[3] = 0;
+	//		tiling_->tilingConstants_.data.dvPassLimits[0] = p.maxDecalIndices;
+	//		tiling_->tilingConstants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
+	//		tiling_->tilingConstants_.data.dvPassLimits[2] = 0;
+	//		tiling_->tilingConstants_.data.dvPassLimits[3] = 0;
 
-			if ( !firstPass )
-			{
-				DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass-1];
+	//		if ( !firstPass )
+	//		{
+	//			DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass-1];
 
-				tiling_->tilingConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
+	//			tiling_->tilingConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
-				//pp.countPerCell.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_COUNT_PER_CELL );
-				pp.decalIndices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES );
-				pp.cellIndirection.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION );
-				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
-			}
+	//			//pp.countPerCell.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_COUNT_PER_CELL );
+	//			pp.decalIndices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES );
+	//			pp.cellIndirection.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION );
+	//			pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
+	//		}
 
-			tiling_->tilingConstants_.updateGpu( deviceContext.context );
-			tiling_->tilingConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
+	//		tiling_->tilingConstants_.updateGpu( deviceContext.context );
+	//		tiling_->tilingConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
 
-			//decalVolumesGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
-			if ( tiling_->tiling_.intersectionMethod_ )
-			{
-				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST );
-			}
-			else
-			{
-				decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
-			}
-			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT );
+	//		//decalVolumesGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
+	//		if ( tiling_->tiling_.intersectionMethod_ )
+	//		{
+	//			decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST );
+	//		}
+	//		else
+	//		{
+	//			decalVolumesCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS );
+	//		}
+	//		decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT );
 
-			if ( !lastPass )
-			{
-				//p.countPerCell.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_COUNT_PER_CELL );
-				p.cellIndirection.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION );
-				p.cellIndirectionCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT );
-			}
+	//		if ( !lastPass )
+	//		{
+	//			//p.countPerCell.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_COUNT_PER_CELL );
+	//			p.cellIndirection.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION );
+	//			p.cellIndirectionCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_CELL_INDIRECTION_COUNT );
+	//		}
 
-			if ( lastPass )
-			{
-				DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass - 1];
-				pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
-			}
+	//		if ( lastPass )
+	//		{
+	//			DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass - 1];
+	//			pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
+	//		}
 
-			p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
-			p.decalIndicesCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
+	//		p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
+	//		p.decalIndicesCount.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES_COUNT );
 
-			if ( firstPass )
-			{
-				deviceContext.context->Dispatch( p.nCellsX, p.nCellsY, 1 );
-			}
-			else
-			{
-				DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass - 1];
-				deviceContext.context->DispatchIndirect( pp.indirectArgs.getDxBuffer(), 0 );
-			}
+	//		if ( firstPass )
+	//		{
+	//			deviceContext.context->Dispatch( p.nCellsX, p.nCellsY, 1 );
+	//		}
+	//		else
+	//		{
+	//			DecalVolumeClusteringPass &pp = tiling_->tilingPasses_[iPass - 1];
+	//			deviceContext.context->DispatchIndirect( pp.indirectArgs.getDxBuffer(), 0 );
+	//		}
 
-			deviceContext.UnbindCSUAVs();
+	//		deviceContext.UnbindCSUAVs();
 
-			if ( ! lastPass )
-			{
-				// Fill indirect args
+	//		if ( ! lastPass )
+	//		{
+	//			// Fill indirect args
 
-				if ( iPass == tiling_->tilingPasses_.size() - 2 )
-				{
-					const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_indirect_args_last_pass" );
-					fxPassCopy.setCS( deviceContext.context );
-				}
-				else
-				{
-					const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_indirect_args" );
-					fxPassCopy.setCS( deviceContext.context );
-				}
+	//			if ( iPass == tiling_->tilingPasses_.size() - 2 )
+	//			{
+	//				const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_indirect_args_last_pass" );
+	//				fxPassCopy.setCS( deviceContext.context );
+	//			}
+	//			else
+	//			{
+	//				const HlslShaderPass& fxPassCopy = *tiling_->decalVolumesTilingShader_->getPass( "cs_decal_volume_indirect_args" );
+	//				fxPassCopy.setCS( deviceContext.context );
+	//			}
 
-				p.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
-				p.indirectArgs.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
+	//			p.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
+	//			p.indirectArgs.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS );
 
-				deviceContext.context->Dispatch( 1, 1, 1 );
+	//			deviceContext.context->Dispatch( 1, 1, 1 );
 
-				deviceContext.UnbindCSUAVs();
-			}
+	//			deviceContext.UnbindCSUAVs();
+	//		}
 
-			p.timer.end( deviceContext.context );
-			p.timer.calculateDuration( deviceContext );
+	//		p.timer.end( deviceContext.context );
+	//		p.timer.calculateDuration( deviceContext );
 
-			//const u32 *decalsPerCell = p.decalPerCell.CPUReadbackStart( deviceContext.context );
-			//const u32 *decalCountPerCell = p.countPerCell.CPUReadbackStart( deviceContext.context );
-			//const CellIndirection *cellIndirection = p.cellIndirection.CPUReadbackStart( deviceContext.context );
-			//const u32 *cellIndirectionCount = p.cellIndirectionCount.CPUReadbackStart( deviceContext.context );
-			//const u32 *args = p.indirectArgs.CPUReadbackStart( deviceContext.context );
+	//		//const u32 *decalsPerCell = p.decalPerCell.CPUReadbackStart( deviceContext.context );
+	//		//const u32 *decalCountPerCell = p.countPerCell.CPUReadbackStart( deviceContext.context );
+	//		//const CellIndirection *cellIndirection = p.cellIndirection.CPUReadbackStart( deviceContext.context );
+	//		//const u32 *cellIndirectionCount = p.cellIndirectionCount.CPUReadbackStart( deviceContext.context );
+	//		//const u32 *args = p.indirectArgs.CPUReadbackStart( deviceContext.context );
 
-			//p.indirectArgs.CPUReadbackEnd( deviceContext.context );
-			//p.cellIndirectionCount.CPUReadbackEnd( deviceContext.context );
-			//p.cellIndirection.CPUReadbackEnd( deviceContext.context );
-			//p.countPerCell.CPUReadbackEnd( deviceContext.context );
-			//p.decalPerCell.CPUReadbackEnd( deviceContext.context );
-		}
+	//		//p.indirectArgs.CPUReadbackEnd( deviceContext.context );
+	//		//p.cellIndirectionCount.CPUReadbackEnd( deviceContext.context );
+	//		//p.cellIndirection.CPUReadbackEnd( deviceContext.context );
+	//		//p.countPerCell.CPUReadbackEnd( deviceContext.context );
+	//		//p.decalPerCell.CPUReadbackEnd( deviceContext.context );
+	//	}
 
-		tiling_->decalVolumesTilingTimer_.end( deviceContext.context );
-		tiling_->decalVolumesTilingTimer_.calculateDuration( deviceContext );
+	//	tiling_->decalVolumesTilingTimer_.end( deviceContext.context );
+	//	tiling_->decalVolumesTilingTimer_.calculateDuration( deviceContext );
 
-		if ( showExtendedStats_ )
-		{
-			PopulateStats( deviceContext, tiling_->tiling_, tiling_->tilingPasses_ );
-		}
-	}
+	//	if ( showExtendedStats_ )
+	//	{
+	//		PopulateStats( deviceContext, tiling_->tiling_, tiling_->tilingPasses_ );
+	//	}
+	//}
 
 
 	void SettingsTestApp::GetTileSize( TileSize tileSize, uint &outTileSize )
@@ -2303,12 +2310,12 @@ namespace spad
 		outCellsZ = 32;
 	}
 
-	SettingsTestApp::DecalVolumeClusteringDataPtr SettingsTestApp::DecalVolumeClusteringStartUp()
+	SettingsTestApp::DecalVolumeClusteringDataPtr SettingsTestApp::DecalVolumeClusteringStartUp( bool clustering )
 	{
 		std::cout << std::endl;
 
 		uint tileSize;
-		GetTileSize( tileSizeForClustering_, tileSize );
+		GetTileSize( clustering ? tileSizeForClustering_ : tileSizeForTiling_, tileSize );
 
 		for ( uint rtSize = RTW_64_64; rtSize < RenderTargetSizeCount; ++rtSize )
 		{
@@ -2318,7 +2325,9 @@ namespace spad
 			uint nCellsX;
 			uint nCellsY;
 			uint nCellsZ;
-			CalculateCellCount( rtWidth, rtHeight, tileSize, static_cast<uint>(numPassesForClustering_), nCellsX, nCellsY, nCellsZ );
+			CalculateCellCount( rtWidth, rtHeight, tileSize, static_cast<uint>(clustering ? numPassesForClustering_ : numPassesForTiling_), nCellsX, nCellsY, nCellsZ );
+			if ( !clustering )
+				nCellsZ = 1;
 
 			uint cellCount = nCellsX * nCellsY * nCellsZ;
 			uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( cellCount ) ) );
@@ -2329,11 +2338,11 @@ namespace spad
 
 		DecalVolumeClusteringDataPtr clusteringPtr = std::make_unique<DecalVolumeClusteringData>();
 
-		clusteringPtr->clusteringConstants_.Initialize( dxDevice );
-		clusteringPtr->decalVolumesClusteringTimer_.Initialize( dxDevice );
-		clusteringPtr->decalVolumesClusteringShader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
+		clusteringPtr->constants_.Initialize( dxDevice );
+		clusteringPtr->timer_.Initialize( dxDevice );
+		clusteringPtr->shader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
 
-		clusteringPtr->clusteringPasses_.resize( numPassesForClustering_ );
+		clusteringPtr->passes_.resize( clustering ? numPassesForClustering_ : numPassesForTiling_ );
 
 		uint rtWidth, rtHeight;
 		GetRenderTargetSize( rtWidth, rtHeight );
@@ -2341,34 +2350,36 @@ namespace spad
 		uint nCellsX;
 		uint nCellsY;
 		uint nCellsZ;
-		CalculateCellCount( rtWidth, rtHeight, tileSize, numPassesForClustering_, nCellsX, nCellsY, nCellsZ );
+		CalculateCellCount( rtWidth, rtHeight, tileSize, static_cast<uint>( clustering ? numPassesForClustering_ : numPassesForTiling_ ), nCellsX, nCellsY, nCellsZ );
+		if ( !clustering )
+			nCellsZ = 1;
 
 		uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( nCellsX * nCellsY * nCellsZ ) ) );
 
-		for ( int iPass = (int)clusteringPtr->clusteringPasses_.size() - 1; iPass >= 0; --iPass )
+		for ( int iPass = (int)clusteringPtr->passes_.size() - 1; iPass >= 0; --iPass )
 		{
 			const bool firstPass = iPass == 0;
-			const bool lastPass = iPass == ( clusteringPtr->clusteringPasses_.size() - 1 );
+			const bool lastPass = iPass == ( clusteringPtr->passes_.size() - 1 );
 
-			DecalVolumeClusteringPass &p = clusteringPtr->clusteringPasses_[iPass];
+			DecalVolumeClusteringPass &p = clusteringPtr->passes_[iPass];
 			p.nCellsX = nCellsX;
 			p.nCellsY = nCellsY;
 			p.nCellsZ = nCellsZ;
 
 			nCellsX /= 2;
 			nCellsY /= 2;
-			nCellsZ /= 2;
+			nCellsZ = maxOfPair( nCellsZ / 2, 1U );
 		}
 
 		uint totalMemoryUsed = 0;
 
 		//for ( uint iPass = 0; iPass < (uint)clusteringPtr->clusteringPasses_.size(); ++iPass )
-		for ( int iPass = (int)clusteringPtr->clusteringPasses_.size() - 1; iPass >= 0; --iPass )
+		for ( int iPass = (int)clusteringPtr->passes_.size() - 1; iPass >= 0; --iPass )
 		{
 			const bool firstPass = iPass == 0;
-			const bool lastPass = iPass == ( clusteringPtr->clusteringPasses_.size() - 1 );
+			const bool lastPass = iPass == ( clusteringPtr->passes_.size() - 1 );
 
-			DecalVolumeClusteringPass &p = clusteringPtr->clusteringPasses_[iPass];
+			DecalVolumeClusteringPass &p = clusteringPtr->passes_[iPass];
 
 			uint cellCount = p.nCellsX * p.nCellsY * p.nCellsZ;
 
@@ -2378,11 +2389,28 @@ namespace spad
 			}
 			else if ( lastPass )
 			{
-				p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
+				if ( clustering )
+				{
+					p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
+				}
+				else
+				{
+					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					//p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
+					p.maxDecalIndices = cellCount * 16;
+				}
 			}
 			else
 			{
-				p.maxDecalIndices = (cellCountSqr / 8) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
+				if ( clustering )
+				{
+					p.maxDecalIndices = ( cellCountSqr / 8 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
+				}
+				else
+				{
+					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					p.maxDecalIndices = ( cellCountSqr / 8 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
+				}
 			}
 
 			if ( lastPass )
@@ -2421,20 +2449,20 @@ namespace spad
 			p.stats.countPerCellHistogram.resize( 1024 );
 		}
 
-		clusteringPtr->clustering_.totalMemUsed_ = totalMemoryUsed;
+		clusteringPtr->totalMemUsed_ = totalMemoryUsed;
 
 		return clusteringPtr;
 	}
 
-	void SettingsTestApp::DecalVolumeClusteringRun( Dx11DeviceContext& deviceContext )
+	void SettingsTestApp::DecalVolumeClusteringRun( Dx11DeviceContext& deviceContext, DecalVolumeClusteringData &data )
 	{
 		deviceContext.BeginMarker( "DecalVolumeClusteringRun" );
 
-		clustering_->decalVolumesClusteringTimer_.begin( deviceContext.context );
+		data.timer_.begin( deviceContext.context );
 
-		for ( size_t iPass = 0; iPass < clustering_->clusteringPasses_.size() - 1; ++iPass )
+		for ( size_t iPass = 0; iPass < data.passes_.size() - 1; ++iPass )
 		{
-			DecalVolumeClusteringPass &p = clustering_->clusteringPasses_[iPass];
+			DecalVolumeClusteringPass &p = data.passes_[iPass];
 			p.cellIndirectionCount.clearUAVUint( deviceContext.context, 0 );
 			//p.cellIndirection.clearUAVUint( deviceContext.context, 0 );
 			//p.countPerCell.clearUAVUint( deviceContext.context, 0 );
@@ -2442,25 +2470,26 @@ namespace spad
 		}
 
 		//clusteringPasses_.back().decalPerCell.clearUAVUint( deviceContext.context, 0 );
-		clustering_->clusteringPasses_.back().decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
+		data.passes_.back().decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
 		
-		for ( size_t iPass = 0; iPass < clustering_->clusteringPasses_.size(); ++iPass )
+		const size_t numPasses = data.passes_.size();
+		for ( size_t iPass = 0; iPass < numPasses; ++iPass )
 		{
 			deviceContext.BeginMarker( "Pass", (uint)iPass );
 
-			DecalVolumeClusteringPass &p = clustering_->clusteringPasses_[iPass];
+			DecalVolumeClusteringPass &p = data.passes_[iPass];
 
 			const bool firstPass = iPass == 0;
-			const bool lastPass = iPass == ( clustering_->clusteringPasses_.size() - 1 );
+			const bool lastPass = iPass == ( data.passes_.size() - 1 );
 
-			if ( clustering_->clustering_.enablePassTiming_ )
+			if ( data.enablePassTiming_ )
 			{
 				p.timer.begin( deviceContext.context );
 			}
 
 			if ( lastPass )
 			{
-				const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_clear_header" );
+				const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_clear_header" );
 				fxPass.setCS( deviceContext.context );
 
 				p.decalIndices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES );
@@ -2471,19 +2500,19 @@ namespace spad
 				deviceContext.UnbindCSUAVs();
 			}
 
-			const uint bucketsEnabled = clustering_->clustering_.enableBuckets_ ? 1 : 0;
-			const uint bucketsMergeEnabled = bucketsEnabled & ( clustering_->clustering_.dynamicBucketsMerge_ ? 1 : 0 );
+			const uint bucketsEnabled = data.enableBuckets_ ? 1 : 0;
+			const uint bucketsMergeEnabled = bucketsEnabled & ( data.dynamicBucketsMerge_ ? 1 : 0 );
 
 			if ( firstPass )
 			{
-				if ( numPassesForClustering_ == 1 )
+				if ( numPasses == 1 )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_single_pass" );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_single_pass" );
 					fxPass.setCS( deviceContext.context );
 				}
 				else
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)data.intersectionMethod_, bucketsEnabled } );
 					fxPass.setCS( deviceContext.context );
 				}
 			}
@@ -2491,7 +2520,7 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)data.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
@@ -2499,7 +2528,7 @@ namespace spad
 				}
 				else
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, 0 } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)data.intersectionMethod_, bucketsEnabled, 0 } );
 					fxPass.setCS( deviceContext.context );
 				}
 			}
@@ -2507,7 +2536,7 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)data.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
@@ -2515,36 +2544,36 @@ namespace spad
 				}
 				else
 				{
-					const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, bucketsEnabled, maxBuckets - 1 } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)data.intersectionMethod_, bucketsEnabled, maxBuckets - 1 } );
 					fxPass.setCS( deviceContext.context );
 				}
 			}
 
-			clustering_->clusteringConstants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
-			clustering_->clusteringConstants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
-			clustering_->clusteringConstants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			clustering_->clusteringConstants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			clustering_->clusteringConstants_.data.dvTanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			clustering_->clusteringConstants_.data.dvTanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			//clustering_->clusteringConstants_.data.renderTargetSize = Vector4( 0 );
-			clustering_->clusteringConstants_.data.dvCellCount[0] = p.nCellsX;
-			clustering_->clusteringConstants_.data.dvCellCount[1] = p.nCellsY;
-			clustering_->clusteringConstants_.data.dvCellCount[2] = p.nCellsZ;
-			clustering_->clusteringConstants_.data.dvCellCount[3] = p.nCellsX * p.nCellsY * p.nCellsZ;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[2] = 1.0f / p.nCellsZ;
-			clustering_->clusteringConstants_.data.dvCellCountRcp[3] = 0;
-			clustering_->clusteringConstants_.data.dvPassLimits[0] = p.maxDecalIndices;
-			clustering_->clusteringConstants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
-			clustering_->clusteringConstants_.data.dvPassLimits[2] = 0;
-			clustering_->clusteringConstants_.data.dvPassLimits[3] = 0;
+			data.constants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
+			data.constants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
+			data.constants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			data.constants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			data.constants_.data.dvTanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			data.constants_.data.dvTanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			//data.clusteringConstants_.data.renderTargetSize = Vector4( 0 );
+			data.constants_.data.dvCellCount[0] = p.nCellsX;
+			data.constants_.data.dvCellCount[1] = p.nCellsY;
+			data.constants_.data.dvCellCount[2] = p.nCellsZ;
+			data.constants_.data.dvCellCount[3] = p.nCellsX * p.nCellsY * p.nCellsZ;
+			data.constants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
+			data.constants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
+			data.constants_.data.dvCellCountRcp[2] = 1.0f / p.nCellsZ;
+			data.constants_.data.dvCellCountRcp[3] = 0;
+			data.constants_.data.dvPassLimits[0] = p.maxDecalIndices;
+			data.constants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
+			data.constants_.data.dvPassLimits[2] = 0;
+			data.constants_.data.dvPassLimits[3] = 0;
 
 			if ( !firstPass )
 			{
-				DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
+				DecalVolumeClusteringPass &pp = data.passes_[iPass - 1];
 
-				clustering_->clusteringConstants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
+				data.constants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
 
 				pp.decalIndices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION );
@@ -2556,14 +2585,14 @@ namespace spad
 
 			//if ( !lastPass )
 			//{
-			//	DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
+			//	DecalVolumeClusteringPass &pp = data.clusteringPasses_[iPass - 1];
 			//	pp.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
 			//}
 
-			clustering_->clusteringConstants_.updateGpu( deviceContext.context );
-			clustering_->clusteringConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
+			data.constants_.updateGpu( deviceContext.context );
+			data.constants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
 
-			if ( clustering_->clustering_.intersectionMethod_ )
+			if ( data.intersectionMethod_ )
 			{
 				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST );
 			}
@@ -2589,7 +2618,7 @@ namespace spad
 			}
 			else
 			{
-				DecalVolumeClusteringPass &pp = clustering_->clusteringPasses_[iPass - 1];
+				DecalVolumeClusteringPass &pp = data.passes_[iPass - 1];
 
 				if ( bucketsMergeEnabled )
 				{
@@ -2599,35 +2628,35 @@ namespace spad
 				{
 					for ( uint i = 0; i < maxBuckets; ++i )
 					{
-						if ( clustering_->clustering_.dynamicBuckets_ )
+						if ( data.dynamicBuckets_ )
 						{
 							if ( i == 0 )
 							{
 								if ( lastPass )
 								{
-									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
+									const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)data.intersectionMethod_, 1, 6 } );
 									fxPass.setCS( deviceContext.context );
 								}
 								else
 								{
-									const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, 6 } );
+									const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)data.intersectionMethod_, 1, 6 } );
 									fxPass.setCS( deviceContext.context );
 								}
 							}
 
-							clustering_->clusteringConstants_.data.dvPassLimits[3] = i;
-							clustering_->clusteringConstants_.updateGpu( deviceContext.context );
+							data.constants_.data.dvPassLimits[3] = i;
+							data.constants_.updateGpu( deviceContext.context );
 						}
 						else
 						{
 							if ( lastPass )
 							{
-								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
+								const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)data.intersectionMethod_, 1, i } );
 								fxPass.setCS( deviceContext.context );
 							}
 							else
 							{
-								const HlslShaderPass& fxPass = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)clustering_->clustering_.intersectionMethod_, 1, i } );
+								const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)data.intersectionMethod_, 1, i } );
 								fxPass.setCS( deviceContext.context );
 							}
 						}
@@ -2649,24 +2678,24 @@ namespace spad
 
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args_buckets_merged" );
+					const HlslShaderPass& fxPassCopy = *data.shader_->getPass( "cs_decal_volume_indirect_args_buckets_merged" );
 					fxPassCopy.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
 				{
-					const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args_buckets" );
+					const HlslShaderPass& fxPassCopy = *data.shader_->getPass( "cs_decal_volume_indirect_args_buckets" );
 					fxPassCopy.setCS( deviceContext.context );
 				}
 				else
 				{
-					if ( iPass == clustering_->clusteringPasses_.size() - 2 )
+					if ( iPass == data.passes_.size() - 2 )
 					{
-						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args_last_pass" );
+						const HlslShaderPass& fxPassCopy = *data.shader_->getPass( "cs_decal_volume_indirect_args_last_pass" );
 						fxPassCopy.setCS( deviceContext.context );
 					}
 					else
 					{
-						const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_indirect_args" );
+						const HlslShaderPass& fxPassCopy = *data.shader_->getPass( "cs_decal_volume_indirect_args" );
 						fxPassCopy.setCS( deviceContext.context );
 					}
 				}
@@ -2682,9 +2711,9 @@ namespace spad
 				//{
 				//	deviceContext.BeginMarker( "cs_decal_volume_assign_bucket" );
 				//
-				//	DecalVolumeClusteringPass &np = clustering_->clusteringPasses_[iPass + 1];
+				//	DecalVolumeClusteringPass &np = data.clusteringPasses_[iPass + 1];
 
-				//	const HlslShaderPass& fxPassCopy = *clustering_->decalVolumesClusteringShader_->getPass( "cs_decal_volume_assign_bucket" );
+				//	const HlslShaderPass& fxPassCopy = *data.decalVolumesClusteringShader_->getPass( "cs_decal_volume_assign_bucket" );
 				//	fxPassCopy.setCS( deviceContext.context );
 
 				//	p.cellIndirectionCount.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION_COUNT );
@@ -2698,7 +2727,7 @@ namespace spad
 				//}
 			}
 
-			if ( clustering_->clustering_.enablePassTiming_ )
+			if ( data.enablePassTiming_ )
 			{
 				p.timer.end( deviceContext.context );
 				p.timer.calculateDuration( deviceContext );
@@ -2719,14 +2748,14 @@ namespace spad
 			deviceContext.EndMarker();
 		}
 
-		clustering_->decalVolumesClusteringTimer_.end( deviceContext.context );
-		clustering_->decalVolumesClusteringTimer_.calculateDuration( deviceContext );
+		data.timer_.end( deviceContext.context );
+		data.timer_.calculateDuration( deviceContext );
 
 		deviceContext.EndMarker();
 
 		if ( showExtendedStats_ )
 		{
-			PopulateStats( deviceContext, clustering_->clustering_, clustering_->clusteringPasses_ );
+			PopulateStats( deviceContext, data );
 		}
 	}
 
@@ -2761,21 +2790,29 @@ namespace spad
 
 			if ( appMode_ == Tiling )
 			{
-				decalVolumeRenderingConstants_.data.dvdCellCount[0] = tiling_->tilingPasses_.back().nCellsX;
-				decalVolumeRenderingConstants_.data.dvdCellCount[1] = tiling_->tilingPasses_.back().nCellsY;
+				decalVolumeRenderingConstants_.data.dvdMode[0] = DECAL_VOLUME_CLUSTER_DISPLAY_MODE_2D;
+				decalVolumeRenderingConstants_.data.dvdMode[1] = 0;
+				decalVolumeRenderingConstants_.data.dvdMode[2] = 0;
+				decalVolumeRenderingConstants_.data.dvdMode[3] = 0;
+				decalVolumeRenderingConstants_.data.dvdCellCount[0] = tiling_->passes_.back().nCellsX;
+				decalVolumeRenderingConstants_.data.dvdCellCount[1] = tiling_->passes_.back().nCellsY;
 				decalVolumeRenderingConstants_.data.dvdCellCount[2] = 1;
 				decalVolumeRenderingConstants_.data.dvdCellCount[3] = 0;
 
-				srvs[0] = tiling_->tilingPasses_.back().decalIndices.getSRV();
+				srvs[0] = tiling_->passes_.back().decalIndices.getSRV();
 			}
 			else
 			{
-				decalVolumeRenderingConstants_.data.dvdCellCount[0] = clustering_->clusteringPasses_.back().nCellsX;
-				decalVolumeRenderingConstants_.data.dvdCellCount[1] = clustering_->clusteringPasses_.back().nCellsY;
-				decalVolumeRenderingConstants_.data.dvdCellCount[2] = clustering_->clusteringPasses_.back().nCellsZ;
+				decalVolumeRenderingConstants_.data.dvdMode[0] = DECAL_VOLUME_CLUSTER_DISPLAY_MODE_3D;
+				decalVolumeRenderingConstants_.data.dvdMode[1] = 0;
+				decalVolumeRenderingConstants_.data.dvdMode[2] = 0;
+				decalVolumeRenderingConstants_.data.dvdMode[3] = 0;
+				decalVolumeRenderingConstants_.data.dvdCellCount[0] = clustering_->passes_.back().nCellsX;
+				decalVolumeRenderingConstants_.data.dvdCellCount[1] = clustering_->passes_.back().nCellsY;
+				decalVolumeRenderingConstants_.data.dvdCellCount[2] = clustering_->passes_.back().nCellsZ;
 				decalVolumeRenderingConstants_.data.dvdCellCount[3] = 0;
 
-				srvs[0] = clustering_->clusteringPasses_.back().decalIndices.getSRV();
+				srvs[0] = clustering_->passes_.back().decalIndices.getSRV();
 			}
 			decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
 			decalVolumeRenderingConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );

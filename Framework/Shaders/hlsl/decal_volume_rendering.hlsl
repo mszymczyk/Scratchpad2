@@ -148,10 +148,24 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 
 	uint decalCount = 0;
 
-	for ( uint slice = 0; slice < dvdCellCount.z; ++slice )
+	if ( dvdMode.x == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_3D )
 	{
-		uint3 cellID = uint3( screenTile, slice );
-		uint clusterIndex = DecalVolume_GetCellFlatIndex( cellID, uint3( dvdCellCount.xy, 1 ) );
+		for ( uint slice = 0; slice < dvdCellCount.z; ++slice )
+		{
+			uint3 cellID = uint3( screenTile, slice );
+			uint clusterIndex = DecalVolume_GetCellFlatIndex3D( cellID, uint3( dvdCellCount.xy, 1 ) );
+
+			uint node = inDecalVolumeIndices[clusterIndex];
+			uint cellDecalCount;
+			uint offsetToFirstDecalIndex;
+			DecalVolume_UnpackHeader( node, cellDecalCount, offsetToFirstDecalIndex );
+
+			decalCount += cellDecalCount;
+		}
+	}
+	else if ( dvdMode.x == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_2D )
+	{
+		uint clusterIndex = DecalVolume_GetCellFlatIndex2D( screenTile, dvdCellCount.xy );
 
 		uint node = inDecalVolumeIndices[clusterIndex];
 		uint cellDecalCount;
