@@ -1,4 +1,5 @@
 
+#include "cs_decal_volume_cshared.hlsl"
 #include "cs_decal_volume_util.hlsl"
 
 #if DECAL_VOLUME_CLUSTER_GCN

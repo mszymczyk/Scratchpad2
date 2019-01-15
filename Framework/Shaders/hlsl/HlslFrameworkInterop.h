@@ -12,6 +12,8 @@ typedef Matrix4 float4x4;
 typedef Vector4 float4;
 typedef spad::dxmath::Float3 float3;
 
+#define cfloat3 float3
+
 #define CBUFFER struct
 #define MAKE_REGISTER_SAMPLER( index )		index
 #define MAKE_REGISTER_CBUFFER( index )		index
@@ -28,6 +30,8 @@ typedef spad::dxmath::Float3 float3;
 #else
 
 #define COMPILING_SHADER_CODE 1
+
+#define cfloat3 float3
 
 //#define REGISTER_B(exp) : register(b##exp) // constant buffer
 //#define REGISTER_T(exp) : register(t##exp) // texture or buffer

@@ -1,5 +1,3 @@
-#include "cs_decal_volume_cshared.hlsl"
-
 StructuredBuffer<DecalVolume> inDecalVolumes           REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS;
 StructuredBuffer<DecalVolumeTest> inDecalVolumesTest   REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST;
 StructuredBuffer<uint> inDecalVolumesCount             REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT;
@@ -17,12 +15,9 @@ RWStructuredBuffer<uint> outDecalVolumeIndices         REGISTER_BUFFER_DECAL_VOL
 StructuredBuffer<GroupToBucket> inGroupToBucket        REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET;
 RWStructuredBuffer<GroupToBucket> outGroupToBucket     REGISTER_BUFFER_DECAL_VOLUME_OUT_GROUP_TO_BUCKET;
 
-#define DECAL_VOLUME_CLUSTER_GCN								0
-
 #define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
-//#define DECAL_VOLUME_INTERSECTION_METHOD						0
 
-#define DECAL_VOLUME_CLUSTER_USE_OLD_SAT						0
+#define DECAL_VOLUME_CLUSTER_USE_OLD_SAT						1
 
 #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
 struct OrientedBoundingBox
@@ -818,6 +813,50 @@ void DecalVolume_GetCornersClipSpace( DecalVolumeTest dv, out float4 dvCornersXY
 }
 
 
+void DecalVolume_GetCornersClipSpace2( DecalVolume dv, out float4 dvCornersXYW[8] )
+{
+	float3 center = dv.position;
+	float3 xs = dv.x * dv.halfSize.x;
+	float3 ys = dv.y * dv.halfSize.y;
+	float3 zs = dv.z * dv.halfSize.z;
+
+	float3 v0 = center - xs - ys + zs;
+	float3 v4 = center - xs - ys - zs;
+	float3 v5 = center + xs - ys - zs;
+	float3 v7 = center - xs + ys - zs;
+
+	float3 v1 = center + xs - ys + zs;
+	float3 v2 = center + xs + ys + zs;
+	float3 v3 = center - xs + ys + zs;
+	float3 v6 = center + xs + ys - zs;
+
+#if DECAL_VOLUME_USE_XYW_CORNERS
+
+	DecalVolumeTest dvt;
+	dvt.v0 = mul( dvViewProjMatrix, float4( v0, 1 ) ).xyw;
+	dvt.v4 = mul( dvViewProjMatrix, float4( v4, 1 ) ).xyw;
+	dvt.v5 = mul( dvViewProjMatrix, float4( v5, 1 ) ).xyw;
+	dvt.v7 = mul( dvViewProjMatrix, float4( v7, 1 ) ).xyw;
+
+#else // #if DECAL_VOLUME_USE_XYW_CORNERS
+
+	DecalVolumeTest dvt;
+	dvt.v0 = mul( dvViewProjMatrix, float4( v0, 1 ) );
+	dvt.v4 = mul( dvViewProjMatrix, float4( v4, 1 ) );
+	dvt.v5 = mul( dvViewProjMatrix, float4( v5, 1 ) );
+	dvt.v7 = mul( dvViewProjMatrix, float4( v7, 1 ) );
+
+	//dvt.v1 = mul( dvViewProjMatrix, float4( v1, 1 ) );
+	//dvt.v2 = mul( dvViewProjMatrix, float4( v2, 1 ) );
+	//dvt.v3 = mul( dvViewProjMatrix, float4( v3, 1 ) );
+	//dvt.v6 = mul( dvViewProjMatrix, float4( v6, 1 ) );
+
+#endif // #else // #if DECAL_VOLUME_USE_XYW_CORNERS
+
+	DecalVolume_GetCornersClipSpace( dvt, dvCornersXYW );
+}
+
+
 #define USE_Z_01 0
 
 void DecalVolume_BuildSubFrustumClipSpace( out Frustum frustum, const float3 cellCount, const float3 cellCountRcp, float3 cellIndex, float nearPlane, float farPlane, float farPlaneOverNearPlane )
@@ -854,10 +893,14 @@ void DecalVolume_BuildSubFrustumClipSpace( out Frustum frustum, const float3 cel
 
 // Real-Time Rendering 4th edition
 // https://fgiesen.wordpress.com/2010/10/17/view-frustum-culling/
-uint DecalVolume_TestFrustumClipSpace( in DecalVolumeTest dv, in Frustum frustum )
+uint DecalVolume_TestFrustumClipSpace( in DecalVolumeTest dvt, in DecalVolume dv, in Frustum frustum )
 {
 	float4 corners[8];
-	DecalVolume_GetCornersClipSpace( dv, corners );
+#if DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE
+	DecalVolume_GetCornersClipSpace( dvt, corners );
+#else // DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE
+	DecalVolume_GetCornersClipSpace2( dv, corners );
+#endif // #else // DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE
 
 	float left   = frustum.clipSpacePlanes[0];
 	float right  = frustum.clipSpacePlanes[1];
@@ -915,9 +958,9 @@ Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCells
 
 #if DECAL_VOLUME_INTERSECTION_METHOD == 0
 	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.y, dvNearFar.z );
-#elif DECAL_VOLUME_INTERSECTION_METHOD == 1
+#elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
 	DecalVolume_BuildSubFrustumClipSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvNearFar.x, dvNearFar.y, dvNearFar.z );
-#else // #elif DECAL_VOLUME_INTERSECTION_METHOD == 1
+#else // #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
 
 #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
 	DecalVolume_GetFrustumClusterFaces( outFrustum.faces, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvTanHalfFov.xy, dvNearFar.x, dvNearFar.y, dvNearFar.z );
@@ -925,7 +968,7 @@ Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCells
 	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.y, dvNearFar.z );
 #endif // #else #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
 
-#endif // #else // #elif DECAL_VOLUME_INTERSECTION_METHOD == 1
+#endif // #else // #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE
 
 	return outFrustum;
 }
@@ -937,14 +980,15 @@ uint DecalVolume_TestFrustum( const Frustum frustum, uint decalIndex )
 
 #if DECAL_VOLUME_INTERSECTION_METHOD == 0
 	const DecalVolume dv = inDecalVolumes[decalIndex];
-	intersects = DecalVolume_TestFrustumWorldSpace( dv, frustum, true );
-#elif DECAL_VOLUME_INTERSECTION_METHOD == 1
-	const DecalVolumeTest dv = inDecalVolumesTest[decalIndex];
-	intersects = DecalVolume_TestFrustumClipSpace( dv, frustum );
-#else // #elif DECAL_VOLUME_INTERSECTION_METHOD == 1
+	intersects = DecalVolume_TestFrustumWorldSpace( dv, frustum, false );
+#elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
+	const DecalVolumeTest dvt = inDecalVolumesTest[decalIndex];
+	const DecalVolume dv = inDecalVolumes[decalIndex];
+	intersects = DecalVolume_TestFrustumClipSpace( dvt, dv, frustum );
+#else // #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
 	const DecalVolume dv = inDecalVolumes[decalIndex];
 	intersects = DecalVolume_TestFrustumWorldSpaceSAT( dv, frustum );
-#endif // #else // #elif DECAL_VOLUME_INTERSECTION_METHOD == 1
+#endif // #else // #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
 
 	return intersects;
 }
@@ -1199,16 +1243,3 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 	}
 #endif // #else // DECAL_VOLUME_CLUSTER_LAST_PASS
 }
-
-
-#if DECAL_VOLUME_CLUSTER_GCN
-#define ulong uint2
-ulong BallotMask( const in uint condition ) { return condition.xx; }
-uint CountSetBits64( const in ulong v ) { return countbits( v.x ) + countbits( v.y ); }
-uint MaskBitCnt( const in ulong mask ) { return countbits( mask.x ) + countbits( mask.y ); }
-uint ReadLane( const in uint _val, const in uint _laneID ) { return _val; }
-ulong shlU64( const ulong u0, const uint  u1 ) { return u0.xy << u1; }
-ulong shrU64( const ulong u0, const uint  u1 ) { return u0.xy >> u1; }
-ulong andU64( const ulong u0, const ulong u1 ) { return uint2( u0.x & u1.x, u0.y & u1.y ); }
-bool cmpNeqU64( const ulong u0, const ulong u1 ) { return u0.x != u1.x || u0.y != u1.y; }
-#endif // #if DECAL_VOLUME_CLUSTER_GCN

@@ -1716,9 +1716,9 @@ namespace spad
 			hsY *= decalVolumesRandomScale_;
 			hsZ *= decalVolumesRandomScale_;
 
-			nX = 0.5f;
-			nY = 0.5f;
-			nZ = 0.01f;
+			//nX = 0.5f;
+			//nY = 0.5f;
+			//nZ = 0.01f;
 
 			//Vector3 pos = unprojectNormalizedDx( Vector3( nX, nY, nZ ), viewProjInv );
 			float linearZ = testFrustumNearPlane + nZ * ( decalVolumeFarPlane_ - testFrustumNearPlane );
@@ -1728,8 +1728,9 @@ namespace spad
 
 			dv.halfSize = Vector4( hsX, hsY, hsZ, 0 );
 
-			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
-			Matrix4 rot = Matrix4::identity();
+			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
+			//Matrix4 rot = Matrix4::identity();
+			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad(45.0f) ) );
 			dv.x = rot.getCol0();
 			dv.y = rot.getCol1();
 			dv.z = rot.getCol2();
@@ -2176,7 +2177,7 @@ namespace spad
 		ImGui::Text( "Total mem %u [B], %u [kB], %u [MB]", data.totalMemUsed_, data.totalMemUsed_ / 1024, data.totalMemUsed_ / ( 1024 * 1024 ) );
 
 		{
-			const char* items[] = { "World space optimized", "Clip space", "SAT" };
+			const char* items[] = { "World space optimized", "Clip space", "Clip space (decal in)", "SAT" };
 			ImGui::Combo( "Intersection method", reinterpret_cast<int*>( &data.intersectionMethod_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
@@ -2606,8 +2607,8 @@ namespace spad
 		outCellsX = nCellsXBase;
 		outCellsY = nCellsYBase;
 		//outCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
-		//outCellsZ = 32;
-		outCellsZ = 1;
+		outCellsZ = 32;
+		//outCellsZ = 1;
 	}
 
 	SettingsTestApp::DecalVolumeClusteringDataPtr SettingsTestApp::DecalVolumeClusteringStartUp( bool clustering )
@@ -2692,6 +2693,7 @@ namespace spad
 				if ( clustering )
 				{
 					p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
+					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
 				}
 				else
 				{
@@ -2705,6 +2707,7 @@ namespace spad
 				if ( clustering )
 				{
 					p.maxDecalIndices = ( cellCountSqr / 8 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
+					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
 				}
 				else
 				{
@@ -2850,6 +2853,7 @@ namespace spad
 			}
 
 			data.constants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
+			data.constants_.data.dvViewProjMatrix = projMatrixForDecalVolumes_ * viewMatrixForDecalVolumes_;
 			data.constants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
 			data.constants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
 			data.constants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
@@ -2892,7 +2896,7 @@ namespace spad
 			data.constants_.updateGpu( deviceContext.context );
 			data.constants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
 
-			if ( data.intersectionMethod_ == 1 )
+			if ( data.intersectionMethod_ == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE )
 			{
 				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST );
 			}

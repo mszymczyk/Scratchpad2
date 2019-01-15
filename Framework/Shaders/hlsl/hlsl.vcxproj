@@ -152,6 +152,7 @@
     <FxCompilerFile Include="cs_decal_volume_culling.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_tiling.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_util.hlsl" />
+    <FxCompilerFile Include="decal_volume_cshared.hlsl" />
     <FxCompilerFile Include="decal_volume_rendering.hlsl" />
     <FxCompilerFile Include="FxDoc.hlsl" />
     <FxCompilerFile Include="texture.hlsl">

@@ -1,7 +1,7 @@
 #ifndef CS_DECAL_VOLUME_CSHARED_HLSL
 #define CS_DECAL_VOLUME_CSHARED_HLSL
 
-#include "HlslFrameworkInterop.h"
+#include "decal_volume_cshared.hlsl"
 
 #define REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS					MAKE_REGISTER_CBUFFER( 0 )
 
@@ -38,9 +38,16 @@
 #define DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED					1
 #define DECAL_VOLUME_CLUSTER_CLEAR_HEADER_NUM_GROUPS				64
 
+#define DECAL_VOLUME_INTERSECTION_METHOD_SIMPLE						0
+#define DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE					1
+#define DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2				2
+#define DECAL_VOLUME_INTERSECTION_METHOD_SAT						3
+
+
 MAKE_FLAT_CBUFFER( DecalVolumeCsConstants, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS )
 {
 	CBUFFER_FLOAT4X4( dvViewMatrix );
+	CBUFFER_FLOAT4X4( dvViewProjMatrix );
 	CBUFFER_FLOAT4( dvTanHalfFov ); // rcp in zw
 	CBUFFER_FLOAT4( dvNearFar ); // x - near, y - far, z - far over near
 	CBUFFER_UINT4( dvCellCount ); // w = dvCellCount.x * dvCellCount.y * dvCellCount.z
@@ -88,11 +95,11 @@ struct IndirectDispatchArgs
 
 struct DecalVolume
 {
-	float3 position;
-	float3 halfSize;
-	float3 x;
-	float3 y;
-	float3 z;
+	cfloat3 position;
+	cfloat3 x;
+	cfloat3 y;
+	cfloat3 z;
+	cfloat3 halfSize;
 };
 
 
@@ -102,83 +109,23 @@ struct DecalVolumeTest
 #if DECAL_VOLUME_USE_XYW_CORNERS
 	// every vector has clip space x, y and w
 	// see cs_decal_volume_culling for the box's corner layout
-	float3 v0;
-	float3 v4;
-	float3 v5;
-	float3 v7;
+	cfloat3 v0;
+	cfloat3 v4;
+	cfloat3 v5;
+	cfloat3 v7;
 #else // DECAL_VOLUME_USE_XYW_CORNERS
 	// every vector has clip space x, y, z and w
-	float4 v0;
-	float4 v4;
-	float4 v5;
-	float4 v7;
+	cfloat4 v0;
+	cfloat4 v4;
+	cfloat4 v5;
+	cfloat4 v7;
 
-	//float4  v1;
-	//float4  v2;
-	//float4  v3;
-	//float4  v6;
+	//cfloat4  v1;
+	//cfloat4  v2;
+	//cfloat4  v3;
+	//cfloat4  v6;
 #endif // #else // DECAL_VOLUME_USE_XYW_CORNERS
 };
-
-
-#if COMPILING_SHADER_CODE
-
-uint DecalVolume_PackHeader( uint decalCount, uint offsetToFirstDecalIndex )
-{
-	return ( decalCount & 0x3ff ) | ( ( offsetToFirstDecalIndex & 0xffffff ) << 10 );
-}
-
-
-void DecalVolume_UnpackHeader( uint packedHeader, out uint decalCount, out uint offsetToFirstDecalIndex )
-{
-	decalCount = packedHeader & 0x3ff;
-	offsetToFirstDecalIndex = packedHeader >> 10;
-}
-
-
-uint DecalVolume_GetCellFlatIndex3D( uint3 cellID, uint3 numCells )
-{
-	return safe_mad24( cellID.z, safe_mul24( numCells.x, numCells.y ), safe_mad24( cellID.y, numCells.x, cellID.x ) );
-}
-
-
-uint DecalVolume_GetCellFlatIndex2D( uint2 cellID, uint2 numCells )
-{
-	return safe_mad24( cellID.y, numCells.x, cellID.x );
-}
-
-
-float LogBase( float base, float x )
-{
-	return log2( x ) * rcp( log2( base ) );
-}
-
-
-// pixelPosition is in range <0, renderTargetSize>
-uint2 DecalVolume_GetCellXYFromScreenPosition( float2 pixelPosition, float2 renderTargetSizeRcp, float2 nCellsXY )
-{
-	float2 pixelUV = pixelPosition * renderTargetSizeRcp;
-	uint2 tileXY = uint2( pixelUV * nCellsXY );
-	return min( tileXY, uint2( nCellsXY - 1 ) );
-}
-
-
-uint DecalVolume_GetCellZFromCameraZ( float cameraZ, float nearPlaneRcp, float farPlaneOverNearPlane, float nCellsZ )
-{
-	float base = farPlaneOverNearPlane;
-	return ( uint ) min( floor( LogBase( base, cameraZ * nearPlaneRcp ) * nCellsZ ), nCellsZ - 1 );
-}
-
-
-uint3 DecalVolume_GetCellFromViewPos( float2 pixelPosition, float cameraZ, float2 renderTargetSizeRcp, float3 nCellsXYZ, float nearPlaneRcp, float farPlaneOverNearPlane )
-{
-	return uint3(
-		DecalVolume_GetCellXYFromScreenPosition( pixelPosition, renderTargetSizeRcp, nCellsXYZ.xy ),
-		DecalVolume_GetCellZFromCameraZ( cameraZ, nearPlaneRcp, farPlaneOverNearPlane, nCellsXYZ.z )
-		);
-}
-
-#endif // #if COMPILING_SHADER_CODE
 
 
 #endif // CS_DECAL_VOLUME_CSHARED_HLSL

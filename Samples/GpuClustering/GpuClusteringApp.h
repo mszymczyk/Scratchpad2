@@ -27,6 +27,7 @@ namespace spad
 		{
 			Standard,
 			ClipSpace,
+			ClipSpaceFromDecal,
 			SAT,
 			IntersectionMethodCount
 		};

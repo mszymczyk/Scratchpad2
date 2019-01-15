@@ -18,6 +18,7 @@ passes :
 #endif // FX_PASSES
 #endif // FX_HEADER
 
+#include "cs_decal_volume_cshared.hlsl"
 #include "cs_decal_volume_util.hlsl"
 
 RWStructuredBuffer<DecalVolume> outDecalVolumes				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS;
