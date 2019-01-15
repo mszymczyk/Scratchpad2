@@ -61,10 +61,35 @@ namespace spad
 
 		mtx[0][0] = 1.0f / tanHalfFovX;
 		mtx[1][1] = 1.0f / tanHalfFovY;
-		mtx[2][3] = 1.0f;
+		mtx[2][3] = -1.0f;
 		mtx[3][2] = zNear;
 
 		return mtx;
+	}
+
+	Matrix4 InfinitePerspectiveMatrix2( float fovyRadians, float aspect, float zNear )
+	{
+		float tanHalfFovX = tanf( fovyRadians * 0.5f );
+		return InfinitePerspectiveMatrix( tanHalfFovX, tanHalfFovX / aspect, zNear );
+	}
+
+
+	Vector3 WorldPositionFromScreenCoords( const Vector3 eyeAxis[3], const Vector3 &eyeOffset, float screenCoordsX, float screenCoordsY, float depth )
+	{
+		Vector3 eyeRay = eyeAxis[0] * screenCoordsX +
+			eyeAxis[1] * screenCoordsY +
+			eyeAxis[2];
+
+		return eyeOffset + eyeRay * depth;
+	}
+
+	Vector3 WorldPositionFromScreenCoords2( const Vector3 eyeAxis[3], const Vector3 &eyeOffset, const Vector3 &screenCoordsAndLinearDepth )
+	{
+		Vector3 eyeRay = eyeAxis[0] * screenCoordsAndLinearDepth.getX() +
+			eyeAxis[1] * screenCoordsAndLinearDepth.getY() +
+			eyeAxis[2];
+
+		return eyeOffset + eyeRay * screenCoordsAndLinearDepth.getZ();
 	}
 
 	void extractFrustumCorners( Vector3 dst[8], const Matrix4& viewProjection, bool dxStyleZProjection )
@@ -106,6 +131,56 @@ namespace spad
 			dst[7] = unprojectNormalized( rightUpperFar, vpInv );
 		}
 	}
+
+
+	void extractFrustumCornersReverseInfiniteProjection( Vector3 dst[8], const Vector3 eyeAxis[3], const Vector3 &eyeOffset, float nearPlane, float farPlane )
+	{
+		Vector3 corners[8] = {
+			Vector3( -1, 1, nearPlane ),
+			Vector3( -1, 1, farPlane ),
+
+			Vector3( -1, -1, nearPlane ),
+			Vector3( -1, -1, farPlane ),
+
+			Vector3( 1, -1, nearPlane ),
+			Vector3( 1, -1, farPlane ),
+
+			Vector3( 1, 1, nearPlane ),
+			Vector3( 1, 1, farPlane )
+		};
+
+		for ( uint i = 0; i < 8; ++i )
+		{
+			dst[i] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, corners[i] );
+		}
+	}
+
+
+	void extractSubFrustumCornersReverseInfiniteProjection( Vector3 dst[8], const Vector3 eyeAxis[3], const Vector3 &eyeOffset, const Vector3 &subFrustumPos, const Vector3 &subFrustumSize, float nearPlane, float farPlane )
+	{
+		floatInVec n( nearPlane );
+		floatInVec f( farPlane );
+
+		Vector3 corners[8] = {
+			Vector3( subFrustumPos.getX(), subFrustumPos.getY() + subFrustumSize.getY(), n ),
+			Vector3( subFrustumPos.getX(), subFrustumPos.getY() + subFrustumSize.getY(), f ),
+
+			Vector3( subFrustumPos.getX(), subFrustumPos.getY(), n ),
+			Vector3( subFrustumPos.getX(), subFrustumPos.getY(), f ),
+
+			Vector3( subFrustumPos.getX() + subFrustumSize.getX(), subFrustumPos.getY(), n ),
+			Vector3( subFrustumPos.getX() + subFrustumSize.getX(), subFrustumPos.getY(), f ),
+
+			Vector3( subFrustumPos.getX() + subFrustumSize.getX(), subFrustumPos.getY() + subFrustumSize.getY(), n ),
+			Vector3( subFrustumPos.getX() + subFrustumSize.getX(), subFrustumPos.getY() + subFrustumSize.getY(), f )
+		};
+
+		for ( uint i = 0; i < 8; ++i )
+		{
+			dst[i] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, corners[i] );
+		}
+	}
+
 
 	void extractFrustumPlanes( Vector4 planes[6], const Matrix4& vp )
 	{
@@ -274,7 +349,8 @@ namespace spad
 		const float aspect = (float)dx11_->getBackBufferWidth() / (float)dx11_->getBackBufferHeight();
 		//viewMatrixForCamera_ = ( Matrix4::lookAt( Point3( 5, 5, 0 ), Point3( 0, 0, -5 ), Vector3::yAxis() ) );
 		//view_ = Matrix4::lookAt( Point3( 0, 0, -5 ), Point3( 0, 0, 0 ), Vector3::yAxis() );
-		projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 4.0f, decalVolumeFarPlane_ );
+		//projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 4.0f, decalVolumeFarPlane_ );
+		projMatrixForCamera_ = InfinitePerspectiveMatrix2( deg2rad( 60.0f ), aspect, 4.0f );
 
 		float n = testFrustumNearPlane;
 		float f = decalVolumeFarPlane_;
@@ -987,10 +1063,12 @@ namespace spad
 
 		const float clearColor[] = { 0.2f, 0.2f, 0.2f, 1 };
 		immediateContext->ClearRenderTargetView( dx11_->getBackBufferRTV(), clearColor );
-		immediateContext->ClearDepthStencilView( mainDS_.dsv_, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0 );
+		//immediateContext->ClearDepthStencilView( mainDS_.dsv_, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1, 0 );
+		immediateContext->ClearDepthStencilView( mainDS_.dsv_, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 0, 0 );
 
 		immediateContext->RSSetState( RasterizerStates::BackFaceCull() );
-		immediateContext->OMSetDepthStencilState( DepthStencilStates::DepthWriteEnabled(), 0 );
+		//immediateContext->OMSetDepthStencilState( DepthStencilStates::DepthWriteEnabled(), 0 );
+		immediateContext->OMSetDepthStencilState( DepthStencilStates::ReverseDepthWriteEnabled(), 0 );
 
 		UpdateCamera( timer );
 
@@ -999,7 +1077,8 @@ namespace spad
 		const float aspect = (float)dx11_->getBackBufferWidth() / (float)dx11_->getBackBufferHeight();
 		//Matrix4 view = ( Matrix4::lookAt( Point3( 10, 10, 10 ), Point3( 0, 0, 0 ), Vector3::yAxis() ) );
 		//Matrix4 proj = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 0.1f, 100 );
-		projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 4.0f, decalVolumeFarPlane_ );
+		//projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 4.0f, decalVolumeFarPlane_ );
+		projMatrixForCamera_ = InfinitePerspectiveMatrix2( deg2rad( 60.0f ), aspect, 4.0f );
 
 		if ( appMode_ == Tiling || appMode_ == Clustering )
 		{
@@ -1174,7 +1253,7 @@ namespace spad
 		}
 
 		{
-			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum" };
+			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum", "Depth Buffer" };
 			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
@@ -1478,6 +1557,91 @@ namespace spad
 		outVertices[7] = v7;
 	}
 
+	struct FrustumFace
+	{
+		Vector3 center;
+		Vector3 axes[2];
+	};
+
+	void DecalVolume_GetFrustumClusterFaces( FrustumFace faces[2], const Vector3 cellCount, const Vector3 cellCountRcp, Vector3 cellIndex, Vector4 tanHalfFov, float nearPlane, float farPlane, float farPlaneOverNearPlane, bool farClip = false )
+	{
+		// clip-space (-1,1) position of the view ray through the centroid of the cluster frustum projected on screen
+		//float2 uv = ( ( float2( clusterXYZ.xy ) + 0.5f ) * g_sceneConstants.frustumGridClusterSize.xy + 0.5f ) / g_sceneConstants.frustumGridLightParams.zw;
+		Vector3 uv = mulPerElem( cellIndex + Vector3(0.5f), cellCountRcp );
+		//uv = uv * float2( -2.0f, -2.0f ) + float2( 1.0f, 1.0f );
+		//uv = uv * float2( 2.0f, 2.0f ) - float2( 1.0f, 1.0f );
+		uv = mulPerElem( uv, Vector3( 2.0f ) ) - Vector3( 1.0f );
+		//uv.y = -uv.y;
+
+		//float2 uv00 = cellIndex.xy * cellCountRcp.xy;
+		//float2 uv10 = (cellIndex.xy + float2(1,0)) * cellCountRcp.xy;
+
+		//// view-space depth of the near and far planes for the cluster frustum
+		//float depth0 = VolumeZPosToDepth( float( clusterXYZ.z ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth );
+		//float depth1 = ( farClip || ( clusterXYZ.z < FRUSTUM_GRID_CLUSTER_SIZE_Z - 1 ) ) ? VolumeZPosToDepth( float( clusterXYZ.z + 1 ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth ) : FRUSTUM_GRID_CLUSTERING_MAX_DEPTH;
+	//#if DECAL_VOLUME_CLUSTER_3D
+	//	float depth0 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
+	//	float depth1 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+	//#else // #if DECAL_VOLUME_CLUSTER_3D
+		float depth0 = nearPlane;
+		float depth1 = farPlane;
+		//float depth0 = farPlane;
+		//float depth1 = nearPlane;
+	//#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
+
+
+		// screen-space half size of the projected frustum
+		//float2 projHalfSize = 0.5f * frustumGridClusterSize.xy / frustumGridLightParams.zw;
+		//float2 projHalfSize = ( 0.5f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
+		//float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1920, 1080 );
+		//float2 projHalfSize = 0.5f * 1.0f / 32.0f;// ( 0.5f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
+		//float2 projHalfSize = ( 1.0f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
+		//float2 projHalfSize = 0.5f * cellCountRcp.xy;
+		//projHalfSize.y *= 2;
+		//projHalfSize *= 0.01f;
+		//Vector3 projHalfSize( 0.5f * 1.0f / 32.0f );
+		Vector3 projHalfSize( 0.5f );
+
+		Vector3 eyeAxis[3];
+		eyeAxis[0] = Vector3( 1, 0, 0 ) * tanHalfFov.getX();
+		eyeAxis[1] = Vector3( 0, 1, 0 ) * tanHalfFov.getY();
+		eyeAxis[2] = Vector3( 0, 0, -1 );
+		Vector3 eyeOffset = Vector3( 0, 0, 0 );
+
+		faces[0].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv.getX().getAsFloat(), uv.getY().getAsFloat(), depth0 );
+		faces[0].axes[0] = eyeAxis[0] * projHalfSize.getX() * depth0;
+		faces[0].axes[1] = eyeAxis[1] * projHalfSize.getY() * depth0;
+
+		faces[1].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv.getX().getAsFloat(), uv.getY().getAsFloat(), depth1 );
+		faces[1].axes[0] = eyeAxis[0] * projHalfSize.getX() * depth1;
+		faces[1].axes[1] = eyeAxis[1] * projHalfSize.getY() * depth1;
+
+		Vector3 uv00 = mulPerElem( cellIndex, cellCountRcp );
+		Vector3 uv10 = mulPerElem( cellIndex + Vector3( 1, 0, 0 ), cellCountRcp );
+		Vector3 uv01 = mulPerElem( cellIndex + Vector3( 0, 1, 0 ), cellCountRcp );
+
+		//Vector3 c000 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv00.getX().getAsFloat(), uv00.getY().getAsFloat(), depth0 );
+		Vector3 c100 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv10.getX().getAsFloat(), uv10.getY().getAsFloat(), depth0 );
+		//Vector3 c001 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv00.getX().getAsFloat(), uv00.getY().getAsFloat(), depth1 );
+		Vector3 c101 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv10.getX().getAsFloat(), uv10.getY().getAsFloat(), depth1 );
+
+		Vector3 c010 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv01.getX().getAsFloat(), uv01.getY().getAsFloat(), depth0 );
+		Vector3 c011 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv01.getX().getAsFloat(), uv01.getY().getAsFloat(), depth1 );
+
+		//faces[0].axes[0] = c100 - c000;
+		//faces[0].axes[1] = c100 - c000;
+		//faces[1].axes[0] = c101 - c001;
+		//faces[1].axes[1] = c101 - c001;
+		//faces[0].axes[0] = c100 - faces[0].center;
+		//faces[0].axes[1] = c100 - faces[0].center;
+		//faces[1].axes[0] = c101 - faces[1].center;
+		//faces[1].axes[1] = c101 - faces[1].center;
+		faces[0].axes[0] = c100 - faces[0].center;
+		faces[0].axes[1] = c010 - faces[0].center;
+		faces[1].axes[0] = c101 - faces[1].center;
+		faces[1].axes[1] = c011 - faces[1].center;
+	}
+
 	void SettingsTestApp::GenDecalVolumesRandom()
 	{
 		ClearDecalVolumes();
@@ -1513,6 +1677,22 @@ namespace spad
 
 		Vector4 clipPoints[24];
 
+		Vector4 tanHalfFov;
+		tanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+		tanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+		tanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+		tanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+
+		Vector3 eyeAxis[3] = { Vector3::xAxis() * tanHalfFov.getX(), Vector3::yAxis() * tanHalfFov.getY(), -Vector3::zAxis() };
+		Vector3 eyeOffset = Vector3( 0.0f );
+
+		Vector3 frustumCorners[8];
+		extractFrustumCornersReverseInfiniteProjection( frustumCorners, eyeAxis, eyeOffset, testFrustumNearPlane, decalVolumeFarPlane_ );
+
+		float subfrustumSubdiv = 2;
+		Vector3 subfrustumSizeRcp( 1.0f / subfrustumSubdiv );
+		extractSubFrustumCornersReverseInfiniteProjection( frustumCorners, eyeAxis, eyeOffset, Vector3( -1 ), subfrustumSizeRcp, testFrustumNearPlane, decalVolumeFarPlane_ );
+
 		GetBoxCorners( Vector4( 0 ), Vector4::xAxis(), Vector4::yAxis(), Vector4::zAxis(), clipPoints );
 
 		for ( int i = 0; i < maxDecalVolumes_; ++i )
@@ -1536,12 +1716,20 @@ namespace spad
 			hsY *= decalVolumesRandomScale_;
 			hsZ *= decalVolumesRandomScale_;
 
-			Vector3 pos = unprojectNormalizedDx( Vector3( nX, nY, nZ ), viewProjInv );
+			nX = 0.5f;
+			nY = 0.5f;
+			nZ = 0.01f;
+
+			//Vector3 pos = unprojectNormalizedDx( Vector3( nX, nY, nZ ), viewProjInv );
+			float linearZ = testFrustumNearPlane + nZ * ( decalVolumeFarPlane_ - testFrustumNearPlane );
+			Vector3 pos = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, nX * 2 - 1, nY * 2 - 1, linearZ );
+
 			dv.position = Float3( pos );
 
 			dv.halfSize = Vector4( hsX, hsY, hsZ, 0 );
 
-			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
+			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
+			Matrix4 rot = Matrix4::identity();
 			dv.x = rot.getCol0();
 			dv.y = rot.getCol1();
 			dv.z = rot.getCol2();
@@ -1604,6 +1792,10 @@ namespace spad
 		decalVolumesGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, decalVolumesCPU_, true, false, false );
 		decalVolumesCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
 		decalVolumesTestCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
+
+		float nCellsX = 1.0f;
+		FrustumFace faces[2];
+		DecalVolume_GetFrustumClusterFaces( faces, Vector3( nCellsX ), Vector3( 1.0f / nCellsX ), Vector3( 0.0f ), tanHalfFov, testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, false );
 	}
 
 	void SettingsTestApp::GenDecalVolumesModel()
@@ -1811,7 +2003,16 @@ namespace spad
 		uint rtWidth, rtHeight;
 		GetRenderTargetSize( rtWidth, rtHeight );
 
-		return perspectiveProjectionDxStyle( deg2rad( 60.0f ), (float)rtWidth / (float)rtHeight, testFrustumNearPlane, decalVolumeFarPlane_ );
+		//return perspectiveProjectionDxStyle( deg2rad( 60.0f ), (float)rtWidth / (float)rtHeight, testFrustumNearPlane, decalVolumeFarPlane_ );
+
+		//Matrix4 proj = InfinitePerspectiveMatrix(
+		//	1.0f / projMatrixForDecalVolumes_.getElem( 0, 0 ).getAsFloat(),
+		//	1.0f / projMatrixForDecalVolumes_.getElem( 1, 1 ).getAsFloat(),
+		//	testFrustumNearPlane
+		//);
+
+
+		return InfinitePerspectiveMatrix2( deg2rad( 60.0f ), (float)rtWidth / (float)rtHeight, testFrustumNearPlane );
 	}
 
 	void SettingsTestApp::PopulateStats( Dx11DeviceContext& deviceContext, DecalVolumeClusteringData &data )
@@ -1975,7 +2176,7 @@ namespace spad
 		ImGui::Text( "Total mem %u [B], %u [kB], %u [MB]", data.totalMemUsed_, data.totalMemUsed_ / 1024, data.totalMemUsed_ / ( 1024 * 1024 ) );
 
 		{
-			const char* items[] = { "World space optimized", "Clip space" };
+			const char* items[] = { "World space optimized", "Clip space", "SAT" };
 			ImGui::Combo( "Intersection method", reinterpret_cast<int*>( &data.intersectionMethod_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
@@ -2405,7 +2606,8 @@ namespace spad
 		outCellsX = nCellsXBase;
 		outCellsY = nCellsYBase;
 		//outCellsZ = DECAL_VOLUME_CLUSTER_CELLS_Z;
-		outCellsZ = 32;
+		//outCellsZ = 32;
+		outCellsZ = 1;
 	}
 
 	SettingsTestApp::DecalVolumeClusteringDataPtr SettingsTestApp::DecalVolumeClusteringStartUp( bool clustering )
@@ -2605,7 +2807,7 @@ namespace spad
 			{
 				if ( numPasses == 1 )
 				{
-					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_single_pass" );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_single_pass", { (uint)data.intersectionMethod_ } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else
@@ -2690,7 +2892,7 @@ namespace spad
 			data.constants_.updateGpu( deviceContext.context );
 			data.constants_.setCS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONSTANTS );
 
-			if ( data.intersectionMethod_ )
+			if ( data.intersectionMethod_ == 1 )
 			{
 				decalVolumesTestCulledGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_TEST );
 			}
@@ -3029,8 +3231,8 @@ namespace spad
 		//deviceContext.context->OMSetBlendState( BlendStates::additiveBlend, nullptr, 0xffffffff );
 		deviceContext.context->OMSetBlendState( BlendStates::blendDisabled, nullptr, 0xffffffff );
 		deviceContext.context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-		deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthEnabled(), 0 );
-		//deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthDisabled(), 0 );
+		//deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthEnabled(), 0 );
+		deviceContext.context->OMSetDepthStencilState( DepthStencilStates::ReverseDepthWriteEnabled(), 0 );
 
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
@@ -3100,7 +3302,8 @@ namespace spad
 		deviceContext.context->RSSetState( RasterizerStates::BackFaceCull() );
 		deviceContext.context->OMSetBlendState( BlendStates::blendDisabled, nullptr, 0xffffffff );
 		deviceContext.context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_LINELIST );
-		deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthEnabled(), 0 );
+		//deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthEnabled(), 0 );
+		deviceContext.context->OMSetDepthStencilState( DepthStencilStates::ReverseDepthWriteEnabled(), 0 );
 
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{

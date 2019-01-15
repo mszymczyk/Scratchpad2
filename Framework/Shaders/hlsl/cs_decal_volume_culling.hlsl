@@ -46,7 +46,7 @@ void cs_decal_volume_culling( uint3 dtid : SV_DispatchThreadID )
 	frustum.planes[4] = frustumPlane4;
 	frustum.planes[5] = frustumPlane5;
 
-	if ( frustumOBBIntersectSimpleOptimized( frustum.planes, dv.position.xyz, dv.halfSize.xyz, dv.x.xyz, dv.y.xyz, dv.z.xyz ) )
+	//if ( frustumOBBIntersectSimpleOptimized( frustum.planes, dv.position.xyz, dv.halfSize.xyz, dv.x.xyz, dv.y.xyz, dv.z.xyz ) )
 	{
 		uint globalIndex;
 		InterlockedAdd( outDecalVolumeCount[0], 1, globalIndex );

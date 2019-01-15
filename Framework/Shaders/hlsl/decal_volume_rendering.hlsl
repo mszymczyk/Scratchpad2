@@ -166,6 +166,13 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 		}
 
 		float3 color = GetColorMap( decalCount );
+
+		//color = 0;
+		//if ( screenTile.x & 1 )
+		//	color.x = 1;
+		//if ( screenTile.y & 1 )
+		//	color.y = 1;
+
 		return float4( color, 0.25f );
 	}
 	else if ( mode == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_2D )
@@ -180,6 +187,13 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 		uint decalCount = cellDecalCount;
 
 		float3 color = GetColorMap( decalCount );
+
+		//color = 0;
+		//if ( screenTile.x & 1 )
+		//	color.x = 1;
+		//if ( screenTile.y & 1 )
+		//	color.y = 1;
+
 		return float4( color, 0.25f );
 	}
 	else if ( mode == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_DEPTH )

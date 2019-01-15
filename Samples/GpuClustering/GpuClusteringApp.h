@@ -27,6 +27,7 @@ namespace spad
 		{
 			Standard,
 			ClipSpace,
+			SAT,
 			IntersectionMethodCount
 		};
 
@@ -100,13 +101,13 @@ namespace spad
 		DepthStencil mainDS_ = DepthStencil( "mainDS_" );
 		CodeTexture clusterDS_ = CodeTexture( "clusterDS_" );
 
-		RenderTargetSize rtSize_ = RTW_1920_1080;
+		//RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
-		//RenderTargetSize rtSize_ = RTW_128_128;
+		RenderTargetSize rtSize_ = RTW_128_128;
 		TileSize tileSizeForTiling_ = TileSize_8x8;
 		TileSize tileSizeForClustering_ = TileSize_32x32;
-		int numPassesForTiling_ = 5;
-		int numPassesForClustering_ = 5;
+		int numPassesForTiling_ = 1;
+		int numPassesForClustering_ = 1;
 
 		HlslShaderPtr decalVolumeRenderingShader_;
 		HlslShaderPtr decalVolumeCullShader_;
@@ -119,11 +120,11 @@ namespace spad
 		ConstantBuffer<CbDecalVolumeRenderingConstants> decalVolumeRenderingConstants_;
 
 		// Decal volumes
-		int maxDecalVolumes_ = 1024 * 4;
+		int maxDecalVolumes_ = 1;// 1024 * 4;
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
-		float decalVolumesRandomScale_ = 1.0f;
+		float decalVolumesRandomScale_ = 8.0f;
 		float decalVolumeFarPlane_ = 1000.0f;
 		DecalVolume *decalVolumesCPU_ = nullptr;
 		StructuredBuffer<DecalVolume> decalVolumesGPU_;
@@ -194,7 +195,9 @@ namespace spad
 			HlslShaderPtr shader_;
 			//DecalVolumeShared clustering_;
 			uint totalMemUsed_ = 0;
-			IntersectionMethod intersectionMethod_ = ClipSpace;
+			//IntersectionMethod intersectionMethod_ = ClipSpace;
+			//IntersectionMethod intersectionMethod_ = Standard;
+			IntersectionMethod intersectionMethod_ = SAT;
 			bool clustering__ = true;
 			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;
@@ -233,8 +236,8 @@ namespace spad
 		};
 
 		//AppMode appMode_ = Tiling;
-		//AppMode appMode_ = Clustering;
-		AppMode appMode_ = Scene;
+		AppMode appMode_ = Clustering;
+		//AppMode appMode_ = Scene;
 
 		enum OutputView : int
 		{
@@ -246,8 +249,8 @@ namespace spad
 			OutputViewCount
 		};
 
-		//OutputView currentView_ = GpuHeatmap;
-		OutputView currentView_ = DepthBuffer;
+		OutputView currentView_ = GpuHeatmap;
+		//OutputView currentView_ = DepthBuffer;
 
 		bool showExtendedStats_ = true;
 
