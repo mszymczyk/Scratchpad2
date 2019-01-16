@@ -1753,14 +1753,17 @@ namespace spad
 
 			GetBoxCorners2( v4, v5, v7, v0, clipPoints + 8 );
 
+
+
+
 			//GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
 
-			//Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
-			//Vector4 xsClip = viewProj * xs;
-			//Vector4 ysClip = viewProj * ys;
-			//Vector4 zsClip = viewProj * zs;
+			Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
+			Vector4 xsClip = viewProj * xs;
+			Vector4 ysClip = viewProj * ys;
+			Vector4 zsClip = viewProj * zs;
 
-			//GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 16 );
+			GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 16 );
 
 			//for ( uint iCellsZ = 0; iCellsZ < 2; ++iCellsZ )
 			//{
@@ -2655,7 +2658,7 @@ namespace spad
 		if ( !clustering )
 			nCellsZ = 1;
 
-		uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( nCellsX * nCellsY * nCellsZ ) ) );
+		//uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( nCellsX * nCellsY * nCellsZ ) ) );
 
 		for ( int iPass = (int)clusteringPtr->passes_.size() - 1; iPass >= 0; --iPass )
 		{
@@ -2686,13 +2689,13 @@ namespace spad
 
 			if ( firstPass )
 			{
-				p.maxDecalIndices = cellCount * maxDecalVolumes_;
+				p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 8, 1 );
 			}
 			else if ( lastPass )
 			{
 				if ( clustering )
 				{
-					p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
+					p.maxDecalIndices = cellCount + cellCount / 2;// *( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
 					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
 				}
 				else
@@ -2706,7 +2709,10 @@ namespace spad
 			{
 				if ( clustering )
 				{
-					p.maxDecalIndices = ( cellCountSqr / 8 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
+					//p.maxDecalIndices = ( cellCountSqr / 8 ) * (256 + 64) * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
+					//p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ >> ( iPass + 2 ), 1 );
+					//p.maxDecalIndices = cellCount * 16 * maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 );
+					p.maxDecalIndices = 1024 * 32 * maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 );
 					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
 				}
 				else
@@ -2724,9 +2730,13 @@ namespace spad
 			{
 				p.maxCellIndirectionsPerBucket = cellCount;
 			}
+			//else if ( iPass == 1 )
+			//{
+			//	p.maxCellIndirectionsPerBucket = cellCount / 2;
+			//}
 			else
 			{
-				p.maxCellIndirectionsPerBucket = cellCount;// / 2;
+				p.maxCellIndirectionsPerBucket = cellCount / 4;
 			}
 
 			uint passTotalMemory = 0;
@@ -2869,15 +2879,15 @@ namespace spad
 			data.constants_.data.dvCellCountRcp[2] = 1.0f / p.nCellsZ;
 			data.constants_.data.dvCellCountRcp[3] = 0;
 			data.constants_.data.dvPassLimits[0] = p.maxDecalIndices;
-			data.constants_.data.dvPassLimits[1] = p.maxCellIndirectionsPerBucket;
-			data.constants_.data.dvPassLimits[2] = 0;
+			data.constants_.data.dvPassLimits[1] = maxDecalVolumes_ / 8;
+			data.constants_.data.dvPassLimits[2] = p.maxCellIndirectionsPerBucket;
 			data.constants_.data.dvPassLimits[3] = 0;
 
 			if ( !firstPass )
 			{
 				DecalVolumeClusteringPass &pp = data.passes_[iPass - 1];
 
-				data.constants_.data.dvPassLimits[2] = pp.maxCellIndirectionsPerBucket;
+				data.constants_.data.dvPassLimits[3] = pp.maxCellIndirectionsPerBucket;
 
 				pp.decalIndices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECAL_INDICES );
 				pp.cellIndirection.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_CELL_INDIRECTION );
@@ -2948,7 +2958,7 @@ namespace spad
 								}
 							}
 
-							data.constants_.data.dvPassLimits[3] = i;
+							data.constants_.data.dvBuckets[0] = i;
 							data.constants_.updateGpu( deviceContext.context );
 						}
 						else

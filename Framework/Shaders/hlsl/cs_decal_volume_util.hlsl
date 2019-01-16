@@ -1038,19 +1038,24 @@ uint DecalVolume_GetMaxOutDecalIndices()
 	return dvPassLimits.x;
 }
 
-uint DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket()
+uint DecalVolume_GetMaxOutDecalIndicesPerCell()
 {
 	return dvPassLimits.y;
 }
 
-uint DecalVolume_GetMaxPrevOutCellIndirections()
+uint DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket()
 {
 	return dvPassLimits.z;
 }
 
-uint DecalVolume_GetBucketIndex()
+uint DecalVolume_GetMaxPrevOutCellIndirections()
 {
 	return dvPassLimits.w;
+}
+
+uint DecalVolume_GetBucketIndex()
+{
+	return dvBuckets.x;
 }
 
 

@@ -52,7 +52,8 @@ MAKE_FLAT_CBUFFER( DecalVolumeCsConstants, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONS
 	CBUFFER_FLOAT4( dvNearFar ); // x - near, y - far, z - far over near
 	CBUFFER_UINT4( dvCellCount ); // w = dvCellCount.x * dvCellCount.y * dvCellCount.z
 	CBUFFER_FLOAT4( dvCellCountRcp ); // w - unused
-	CBUFFER_UINT4( dvPassLimits ); // x - max output decal indices, y - max cell indirections per bucket, z - max cell indirections per bucket for previous pass, w - bucket index
+	CBUFFER_UINT4( dvPassLimits ); // x - max output decal indices, y -max output decal indices per cell, z - max cell indirections per bucket, w - max cell indirections per bucket for previous pass
+	CBUFFER_UINT4( dvBuckets ); // x - bucket index
 };
 
 

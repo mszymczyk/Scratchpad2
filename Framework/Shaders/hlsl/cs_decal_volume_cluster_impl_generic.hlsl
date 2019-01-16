@@ -23,7 +23,11 @@ void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passD
 
 	if ( groupThreadIndex == 0 )
 	{
-		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, sharedOffsetToFirstDecalIndex );
+		uint nIndicesToAlloc = passDecalCount;
+#if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		nIndicesToAlloc = DecalVolume_GetMaxOutDecalIndicesPerCell();
+#endif // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		InterlockedAdd( outDecalVolumeIndicesCount[0], nIndicesToAlloc, sharedOffsetToFirstDecalIndex );
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 		sharedOffsetToFirstDecalIndex += cellCount;
@@ -101,7 +105,11 @@ void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passD
 	{
 		sharedGroupOffset = 0;
 
-		InterlockedAdd( outDecalVolumeIndicesCount[0], passDecalCount, sharedOffsetToFirstDecalIndex );
+		uint nIndicesToAlloc = passDecalCount;
+#if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		nIndicesToAlloc = DecalVolume_GetMaxOutDecalIndicesPerCell();
+#endif // #if DECAL_VOLUME_CLUSTER_FIRST_PASS
+		InterlockedAdd( outDecalVolumeIndicesCount[0], nIndicesToAlloc, sharedOffsetToFirstDecalIndex );
 
 #if DECAL_VOLUME_CLUSTER_LAST_PASS
 		sharedOffsetToFirstDecalIndex += cellCount;
