@@ -98,21 +98,12 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, uint bucket, bool cellVali
 	uint3 cellXYZ = DecalVolume_DecodeCellCoord( encodedCellXYZ );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
-	uint cellOffsetToFirstDecalIndex = 0;
 	uint decalIndex = 0;
 	uint intersects = 0;
 
 	if ( cellValid )
 	{
-		// ReadLane requires compile time second parameter
-		//cellOffsetToFirstDecalIndex = ReadLane( offsetToFirstDecalIndexPerCell, firstCellIndex );
-		cellOffsetToFirstDecalIndex = sharedOffsetToFirstDecalIndexPerCell[localCellIndex];
-
-#if DECAL_VOLUME_CLUSTER_LAST_PASS
-		cellOffsetToFirstDecalIndex += cellCount;
-#endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
-
-		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
+		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, DecalVolume_CellCountXYZ_Float(), numCellsXYZRcp, cellXYZ );
 
 		uint iGlobalDecalBase = 0;
 
@@ -184,6 +175,17 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, uint bucket, bool cellVali
 	uint threadWordIndex = threadIndex / 32; // selects which sharedVisibility index to write to
 	uint bitIndex = threadIndex - threadWordIndex * 32;
 
+	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
+	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
+	uint cellCount = DecalVolume_CellCountCurrentPass();
+	uint3 cellXYZ = DecalVolume_DecodeCellCoord( encodedCellXYZ );
+	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
+
+	if ( cellXYZ.x >= numCellsXYZ.x || cellXYZ.y >= numCellsXYZ.y )
+	{
+		cellValid = false;
+	}
+
 	if ( threadIndex < 2 )
 	{
 		sharedVisibility[threadIndex] = 0;
@@ -200,18 +202,12 @@ void DecalVisibilitySubGroup( uint numThreadsPerCell, uint bucket, bool cellVali
 
 #endif // #else // #if !DECAL_VOLUME_CLUSTER_LATE_DECAL_INDICES_ALLOC
 
-	uint3 numCellsXYZ = DecalVolume_CellCountXYZ();
-	float3 numCellsXYZRcp = DecalVolume_CellCountXYZRcp();
-	uint cellCount = DecalVolume_CellCountCurrentPass();
-	uint3 cellXYZ = DecalVolume_DecodeCellCoord( encodedCellXYZ );
-	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
-
 	//uint cellOffsetToFirstDecalIndex = 0;
 	uint decalIndex = 0;
 
 	if ( cellValid )
 	{
-		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
+		Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, DecalVolume_CellCountXYZ_Float(), numCellsXYZRcp, cellXYZ );
 
 		uint iGlobalDecalBase = 0;
 

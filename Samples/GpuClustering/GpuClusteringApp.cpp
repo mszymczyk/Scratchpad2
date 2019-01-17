@@ -2090,8 +2090,16 @@ namespace spad
 						const CellIndirection *cellIndirectionBucket = cellIndirection + cellOffset;
 
 						uint cellCount = cellIndirectionCount[iBucket];
-						SPAD_ASSERT( cellCount % 8 == 0 );
-						cellCount /= 8;
+						if ( data.clustering_ )
+						{
+							SPAD_ASSERT( cellCount % 8 == 0 );
+							cellCount /= 8;
+						}
+						else
+						{
+							SPAD_ASSERT( cellCount % 4 == 0 );
+							cellCount /= 4;
+						}
 						for ( uint i = 0; i < cellCount; ++i )
 						{
 							uint c = cellIndirectionBucket[i].decalCount;
@@ -2591,21 +2599,21 @@ namespace spad
 		uint nCellsXBase = ( rtWidth + tileSize - 1 ) / tileSize;
 		uint nCellsYBase = ( rtHeight + tileSize - 1 ) / tileSize;
 
-		const uint maxDivider = 1 << ( numPasses - 1 );
-		const uint a = nCellsYBase / maxDivider;
-		if ( a * maxDivider != nCellsYBase )
-		{
-			//nCellsYBase = spadAlignU32_2( nCellsYBase - maxDivider - 1, maxDivider );
-			nCellsYBase = spadAlignU32_2( nCellsYBase, maxDivider );
-		}
+		//const uint maxDivider = 1 << ( numPasses - 1 );
+		//const uint a = nCellsYBase / maxDivider;
+		//if ( a * maxDivider != nCellsYBase )
+		//{
+		//	//nCellsYBase = spadAlignU32_2( nCellsYBase - maxDivider - 1, maxDivider );
+		//	nCellsYBase = spadAlignU32_2( nCellsYBase, maxDivider );
+		//}
 
-		const uint b = nCellsXBase / maxDivider;
-		if ( b * maxDivider != nCellsXBase )
-		{
-			//nCellsXBase = spadAlignU32_2( nCellsXBase - maxDivider - 1, maxDivider );
-			nCellsXBase = spadAlignU32_2( nCellsXBase, maxDivider );
+		//const uint b = nCellsXBase / maxDivider;
+		//if ( b * maxDivider != nCellsXBase )
+		//{
+		//	//nCellsXBase = spadAlignU32_2( nCellsXBase - maxDivider - 1, maxDivider );
+		//	nCellsXBase = spadAlignU32_2( nCellsXBase, maxDivider );
 
-		}
+		//}
 
 		outCellsX = nCellsXBase;
 		outCellsY = nCellsYBase;
@@ -2641,6 +2649,7 @@ namespace spad
 		ID3D11Device* dxDevice = dx11_->getDevice();
 
 		DecalVolumeClusteringDataPtr clusteringPtr = std::make_unique<DecalVolumeClusteringData>();
+		clusteringPtr->clustering_ = clustering;
 
 		clusteringPtr->constants_.Initialize( dxDevice );
 		clusteringPtr->timer_.Initialize( dxDevice );
@@ -2658,6 +2667,10 @@ namespace spad
 		if ( !clustering )
 			nCellsZ = 1;
 
+		float nCellsXF = static_cast<float>( nCellsX );
+		float nCellsYF = static_cast<float>( nCellsY );
+		float nCellsZF = static_cast<float>( nCellsZ );
+
 		//uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( nCellsX * nCellsY * nCellsZ ) ) );
 
 		for ( int iPass = (int)clusteringPtr->passes_.size() - 1; iPass >= 0; --iPass )
@@ -2669,10 +2682,41 @@ namespace spad
 			p.nCellsX = nCellsX;
 			p.nCellsY = nCellsY;
 			p.nCellsZ = nCellsZ;
+			p.nCellsXF = nCellsXF;
+			p.nCellsYF = nCellsYF;
+			p.nCellsZF = nCellsZF;
 
-			nCellsX /= 2;
-			nCellsY /= 2;
+			if ( lastPass )
+			{
+				//p.nCellsXF = static_cast<float>( nCellsX );
+				//p.nCellsYF = static_cast<float>( nCellsY );
+				//p.nCellsZF = static_cast<float>( nCellsZ );
+				p.nCellsXRcp = 1.0f / nCellsX;
+				p.nCellsYRcp = 1.0f / nCellsY;
+			}
+			else
+			{
+				DecalVolumeClusteringPass &np = clusteringPtr->passes_[iPass + 1];
+				//p.nCellsXF = ( np.nCellsXF + 1) * 0.5f;
+				//p.nCellsYF = ( np.nCellsYF + 1) * 0.5f;
+				//p.nCellsXF = ( np.nCellsXF ) * 0.5f;
+				//p.nCellsYF = ( np.nCellsYF ) * 0.5f;
+				p.nCellsXRcp = 2.0f * np.nCellsXRcp;
+				p.nCellsYRcp = 2.0f * np.nCellsYRcp;
+			}
+
+			//p.nCellsZF = static_cast<float>( nCellsZ );
+			p.nCellsZRcp = 1.0f / nCellsZ;
+
+			//nCellsX /= 2;
+			//nCellsY /= 2;
+			nCellsX = (nCellsX + 1) / 2;
+			nCellsY = (nCellsY + 1) / 2;
 			nCellsZ = maxOfPair( nCellsZ / 2, 1U );
+
+			nCellsXF *= 0.5f;
+			nCellsYF *= 0.5f;
+			nCellsZF = maxOfPair( nCellsZF * 0.5f, 1.0f );
 		}
 
 		uint totalMemoryUsed = 0;
@@ -2689,7 +2733,7 @@ namespace spad
 
 			if ( firstPass )
 			{
-				p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 8, 1 );
+				p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 1, 1 );
 			}
 			else if ( lastPass )
 			{
@@ -2700,9 +2744,9 @@ namespace spad
 				}
 				else
 				{
-					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					p.maxDecalIndices = cellCount * maxDecalVolumes_;
 					//p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
-					p.maxDecalIndices = cellCount * 16;
+					//p.maxDecalIndices = cellCount * 16;
 				}
 			}
 			else
@@ -2736,7 +2780,7 @@ namespace spad
 			//}
 			else
 			{
-				p.maxCellIndirectionsPerBucket = cellCount / 4;
+				p.maxCellIndirectionsPerBucket = cellCount;// / 4;
 			}
 
 			uint passTotalMemory = 0;
@@ -2760,7 +2804,60 @@ namespace spad
 
 			p.stats.totalMem = passTotalMemory;
 			p.stats.countPerCellHistogram.resize( 1024 );
+
+			//for ( uint y = 0; y < p.nCellsY + 1; ++y )
+			//{
+			//	float v = 0;
+			//	if ( p.nCellsY & 1 )
+			//	{
+			//		v = -1 + 2.0f * ( 1.0f / (p.nCellsY + 1) ) * y;
+			//	}
+			//	else
+			//	{
+			//		v = -1 + 2.0f * ( 1.0f / p.nCellsY ) * y;
+			//	}
+			//	std::cout << "iPass: " << iPass << " y: " << v << std::endl;
+			//}
 		}
+
+		for ( uint iPass = 0; iPass < (uint)clusteringPtr->passes_.size(); ++iPass )
+		{
+			DecalVolumeClusteringPass &p = clusteringPtr->passes_[iPass];
+
+			const bool firstPass = iPass == 0;
+			const bool lastPass = iPass == ( clusteringPtr->passes_.size() - 1 );
+
+			//float sub = 0;
+			//if ( !lastPass )
+			//{
+
+			//}
+
+			for ( uint y = 0; y < p.nCellsY + 1; ++y )
+			{
+				//float v = 0;
+				//if ( p.nCellsY & 1 )
+				//{
+				//	if ( !lastPass )
+				//	{
+				//		DecalVolumeClusteringPass &np = clusteringPtr->passes_[iPass + 1];
+				//		v = -1 + 2.0f * ( 1.0f / ( np.nCellsY * 0.5f ) ) * y;
+				//	}
+				//	else
+				//	{
+				//		v = -1 + 2.0f * ( 1.0f / ( p.nCellsY ) ) * y;
+				//	}
+				//}
+				//else
+				//{
+				//	v = -1 + 2.0f * ( 1.0f / p.nCellsY ) * y;
+				//}
+				//std::cout << "iPass: " << iPass << " y: " << v * 0.5f + 0.5f << std::endl;
+				float v = -1 + 2.0f * p.nCellsYRcp * y;
+				std::cout << "iPass: " << iPass << " y: " << v << std::endl;
+			}
+		}
+
 
 		clusteringPtr->totalMemUsed_ = totalMemoryUsed;
 
@@ -2874,12 +2971,25 @@ namespace spad
 			data.constants_.data.dvCellCount[1] = p.nCellsY;
 			data.constants_.data.dvCellCount[2] = p.nCellsZ;
 			data.constants_.data.dvCellCount[3] = p.nCellsX * p.nCellsY * p.nCellsZ;
-			data.constants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
-			data.constants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
-			data.constants_.data.dvCellCountRcp[2] = 1.0f / p.nCellsZ;
+			data.constants_.data.dvCellCountF[0] = p.nCellsXF;
+			data.constants_.data.dvCellCountF[1] = p.nCellsYF;
+			data.constants_.data.dvCellCountF[2] = p.nCellsZF;
+			data.constants_.data.dvCellCountF[3] = 0;
+			//data.constants_.data.dvCellCountRcp[0] = 1.0f / p.nCellsX;
+			//data.constants_.data.dvCellCountRcp[1] = 1.0f / p.nCellsY;
+			//data.constants_.data.dvCellCountRcp[2] = 1.0f / p.nCellsZ;
+			//if ( /*(p.nCellsY & 1) &&*/ !lastPass )
+			//{
+			//	DecalVolumeClusteringPass &np = data.passes_[iPass + 1];
+			//	data.constants_.data.dvCellCountRcp[0] = 1.0f / ( np.nCellsX * 0.5f );
+			//	data.constants_.data.dvCellCountRcp[1] = 1.0f / ( np.nCellsY * 0.5f );
+			//}
+			data.constants_.data.dvCellCountRcp[0] = p.nCellsXRcp;
+			data.constants_.data.dvCellCountRcp[1] = p.nCellsYRcp;
+			data.constants_.data.dvCellCountRcp[2] = p.nCellsZRcp;
 			data.constants_.data.dvCellCountRcp[3] = 0;
 			data.constants_.data.dvPassLimits[0] = p.maxDecalIndices;
-			data.constants_.data.dvPassLimits[1] = maxDecalVolumes_ / 8;
+			data.constants_.data.dvPassLimits[1] = maxDecalVolumes_;// / 8;
 			data.constants_.data.dvPassLimits[2] = p.maxCellIndirectionsPerBucket;
 			data.constants_.data.dvPassLimits[3] = 0;
 
@@ -3394,8 +3504,8 @@ namespace spad
 		switch ( rtSize )
 		{
 		case spad::SettingsTestApp::RTW_1920_1080:
-			rtWidth = 1920;
-			rtHeight = 1080;
+			rtWidth = 1920;// / 8;
+			rtHeight = 1080;// / 8;
 			break;
 		case spad::SettingsTestApp::RTW_1280_720:
 			rtWidth = 1280;

@@ -102,13 +102,14 @@ namespace spad
 		DepthStencil mainDS_ = DepthStencil( "mainDS_" );
 		CodeTexture clusterDS_ = CodeTexture( "clusterDS_" );
 
-		//RenderTargetSize rtSize_ = RTW_1920_1080;
+		RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
-		RenderTargetSize rtSize_ = RTW_128_128;
-		TileSize tileSizeForTiling_ = TileSize_8x8;
-		TileSize tileSizeForClustering_ = TileSize_32x32;
-		int numPassesForTiling_ = 1;
-		int numPassesForClustering_ = 1;
+		//RenderTargetSize rtSize_ = RTW_128_128;
+		TileSize tileSizeForTiling_ = TileSize_16x16;
+		//TileSize tileSizeForClustering_ = TileSize_32x32;
+		TileSize tileSizeForClustering_ = TileSize_16x16;
+		int numPassesForTiling_ = 3;
+		int numPassesForClustering_ = 4;
 
 		HlslShaderPtr decalVolumeRenderingShader_;
 		HlslShaderPtr decalVolumeCullShader_;
@@ -121,7 +122,7 @@ namespace spad
 		ConstantBuffer<CbDecalVolumeRenderingConstants> decalVolumeRenderingConstants_;
 
 		// Decal volumes
-		int maxDecalVolumes_ = 1;// 1024 * 4;
+		int maxDecalVolumes_ = 62;// 1024 * 4;
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
@@ -154,6 +155,12 @@ namespace spad
 			uint nCellsX;
 			uint nCellsY;
 			uint nCellsZ;
+			float nCellsXF;
+			float nCellsYF;
+			float nCellsZF;
+			float nCellsXRcp;
+			float nCellsYRcp;
+			float nCellsZRcp;
 			uint maxDecalIndices;
 			uint maxCellIndirectionsPerBucket;
 
@@ -196,10 +203,10 @@ namespace spad
 			HlslShaderPtr shader_;
 			//DecalVolumeShared clustering_;
 			uint totalMemUsed_ = 0;
-			//IntersectionMethod intersectionMethod_ = ClipSpace;
+			IntersectionMethod intersectionMethod_ = ClipSpace;
 			//IntersectionMethod intersectionMethod_ = Standard;
-			IntersectionMethod intersectionMethod_ = SAT;
-			bool clustering__ = true;
+			//IntersectionMethod intersectionMethod_ = SAT;
+			bool clustering_ = false;
 			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;
 			bool dynamicBucketsMerge_ = true;
@@ -236,8 +243,8 @@ namespace spad
 			AppModeCount
 		};
 
-		//AppMode appMode_ = Tiling;
-		AppMode appMode_ = Clustering;
+		AppMode appMode_ = Tiling;
+		//AppMode appMode_ = Clustering;
 		//AppMode appMode_ = Scene;
 
 		enum OutputView : int

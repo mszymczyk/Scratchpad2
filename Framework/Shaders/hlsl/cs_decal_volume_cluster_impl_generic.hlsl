@@ -36,7 +36,7 @@ void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passD
 
 	//GroupMemoryBarrierWithGroupSync(); // not needed, group size is 64
 
-	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
+	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, DecalVolume_CellCountXYZ_Float(), numCellsXYZRcp, cellXYZ );
 
 	// Make sure that all threads execute the loop
 	// Looks like putting Ballot in a branch will confuse fxc, leading to cluster/decal flickering
@@ -101,6 +101,11 @@ void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passD
 	uint3 cellXYZ = DecalVolume_DecodeCellCoord( flatCellIndex );
 	uint maxDecalIndices = DecalVolume_GetMaxOutDecalIndices();
 
+	if ( cellXYZ.x >= numCellsXYZ.x || cellXYZ.y >= numCellsXYZ.y )
+	{
+		return;
+	}
+
 	if ( groupThreadIndex == 0 )
 	{
 		sharedGroupOffset = 0;
@@ -123,7 +128,7 @@ void DecalVisibilityGeneric( uint3 groupThreadID, uint flatCellIndex, uint passD
 
 	GroupMemoryBarrierWithGroupSync();
 
-	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
+	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, DecalVolume_CellCountXYZ_Float(), numCellsXYZRcp, cellXYZ );
 
 	uint numWords = ( passDecalCount + 32 - 1 ) / 32;
 	numWords = AlignPowerOfTwo( numWords, DECAL_VOLUME_CLUSTER_WORD_COUNT );

@@ -19,7 +19,7 @@ void DecalVisibilityOneThreadPerCell( uint encodedCellXYZ, uint passDecalCount, 
 	offsetToFirstDecalIndex += cellCount;
 #endif // #if DECAL_VOLUME_CLUSTER_LAST_PASS
 
-	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, numCellsXYZRcp, cellXYZ );
+	Frustum frustum = DecalVolume_BuildFrustum( numCellsXYZ, DecalVolume_CellCountXYZ_Float(), numCellsXYZRcp, cellXYZ );
 
 	uint localIndex = 0;
 	for ( uint iGlobalDecalBase = 0; iGlobalDecalBase < passDecalCount; iGlobalDecalBase += 1 )
