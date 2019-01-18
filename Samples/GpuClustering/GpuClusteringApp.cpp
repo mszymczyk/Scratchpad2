@@ -1101,13 +1101,14 @@ namespace spad
 
 			CullDecalVolumes( immediateContextWrapper );
 
-			DecalVolumeClusteringRun( immediateContextWrapper, *clustering_ );
-
 			ModelRender( immediateContextWrapper );
 
 			immediateContext->OMSetRenderTargets( 1, rtviews, nullptr );
 
 			DownsampleDepth( immediateContextWrapper );
+
+			//DecalVolumeClusteringRun( immediateContextWrapper, *clustering_ );
+			DecalVolumeClusteringRun( immediateContextWrapper, *tiling_ );
 		}
 
 		//RenderFrustum2();
@@ -1156,6 +1157,16 @@ namespace spad
 				GenDecalVolumesModel();
 			else if ( appMode_ == Tiling || appMode_ == Clustering )
 				GenDecalVolumesRandom();
+		}
+
+		{
+			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum", "Depth Buffer" };
+			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
+			if ( currentView_ == DepthBuffer )
+			{
+				ImGui::SliderInt( "Depth mip", &depthBufferMip_, 0, 5 );
+				ImGui::Checkbox( "Show min depth", &depthBufferShowMin_ );
+			}
 		}
 
 		ImGui::Text( "Num decals %u / %u / %u", decalVolumesCulledCount_, numDecalVolumes_, maxDecalVolumes_ );
@@ -1214,7 +1225,7 @@ namespace spad
 			}
 		}
 
-		if ( appMode_ == Tiling )
+		if ( appMode_ == Tiling || appMode_ == Scene )
 		{
 			const char* items[] = { "512x512", "256x256", "128x128", "64x64", "48x48", "32x32", "16x16", "8x8" };
 			if ( ImGui::Combo( "Tile size (tiling)", reinterpret_cast<int*>( &tileSizeForTiling_ ), items, IM_ARRAYSIZE( items ) ) )
@@ -1243,18 +1254,13 @@ namespace spad
 			}
 		}
 
-		if ( appMode_ == Tiling )
+		if ( appMode_ == Tiling || appMode_ == Scene )
 		{
 			ImGuiPrintClusteringInfo( *tiling_ );
 		}
 		else if ( appMode_ == Clustering || appMode_ == Scene )
 		{
 			ImGuiPrintClusteringInfo( *clustering_ );
-		}
-
-		{
-			const char* items[] = { "Exernal camera", "Gpu heatmap", "Cpu heatmap", "Decal Volumes Accum", "Depth Buffer" };
-			ImGui::Combo( "View", reinterpret_cast<int*>( &currentView_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
 		if ( tiling_->needsReset_ )
@@ -1308,7 +1314,7 @@ namespace spad
 			uint nMips = GetMipMapCountFromDimesions( rtWidth, rtHeight, 1 );
 
 			clusterDS_.DeInitialize();
-			clusterDS_.Initialize( dx11_->getDevice(), rtWidth, rtHeight, 1, DXGI_FORMAT_R16_FLOAT, nMips, 1, false, nullptr, true );
+			clusterDS_.Initialize( dx11_->getDevice(), rtWidth, rtHeight, 1, DXGI_FORMAT_R16G16_FLOAT, nMips, 1, false, nullptr, true );
 
 			ModelStartUp();
 			GenDecalVolumesModel();
@@ -1365,7 +1371,8 @@ namespace spad
 			SPAD_NOT_IMPLEMENTED;
 		}
 
-		deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthWriteEnabled(), 0 );
+		//deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthWriteEnabled(), 0 );
+		deviceContext.context->OMSetDepthStencilState( DepthStencilStates::ReverseDepthWriteEnabled(), 0 );
 
 		passConstants_.data.View = viewMatrixForCamera_;
 		passConstants_.data.ViewProjection = projMatrixForCamera_ * viewMatrixForCamera_;
@@ -1500,7 +1507,7 @@ namespace spad
 
 		uint w = clusterDS_.width_ / 2;
 		uint h = clusterDS_.height_ / 2;
-		for ( uint iMip = 1; iMip < 5; ++iMip )
+		for ( uint iMip = 1; iMip < 6; ++iMip )
 		{
 			deviceContext.setCS_SRV( REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH, clusterDS_.GetSRV( 0, iMip - 1 ) );
 			deviceContext.setCS_UAV( REGISTER_TEXTURE_DECAL_VOLUME_OUT_DEPTH, clusterDS_.GetUAV( 0, iMip ) );
@@ -2733,18 +2740,25 @@ namespace spad
 
 			if ( firstPass )
 			{
-				p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 1, 1 );
+				if ( clustering )
+				{
+					p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 4, 1 );
+				}
+				else
+				{
+					p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 4, 1 );
+				}
 			}
 			else if ( lastPass )
 			{
 				if ( clustering )
 				{
-					p.maxDecalIndices = cellCount + cellCount / 2;// *( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
+					p.maxDecalIndices = cellCount + cellCount * 8;// *( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
 					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
 				}
 				else
 				{
-					p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					p.maxDecalIndices = cellCount + cellCount * 16;
 					//p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
 					//p.maxDecalIndices = cellCount * 16;
 				}
@@ -2756,12 +2770,13 @@ namespace spad
 					//p.maxDecalIndices = ( cellCountSqr / 8 ) * (256 + 64) * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
 					//p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ >> ( iPass + 2 ), 1 );
 					//p.maxDecalIndices = cellCount * 16 * maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 );
-					p.maxDecalIndices = 1024 * 32 * maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 );
+					p.maxDecalIndices = 1024 * 64 * maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 );
 					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
 				}
 				else
 				{
-					p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					p.maxDecalIndices = cellCount * 32;
 					//p.maxDecalIndices = ( cellCountSqr / 4 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
 				}
 			}
@@ -2989,7 +3004,7 @@ namespace spad
 			data.constants_.data.dvCellCountRcp[2] = p.nCellsZRcp;
 			data.constants_.data.dvCellCountRcp[3] = 0;
 			data.constants_.data.dvPassLimits[0] = p.maxDecalIndices;
-			data.constants_.data.dvPassLimits[1] = maxDecalVolumes_;// / 8;
+			data.constants_.data.dvPassLimits[1] = data.clustering_ ? maxDecalVolumes_ / 4 : maxDecalVolumes_ / 2;
 			data.constants_.data.dvPassLimits[2] = p.maxCellIndirectionsPerBucket;
 			data.constants_.data.dvPassLimits[3] = 0;
 
@@ -3026,6 +3041,11 @@ namespace spad
 			}
 
 			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT );
+
+			if ( lastPass && !data.clustering_ )
+			{
+				deviceContext.setCS_SRV( REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH, clusterDS_.GetSRV( 0, 4 ) );
+			}
 
 			if ( !lastPass )
 			{
@@ -3212,7 +3232,7 @@ namespace spad
 		{
 			decalVolumeRenderingConstants_.data.dvdRenderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
 
-			if ( appMode_ == Tiling )
+			if ( appMode_ == Tiling || appMode_ == Scene )
 			{
 				decalVolumeRenderingConstants_.data.dvdMode[0] = DECAL_VOLUME_CLUSTER_DISPLAY_MODE_2D;
 				decalVolumeRenderingConstants_.data.dvdMode[1] = 0;
@@ -3278,9 +3298,10 @@ namespace spad
 
 		decalVolumeRenderingConstants_.data.dvdRenderTargetSize = Vector4( (float)rtWidth, (float)rtHeight, 1.0f / rtWidth, 1.0f / rtHeight );
 		decalVolumeRenderingConstants_.data.dvdMode[0] = DECAL_VOLUME_CLUSTER_DISPLAY_MODE_DEPTH;
-		decalVolumeRenderingConstants_.data.dvdMode[1] = 0;
-		decalVolumeRenderingConstants_.data.dvdMode[2] = 0;
+		decalVolumeRenderingConstants_.data.dvdMode[1] = depthBufferMip_;
+		decalVolumeRenderingConstants_.data.dvdMode[2] = depthBufferShowMin_;
 		decalVolumeRenderingConstants_.data.dvdMode[3] = 0;
+		decalVolumeRenderingConstants_.data.dvdNearFarPlane[0] = testFrustumNearPlane;
 		decalVolumeRenderingConstants_.updateGpu( deviceContext.context );
 		decalVolumeRenderingConstants_.setVS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );
 		decalVolumeRenderingConstants_.setPS( deviceContext.context, REGISTER_CBUFFER_DECAL_VOLUME_CONSTANTS );

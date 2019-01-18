@@ -62,6 +62,8 @@ typedef spad::dxmath::Float3 float3;
 uint safe_mul24( uint x, uint y )         { return mul( x, y ); }
 uint safe_mad24( uint x, uint y, uint a ) { return mad( x, y, a ); }
 
+#define min3( x, y, z ) min( x, min( y, z ) )
+#define max3( x, y, z ) max( x, max( y, z ) )
 
 #endif //
 

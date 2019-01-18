@@ -199,8 +199,17 @@ float4 HeatmapTileFp( in vs_output IN ) : SV_Target
 	else if ( mode == DECAL_VOLUME_CLUSTER_DISPLAY_MODE_DEPTH )
 	{
 		float4 t = diffuseTex.SampleLevel( diffuseTexSamp, pixelCoordNormalized, dvdMode.y );
+		float nonLinearDepth = t.y; // max depth
+		if ( dvdMode.z == 1 )
+			//nonLinearDepth = t.x; // min depth
+			nonLinearDepth = max( t.x, 0.01f );
 
-		return float4( t.xxx, 1 );
+		float nearPlane = dvdNearFarPlane.x;
+		float linearDepth = nearPlane / nonLinearDepth; // works when using infinite reverse depth projection, see InfinitePerspectiveMatrix
+		float far = 256;
+		float3 color = linearDepth * float3( 1.0f / far, 0.25f / far, 0.0625 / far );
+		//float3 color = t.xxx * 0.01;
+		return float4( color, 1 );
 	}
 
 	return float4( 1, 0, 1, 1 );

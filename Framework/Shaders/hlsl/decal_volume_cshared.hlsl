@@ -47,20 +47,30 @@ uint2 DecalVolume_GetCellXYFromScreenPosition( float2 pixelPosition, float2 rend
 }
 
 
-uint DecalVolume_GetCellZFromCameraZ( float cameraZ, float nearPlaneRcp, float farPlaneOverNearPlane, float nCellsZ )
+uint DecalVolume_GetCellZFromCameraZLog( float cameraZ, float nearPlaneRcp, float farPlaneOverNearPlane, float nCellsZ )
 {
 	float base = farPlaneOverNearPlane;
 	return ( uint ) min( floor( LogBase( base, cameraZ * nearPlaneRcp ) * nCellsZ ), nCellsZ - 1 );
 }
 
 
-uint3 DecalVolume_GetCellFromViewPos( float2 pixelPosition, float cameraZ, float2 renderTargetSizeRcp, float3 nCellsXYZ, float nearPlaneRcp, float farPlaneOverNearPlane )
+uint DecalVolume_GetCellZFromCameraZUniform( float cameraZ, float zScale, float zBias, float nCellsZ )
 {
-	return uint3(
-		DecalVolume_GetCellXYFromScreenPosition( pixelPosition, renderTargetSizeRcp, nCellsXYZ.xy ),
-		DecalVolume_GetCellZFromCameraZ( cameraZ, nearPlaneRcp, farPlaneOverNearPlane, nCellsXYZ.z )
-		);
+	// float slice = ( cameraZ - nearPlane ) * ( 1.0f / (farPlane - nearPlane) ) * nCellsZ;
+	// zScale = nCellsZ * ( 1.0f / (farPlane - nearPlane) )
+	// zBias = zScale * nearPlane
+	float slice = cameraZ * zScale - zBias;
+	return (uint) min( slice, nCellsZ - 1 );
 }
+
+
+//uint3 DecalVolume_GetCellFromViewPos( float2 pixelPosition, float cameraZ, float2 renderTargetSizeRcp, float3 nCellsXYZ, float nearPlaneRcp, float farPlaneOverNearPlane )
+//{
+//	return uint3(
+//		DecalVolume_GetCellXYFromScreenPosition( pixelPosition, renderTargetSizeRcp, nCellsXYZ.xy ),
+//		DecalVolume_GetCellZFromCameraZ( cameraZ, nearPlaneRcp, farPlaneOverNearPlane, nCellsXYZ.z )
+//		);
+//}
 
 #endif // #if COMPILING_SHADER_CODE
 

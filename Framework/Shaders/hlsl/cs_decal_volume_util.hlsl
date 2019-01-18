@@ -12,6 +12,8 @@ RWStructuredBuffer<uint> outDecalVolumeIndicesCount    REGISTER_BUFFER_DECAL_VOL
 RWByteAddressBuffer outIndirectArgs                    REGISTER_BUFFER_DECAL_VOLUME_OUT_INDIRECT_ARGS;
 RWStructuredBuffer<uint> outDecalVolumeIndices         REGISTER_BUFFER_DECAL_VOLUME_OUT_DECAL_INDICES;
 
+Texture2D<float2> inMinMaxDepth						   REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
+
 StructuredBuffer<GroupToBucket> inGroupToBucket        REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET;
 RWStructuredBuffer<GroupToBucket> outGroupToBucket     REGISTER_BUFFER_DECAL_VOLUME_OUT_GROUP_TO_BUCKET;
 
@@ -103,13 +105,37 @@ void extractFrustumCorners( out float3 frustumCorners[8], float4 frustumPlanes[6
 }
 
 
+float DecalVolume_CalculateSplitLog( float nearPlane, float farPlaneOverNearPlane, float cellIndexZ, float cellCountZRcp )
+{
+	return nearPlane * pow( abs( farPlaneOverNearPlane ), cellIndexZ * cellCountZRcp );
+}
+
+
+float DecalVolume_CalculateSplitUniform( float nearPlane, float farPlane, float cellIndexZ, float cellCountZRcp )
+{
+	return lerp( nearPlane, farPlane, cellIndexZ * cellCountZRcp );
+}
+
+
+float DecalVolume_CalculateSplit( float nearPlane, float farPlane, float farPlaneOverNearPlane, float cellIndexZ, float cellCountZRcp )
+{
+#if DECAL_VOLUME_CLUSTER_3D_UNIFORMZ
+	return DecalVolume_CalculateSplitUniform( nearPlane, farPlane, cellIndexZ, cellCountZRcp );
+#else // #if DECAL_VOLUME_CLUSTER_3D_UNIFORMZ
+	return DecalVolume_CalculateSplitLog( nearPlane, farPlaneOverNearPlane, cellIndexZ, cellCountZRcp );
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D_UNIFORMZ
+}
+
+
 void DecalVolume_BuildSubFrustumWorldSpace( out Frustum frustum, const float3 cellCount, const float3 cellCountF, const float3 cellCountRcp, float3 cellIndex, float2 tanHalfFovRcp, float4x4 viewMatrix, float nearPlane, float farPlane, float farPlaneOverNearPlane )
 {
 	frustum = (Frustum)0;
 
 #if DECAL_VOLUME_CLUSTER_3D
-	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
-	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+	//float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
+	//float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+	float n = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z, cellCountRcp.z );
+	float f = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z + 1.0f, cellCountRcp.z );
 #else // #if DECAL_VOLUME_CLUSTER_3D
 	float n = nearPlane;
 	float f = farPlane;
@@ -859,16 +885,34 @@ void DecalVolume_GetCornersClipSpace2( DecalVolume dv, out float4 dvCornersXYW[8
 
 #define USE_Z_01 0
 
+//#ifndef DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH
+//#define DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH 0
+//#endif // #ifndef DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH
+
 void DecalVolume_BuildSubFrustumClipSpace( out Frustum frustum, const float3 cellCount, const float3 numCellsXYZF, const float3 cellCountRcp, float3 cellIndex, float nearPlane, float farPlane, float farPlaneOverNearPlane )
 {
 	frustum = (Frustum)0;
 
 #if DECAL_VOLUME_CLUSTER_3D
-	float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
-	float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+	//float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
+	//float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+	float n = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z, cellCountRcp.z );
+	float f = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z + 1.0f, cellCountRcp.z );
 #else // #if DECAL_VOLUME_CLUSTER_3D
+
+#if DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH
+	float2 tileMinMaxDepth = inMinMaxDepth.Load( int3( cellIndex.xy, 0 ), 0 );
+	const float tileMinDepth = tileMinMaxDepth.r;
+	// mszymczyk: increase tileMaxDepth slightly so small decals aren't culled when far from camera
+	// TODO: fix this temp hack, it affects culling efficiency, more tiles pass test
+	const float tileMaxDepth = tileMinMaxDepth.g + 0.0002f;
+	float n = nearPlane / tileMaxDepth; // note reverse Z
+	float f = nearPlane / tileMinDepth; // note reverse Z
+#else // #if DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH
 	float n = nearPlane;
 	float f = farPlane;
+#endif // #else // #if DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH
+
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 
 	frustum.clipSpacePlanes[0] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x     );
@@ -1168,7 +1212,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 		uint flatCellIndex = DecalVolume_GetCellFlatIndex2D( cellXYZ.xy, dvCellCount.xy );
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 
-		outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
+		outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex - DecalVolume_CellCountCurrentPass() );
 	}
 
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS

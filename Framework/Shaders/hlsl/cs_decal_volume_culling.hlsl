@@ -26,7 +26,8 @@ RWStructuredBuffer<DecalVolumeTest> outDecalVolumesTest		REGISTER_BUFFER_DECAL_V
 RWStructuredBuffer<uint> outDecalVolumeCount				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_COUNT;
 
 Texture2D<float> inDepth									REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
-RWTexture2D<float> outDepth									REGISTER_TEXTURE_DECAL_VOLUME_OUT_DEPTH;
+Texture2D<float2> inMinMaxDepth								REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
+RWTexture2D<float2> outMinMaxDepth							REGISTER_TEXTURE_DECAL_VOLUME_OUT_DEPTH;
 SamplerState inDepthSamp									REGISTER_SAMPLER_DECAL_VOLUME_IN_DEPTH;
 
 [numthreads( DECAL_VOLUME_CULL_NUM_THREADS_PER_GROUP, 1, 1 )]
@@ -107,11 +108,12 @@ void cs_copy_depth( uint3 dtid : SV_DispatchThreadID )
 
 	float nonLinearDepth = inDepth.SampleLevel( inDepthSamp, uv, 0 ).x;
 
-	float d = dvcProjMatrixParams.w / ( nonLinearDepth + dvcProjMatrixParams.z ); // formula doesn't work for Stereo/VR projections
-	d *= 0.01f;
-	//float d = nonLinearDepth;
+	//float d = dvcProjMatrixParams.w / ( nonLinearDepth + dvcProjMatrixParams.z ); // formula doesn't work for Stereo/VR projections
+	//d *= 0.01f;
+	float d = nonLinearDepth;
+	//float d = 4.0f / nonLinearDepth;
 
-	outDepth[dtid.xy] = d;
+	outMinMaxDepth[dtid.xy] = d.xx;
 }
 
 
@@ -119,14 +121,24 @@ void cs_copy_depth( uint3 dtid : SV_DispatchThreadID )
 void cs_downsample_depth( uint3 dispatchThreadID : SV_DispatchThreadID )
 {
 	int2 ssP = int2( dispatchThreadID.xy ) * 2;
-	float depth0 = inDepth.Load( int3( ssP + int2( 0, 0 ), 0 ) );
-	float depth1 = inDepth.Load( int3( ssP + int2( 1, 0 ), 0 ) );
-	float depth2 = inDepth.Load( int3( ssP + int2( 0, 1 ), 0 ) );
-	float depth3 = inDepth.Load( int3( ssP + int2( 1, 1 ), 0 ) );
+	float2 depth00 = inMinMaxDepth.Load( int3( ssP + int2( 0, 0 ), 0 ) ).xy;
+	float2 depth10 = inMinMaxDepth.Load( int3( ssP + int2( 1, 0 ), 0 ) ).xy;
+	float2 depth01 = inMinMaxDepth.Load( int3( ssP + int2( 0, 1 ), 0 ) ).xy;
+	float2 depth11 = inMinMaxDepth.Load( int3( ssP + int2( 1, 1 ), 0 ) ).xy;
 
-	float depth01 = max( depth0, depth1 );
-	float depth23 = max( depth2, depth3 );
-	float depth = max( depth01, depth23 );
+	//float depth01 = max( depth00.y, depth01.y );
+	//float depth23 = max( depth2, depth3 );
+	//float depth = max( depth01, depth23 );
+
+	//float minDepth = min( depth00.x, min3( depth01.x, depth10.x, depth11.x ) );
+	//float minDepth = min( min( depth00.x, depth10.x ), min( depth10.x, depth11.x ) );
+	//float minDepth = min( depth00.x, depth11.x );
+	float minDepth0010 = min( depth00.x, depth10.x );
+	float minDepth0111 = min( depth01.x, depth11.x );
+	//float minDepth = min( minDepth0010, minDepth0111 );
+	//float minDepth = minDepth0111;
+	float minDepth = minDepth0010;
+	float maxDepth = max( depth00.y, max3( depth01.y, depth10.y, depth11.y ) );
 
 	// properly downsampling depth texture is crucial for this technique to work correctly
 	// imagine downsampling 1920x1080, at some point, LOD==10 will have size of 3x2
@@ -164,5 +176,6 @@ void cs_downsample_depth( uint3 dispatchThreadID : SV_DispatchThreadID )
 	//	depth = max3( depth, extraDepth_02, extraDepth_12 );
 	//}
 
-	outDepth[dispatchThreadID.xy] = depth;
+	//outDepth[dispatchThreadID.xy] = depth;
+	outMinMaxDepth[dispatchThreadID.xy] = float2( minDepth, maxDepth );
 }

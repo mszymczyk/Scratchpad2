@@ -243,8 +243,8 @@ namespace spad
 			AppModeCount
 		};
 
-		AppMode appMode_ = Tiling;
-		//AppMode appMode_ = Clustering;
+		//AppMode appMode_ = Tiling;
+		AppMode appMode_ = Clustering;
 		//AppMode appMode_ = Scene;
 
 		enum OutputView : int
@@ -259,6 +259,8 @@ namespace spad
 
 		OutputView currentView_ = GpuHeatmap;
 		//OutputView currentView_ = DepthBuffer;
+		int depthBufferMip_ = 0;
+		bool depthBufferShowMin_ = true;
 
 		bool showExtendedStats_ = true;
 
