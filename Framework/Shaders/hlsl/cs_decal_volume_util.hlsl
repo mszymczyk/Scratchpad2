@@ -17,26 +17,6 @@ Texture2D<float2> inMinMaxDepth						   REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
 StructuredBuffer<GroupToBucket> inGroupToBucket        REGISTER_BUFFER_DECAL_VOLUME_IN_GROUP_TO_BUCKET;
 RWStructuredBuffer<GroupToBucket> outGroupToBucket     REGISTER_BUFFER_DECAL_VOLUME_OUT_GROUP_TO_BUCKET;
 
-#define DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION			1
-
-#define DECAL_VOLUME_CLUSTER_USE_OLD_SAT						1
-
-#if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-struct OrientedBoundingBox
-{
-	float3 center;
-	float3 axes[3];
-	float3 halfSize;
-};
-#endif // #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-
-struct FrustumFace
-{
-	float3 center;
-	float3 axes[2];
-};
-
-
 struct Frustum
 {
 	// left, right, bottom, top, near, far
@@ -44,34 +24,16 @@ struct Frustum
 	float3 frustumCorners[8];
 	// left, right, bottom, top, near, far
 	float clipSpacePlanes[6];
-
-	FrustumFace faces[2];
 };
 
 
-void extractFrustumPlanes( out float4 planes[6], float4x4 vp )
+void DecalVolume_ExtractFrustumPlanesDxRhs( out float4 planes[6], float4x4 vp )
 {
-	planes[0] =  vp[0] + vp[3]; // left
+	planes[0] = vp[0] + vp[3]; // left
 	planes[1] = -vp[0] + vp[3]; // right
-	planes[2] =  vp[1] + vp[3]; // bottom
+	planes[2] = vp[1] + vp[3]; // bottom
 	planes[3] = -vp[1] + vp[3]; // top
-	planes[4] =  vp[2] + vp[3]; // near
-	planes[5] = -vp[2] + vp[3]; // far
-
-	for ( int i = 0; i < 6; ++i )
-	{
-		float lenRcp = 1.0f / length( planes[i].xyz );
-		planes[i] *= lenRcp;
-	}
-}
-
-void extractFrustumPlanesDxRhs( out float4 planes[6], float4x4 vp )
-{
-	planes[0] =  vp[0] + vp[3]; // left
-	planes[1] = -vp[0] + vp[3]; // right
-	planes[2] =  vp[1] + vp[3]; // bottom
-	planes[3] = -vp[1] + vp[3]; // top
-	planes[4] =  vp[2]        ; // near     + vp[3] omitted for near plane // near
+	planes[4] = vp[2]; // near     + vp[3] omitted for near plane // near
 	planes[5] = -vp[2] + vp[3]; // far
 
 	for ( int i = 0; i < 6; ++i )
@@ -82,7 +44,7 @@ void extractFrustumPlanesDxRhs( out float4 planes[6], float4x4 vp )
 }
 
 
-float3 planesIntersect( float4 p1, float4 p2, float4 p3 )
+float3 PlanesIntersect( float4 p1, float4 p2, float4 p3 )
 {
 	float denom = dot( p1.xyz, cross( p2.xyz, p3.xyz ) );
 	return rcp( -denom ) * (
@@ -92,16 +54,16 @@ float3 planesIntersect( float4 p1, float4 p2, float4 p3 )
 }
 
 
-void extractFrustumCorners( out float3 frustumCorners[8], float4 frustumPlanes[6] )
+void DecalVolume_ExtractFrustumCorners( out float3 frustumCorners[8], float4 frustumPlanes[6] )
 {
-	frustumCorners[0] = planesIntersect( frustumPlanes[0], frustumPlanes[2], frustumPlanes[4] );
-	frustumCorners[1] = planesIntersect( frustumPlanes[0], frustumPlanes[2], frustumPlanes[5] );
-	frustumCorners[2] = planesIntersect( frustumPlanes[0], frustumPlanes[3], frustumPlanes[4] );
-	frustumCorners[3] = planesIntersect( frustumPlanes[0], frustumPlanes[3], frustumPlanes[5] );
-	frustumCorners[4] = planesIntersect( frustumPlanes[1], frustumPlanes[2], frustumPlanes[4] );
-	frustumCorners[5] = planesIntersect( frustumPlanes[1], frustumPlanes[2], frustumPlanes[5] );
-	frustumCorners[6] = planesIntersect( frustumPlanes[1], frustumPlanes[3], frustumPlanes[4] );
-	frustumCorners[7] = planesIntersect( frustumPlanes[1], frustumPlanes[3], frustumPlanes[5] );
+	frustumCorners[0] = PlanesIntersect( frustumPlanes[0], frustumPlanes[2], frustumPlanes[4] );
+	frustumCorners[1] = PlanesIntersect( frustumPlanes[0], frustumPlanes[2], frustumPlanes[5] );
+	frustumCorners[2] = PlanesIntersect( frustumPlanes[0], frustumPlanes[3], frustumPlanes[4] );
+	frustumCorners[3] = PlanesIntersect( frustumPlanes[0], frustumPlanes[3], frustumPlanes[5] );
+	frustumCorners[4] = PlanesIntersect( frustumPlanes[1], frustumPlanes[2], frustumPlanes[4] );
+	frustumCorners[5] = PlanesIntersect( frustumPlanes[1], frustumPlanes[2], frustumPlanes[5] );
+	frustumCorners[6] = PlanesIntersect( frustumPlanes[1], frustumPlanes[3], frustumPlanes[4] );
+	frustumCorners[7] = PlanesIntersect( frustumPlanes[1], frustumPlanes[3], frustumPlanes[5] );
 }
 
 
@@ -132,8 +94,6 @@ void DecalVolume_BuildSubFrustumWorldSpace( out Frustum frustum, const float3 ce
 	frustum = (Frustum)0;
 
 #if DECAL_VOLUME_CLUSTER_3D
-	//float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
-	//float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
 	float n = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z, cellCountRcp.z );
 	float f = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z + 1.0f, cellCountRcp.z );
 #else // #if DECAL_VOLUME_CLUSTER_3D
@@ -162,21 +122,21 @@ void DecalVolume_BuildSubFrustumWorldSpace( out Frustum frustum, const float3 ce
 	};
 	float4x4 viewProj = mul( subProj, viewMatrix );
 
-	extractFrustumPlanesDxRhs( frustum.planes, viewProj );
-	extractFrustumCorners( frustum.frustumCorners, frustum.planes );
+	DecalVolume_ExtractFrustumPlanesDxRhs( frustum.planes, viewProj );
+	DecalVolume_ExtractFrustumCorners( frustum.frustumCorners, frustum.planes );
 }
 
 
 // Real-Time Rendering, 3rd Edition - 16.10.1, 16.14.3 (p. 755, 777)
-uint frustumOBBIntersectSimpleOptimized( float4 frustumPlanes[6], float3 boxPosition, float3 boxHalfSize, float3 boxX, float3 boxY, float3 boxZ )
+uint DecalVolume_FrustumOBBIntersectOptimized( float4 frustumPlanes[6], float3 boxPosition, float3 boxHalfSize, float3 boxX, float3 boxY, float3 boxZ )
 {
 	//[unroll]
 	for ( int i = 0; i < 6; ++i )
 	{
 		float3 n = frustumPlanes[i].xyz;
 		float e = boxHalfSize.x*abs( dot( n, boxX ) )
-				+ boxHalfSize.y*abs( dot( n, boxY ) )
-				+ boxHalfSize.z*abs( dot( n, boxZ ) );
+			+ boxHalfSize.y*abs( dot( n, boxY ) )
+			+ boxHalfSize.z*abs( dot( n, boxZ ) );
 		float s = dot( boxPosition, n ) + frustumPlanes[i].w;
 		if ( s + e < 0 ) // or s > e, depending if planes point inward or outward, here normals point inward
 			return 0;
@@ -186,16 +146,17 @@ uint frustumOBBIntersectSimpleOptimized( float4 frustumPlanes[6], float3 boxPosi
 }
 
 
-// TODO: False negatives when using it in tiledDecalCulling.
-bool frustumOBBIntersectOptimized( float4 frustumPlanes[6], float3 frustumCorners[8], float4 boxPlanes[6], float3 boxPosition, float3 boxHalfSize, float3 boxX, float3 boxY, float3 boxZ )
+// Less false positives, great if near and far frustum planes are compact.
+// http://www.iquilezles.org/www/articles/frustumcorrect/frustumcorrect.htm
+bool DecalVolume_FrustumOBBIntersectTwoway( float4 frustumPlanes[6], float3 frustumCorners[8], float4 boxPlanes[6], float3 boxPosition, float3 boxHalfSize, float3 boxX, float3 boxY, float3 boxZ )
 {
 	//UNROLL
 	for ( int i = 0; i < 6; ++i )
 	{
 		float3 n = frustumPlanes[i].xyz;
 		float e = boxHalfSize.x*abs( dot( n, boxX ) )
-				+ boxHalfSize.y*abs( dot( n, boxY ) )
-				+ boxHalfSize.z*abs( dot( n, boxZ ) );
+			+ boxHalfSize.y*abs( dot( n, boxY ) )
+			+ boxHalfSize.z*abs( dot( n, boxZ ) );
 		float s = dot( boxPosition, n ) + frustumPlanes[i].w;
 		//BRANCH
 		//if ( s > e )
@@ -216,381 +177,6 @@ bool frustumOBBIntersectOptimized( float4 frustumPlanes[6], float3 frustumCorner
 
 	return 1;
 }
-
-// Less false positives, great if near and far frustum planes are compact.
-// http://www.iquilezles.org/www/articles/frustumcorrect/frustumcorrect.htm
-bool frustumOBBIntersect( float4 frustumPlanes[6], float3 frustumCorners[8], float4 boxPlanes[6], float3 boxCorners[8] )
-{
-	for ( int i = 0; i < 6; ++i )
-	{
-		int outside = 0;
-		//UNROLL
-		for ( int j = 0; j < 8; ++j )
-			outside += dot( frustumPlanes[i], float4(boxCorners[j], 1.0) ) < 0.0 ? 1 : 0;
-		//BRANCH
-		if ( outside == 8 )
-			return 0;
-	}
-	for ( int ii = 0; ii < 6; ++ii )
-	{
-		int outside = 0;
-		//UNROLL
-		for ( int j = 0; j < 8; ++j )
-			outside += dot( boxPlanes[ii], float4(frustumCorners[j], 1.0) ) < 0.0 ? 1 : 0;
-		//BRANCH
-		if ( outside == 8 )
-			return 0;
-	}
-	return 1;
-}
-
-
-#if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-
-#ifndef USE_OBB_FRUSTUM_EARLY_ACCEPT
-#define USE_OBB_FRUSTUM_EARLY_ACCEPT		0
-#endif
-
-#ifndef USE_OBB_FRUSTUM_FACE_AXES
-#define USE_OBB_FRUSTUM_FACE_AXES			0
-#endif
-
-#ifndef USE_OBB_FRUSTUM_EDGE_CROSSES
-#define USE_OBB_FRUSTUM_EDGE_CROSSES		0
-#endif
-
-
-float3 WorldPositionFromScreenCoords( float3 eyeAxis[3], float3 eyeOffset, float2 screenCoords, float depth )
-{
-	float3 eyeRay = eyeAxis[0] * screenCoords.xxx +
-		eyeAxis[1] * screenCoords.yyy +
-		eyeAxis[2];
-
-	return eyeOffset + eyeRay * depth;
-}
-
-void DecalVolume_GetFrustumClusterFaces( out FrustumFace faces[2], float3 cellCount, float3 cellCountRcp, float3 cellIndex, float2 tanHalfFov, float nearPlane, float farPlane, float farPlaneOverNearPlane, bool farClip = false )
-{
-	// clip-space (-1,1) position of the view ray through the centroid of the cluster frustum projected on screen
-	//float2 uv = ( ( float2( clusterXYZ.xy ) + 0.5f ) * g_sceneConstants.frustumGridClusterSize.xy + 0.5f ) / g_sceneConstants.frustumGridLightParams.zw;
-	//cellCount = 32;
-	//cellCountRcp = 1.0f / 32;
-	float2 uv = ( cellIndex.xy + 0.5f ) * cellCountRcp.xy;
-	//float2 uv = 0.5f;
-	//float2 uv = ( cellIndex.xy + 0.0f ) * cellCountRcp.xy;
-	//uv = uv * float2( -2.0f, -2.0f ) + float2( 1.0f, 1.0f );
-	uv = uv * float2( 2.0f, 2.0f ) - float2( 1.0f, 1.0f );
-	//uv.y = -uv.y;
-
-	//// view-space depth of the near and far planes for the cluster frustum
-	//float depth0 = VolumeZPosToDepth( float( clusterXYZ.z ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth );
-	//float depth1 = ( farClip || ( clusterXYZ.z < FRUSTUM_GRID_CLUSTER_SIZE_Z - 1 ) ) ? VolumeZPosToDepth( float( clusterXYZ.z + 1 ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth ) : FRUSTUM_GRID_CLUSTERING_MAX_DEPTH;
-//#if DECAL_VOLUME_CLUSTER_3D
-//	float depth0 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
-//	float depth1 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
-//#else // #if DECAL_VOLUME_CLUSTER_3D
-	float depth0 = nearPlane;
-	float depth1 = farPlane;
-	//float depth0 = farPlane;
-	//float depth1 = nearPlane;
-//#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
-
-
-	// screen-space half size of the projected frustum
-	//float2 projHalfSize = 0.5f * frustumGridClusterSize.xy / frustumGridLightParams.zw;
-	//float2 projHalfSize = ( 0.5f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
-	//float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1920, 1080 );
-	float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
-	//float2 projHalfSize = ( 1.0f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
-	//float2 projHalfSize = 0.5f * cellCountRcp.xy;
-	//float2 projHalfSize = 0.5f * 1.0f / 32.0f;
-	//projHalfSize.y *= 2;
-	//projHalfSize *= 0.01f;
-
-	float3 eyeAxis[3];
-	eyeAxis[0] = float3( 1, 0, 0 ) * tanHalfFov.x;
-	eyeAxis[1] = float3( 0, 1, 0 ) * tanHalfFov.y;
-	eyeAxis[2] = float3( 0, 0, -1 );
-	float3 eyeOffset = float3( 0, 0, 0 );
-
-	faces[0].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv, depth0 );
-	faces[0].axes[0] = eyeAxis[0] * projHalfSize.xxx * depth0;
-	faces[0].axes[1] = eyeAxis[1] * projHalfSize.yyy * depth0;
-
-	faces[1].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv, depth1 );
-	faces[1].axes[0] = eyeAxis[0] * projHalfSize.xxx * depth1;
-	faces[1].axes[1] = eyeAxis[1] * projHalfSize.yyy * depth1;
-
-	//faces[0].axes[0] = normalize( faces[0].axes[0] );
-	//faces[0].axes[1] = normalize( faces[0].axes[1] );
-	//faces[1].axes[0] = normalize( faces[1].axes[0] );
-	//faces[1].axes[1] = normalize( faces[1].axes[1] );
-
-	float2 uv00 = cellIndex.xy * cellCountRcp.xy;
-	float2 uv10 = ( cellIndex.xy + float2( 1, 0.5f ) ) * cellCountRcp.xy;
-	float2 uv01 = ( cellIndex.xy + float2( 0.5f, 1 ) ) * cellCountRcp.xy;
-
-	//float3 c000 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, float2( uv00 ) * 2 - 1, -depth0 );
-	float3 c100 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, float2( uv10 ) * 2 - 1, depth0 );
-	//float3 c001 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, float2( uv00 ) * 2 - 1, depth1 );
-	float3 c101 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, float2( uv10 ) * 2 - 1, depth1 );
-
-	float3 c010 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, float2( uv01 ) * 2 - 1, depth0 );
-	float3 c011 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, float2( uv01 ) * 2 - 1, depth1 );
-
-	//faces[0].axes[0] = c100 - c000;
-	//faces[0].axes[1] = c100 - c000;
-	//faces[1].axes[0] = c101 - c001;
-	//faces[1].axes[1] = c101 - c001;
-	faces[0].axes[0] = ( c100 - faces[0].center ) * 1;
-	faces[0].axes[1] = ( c010 - faces[0].center ) * 1;
-	faces[1].axes[0] = ( c101 - faces[1].center ) * 1;
-	faces[1].axes[1] = ( c011 - faces[1].center ) * 1;
-	//faces[0].axes[0] = ( c100 - faces[0].center ) * -2;
-	//faces[0].axes[1] = ( c010 - faces[0].center ) * -2;
-	//faces[1].axes[0] = ( c101 - faces[1].center ) * -2;
-	//faces[1].axes[1] = ( c011 - faces[1].center ) * -2;
-
-	//faces[0].axes[0] = float3( 1 / 64.0f, 0, 0 );
-	//faces[0].axes[1] = float3( 0, 1 / 32.0f, 0 );
-	//faces[1].axes[0] = float3( 1 / 64.0f, 0, 0 );
-	//faces[1].axes[1] = float3( 0, 1 / 32.0f, 0 );
-
-	//faces[0].axes[0].y = 0;
-	//faces[0].axes[0].z = 0;
-
-	//faces[0].axes[1].x = 0;
-	//faces[0].axes[1].z = 0;
-
-	//faces[1].axes[0].y = 0;
-	//faces[1].axes[0].z = 0;
-
-	//faces[1].axes[1].x = 0;
-	//faces[1].axes[1].z = 0;
-
-	//faces[0].axes[0] = float3( 1, 0, 0 );
-	//faces[0].axes[1] = float3( 0, 1, 0 );
-	//faces[1].axes[0] = float3( 1, 0, 0 );
-	//faces[1].axes[1] = float3( 0, 1, 0 );
-	//faces[0].axes[0] = float3( 2.0f / 32, 0, 0 );
-	//faces[0].axes[1] = float3( 0, 2.0f / 32, 0 );
-	//faces[1].axes[0] = float3( 577.0f / 32, 0, 0 );
-	//faces[1].axes[1] = float3( 0, 577.0f / 32, 0 );
-}
-
-
-float3 GetTriangleAxis( const in float3 a, const in float3 b, const in float3 c )
-{
-	float3 ab = b - a;
-	float3 ac = c - a;
-	return cross( ac, ab );
-}
-
-
-//ISOLATE
-float3 GetFrustumVertex( const in FrustumFace frustumFaces[2], int vertIndex )
-{
-	int sx = vertIndex & 1;
-	int sy = ( vertIndex >> 1 ) & 1;
-	int iz = vertIndex >> 2;
-
-	return frustumFaces[iz].center + frustumFaces[iz].axes[0] * sx + frustumFaces[iz].axes[1] * sy;
-}
-
-
-float3 GetFrustumAxis( const in FrustumFace frustumFaces[2], int axisIndex )
-{
-	// NOTE: These if statements are meant to be evaluated and removed at compile time after loop unrolling.
-	//       The idea is to avoid storing frustumAxes in registers. Maybe worth???
-
-	if ( axisIndex == 0 ) // z
-		return cross( frustumFaces[0].axes[0], frustumFaces[0].axes[1] );
-	if ( axisIndex == 1 ) // x1
-		return cross( frustumFaces[0].axes[0], GetFrustumVertex( frustumFaces, 4 ) - GetFrustumVertex( frustumFaces, 0 ) );
-	if ( axisIndex == 2 ) // y1
-		return cross( frustumFaces[0].axes[1], GetFrustumVertex( frustumFaces, 4 ) - GetFrustumVertex( frustumFaces, 0 ) );
-	if ( axisIndex == 3 ) // x2
-		return cross( frustumFaces[0].axes[0], GetFrustumVertex( frustumFaces, 7 ) - GetFrustumVertex( frustumFaces, 3 ) );
-	if ( axisIndex == 4 ) // y2
-		return cross( frustumFaces[0].axes[1], GetFrustumVertex( frustumFaces, 7 ) - GetFrustumVertex( frustumFaces, 3 ) );
-
-	return float3( 0, 0, 1 );
-}
-
-
-bool AreIntervalsDisjoint( const in float2 a, const in float2 b )
-{
-	return ( a.y < b.x ) || ( b.y < a.x );
-}
-
-
-void ExtendIntervalWithValue( const float x, inout float2 inOutInterval )
-{
-	if ( x < inOutInterval.x )
-	{
-		inOutInterval.x = x;
-	}
-	if ( x > inOutInterval.y )
-	{
-		inOutInterval.y = x;
-	}
-}
-
-
-void ExtendIntervalWithInterval( const float2 v, inout float2 inOutInterval )
-{
-	if ( v.x < inOutInterval.x )
-	{
-		inOutInterval.x = v.x;
-	}
-	if ( v.y > inOutInterval.y )
-	{
-		inOutInterval.y = v.y;
-	}
-}
-
-
-float2 GetObbProjectedInterval( const in OrientedBoundingBox obb, const in float3 axis )
-{
-	const float centerProjectionOBB = dot( obb.center, axis );
-
-	// TODO: the halfSize can be premultiplied into the obb.axis vectors to save some computation. I'm not sure if that will break other code that relies on this header though...
-
-	const float extentsProjectionOBB
-		= abs( dot( obb.axes[0], axis ) * obb.halfSize.x )
-		+ abs( dot( obb.axes[1], axis ) * obb.halfSize.y )
-		+ abs( dot( obb.axes[2], axis ) * obb.halfSize.z );
-
-	return float2( centerProjectionOBB - extentsProjectionOBB, centerProjectionOBB + extentsProjectionOBB );
-}
-
-float2 GetFrustumFaceProjectedInterval( const in FrustumFace ff, const in float3 axis )
-{
-	const float centerProjectionFF = dot( ff.center, axis );
-
-	const float extentsProjectionFF
-		= abs( dot( ff.axes[0], axis ) )
-		+ abs( dot( ff.axes[1], axis ) );
-
-	return float2( centerProjectionFF - extentsProjectionFF, centerProjectionFF + extentsProjectionFF );
-}
-
-
-float2 GetFrustumProjectedInterval( const in FrustumFace frustumFaces[2], const in float3 axis )
-{
-	float2 outInterval = GetFrustumFaceProjectedInterval( frustumFaces[0], axis );
-	ExtendIntervalWithInterval( GetFrustumFaceProjectedInterval( frustumFaces[1], axis ), outInterval );
-	return outInterval;
-}
-
-
-//ISOLATE
-bool R_AreFrustumObbProjectedIntervalsDisjoint( const in OrientedBoundingBox obb, const in FrustumFace frustumFaces[2], const in float3 axis )
-{
-	const float2 obbInterval = GetObbProjectedInterval( obb, axis );
-	float2 frustumInterval = GetFrustumProjectedInterval( frustumFaces, axis );
-	return AreIntervalsDisjoint( frustumInterval, obbInterval );
-}
-
-
-int IsAinB( const in float2 a, const in float2 b )
-{
-	return ( b.x <= a.x ) && ( a.y <= b.y ) ? 1 : 0;
-}
-
-
-//ISOLATE
-bool R_AreFrustumObbProjectedIntervalsDisjointMask( const in OrientedBoundingBox obb, const in FrustumFace frustumFaces[2], const in float3 axis, inout int containmentMask )
-{
-	const float2 obbInterval = GetObbProjectedInterval( obb, axis );
-	float2 frustumInterval = GetFrustumProjectedInterval( frustumFaces, axis );
-
-	containmentMask = ( containmentMask << 1 ) | IsAinB( frustumInterval, obbInterval );
-	return AreIntervalsDisjoint( frustumInterval, obbInterval );
-}
-
-
-// Subroutine of TestFrustumObbIntersectionSAT()
-bool IsFrustumEdgeVsBoxAxesProjectionDisjoint( const in OrientedBoundingBox obb, const in FrustumFace frustumFaces[2], const float3 frustumEdgeVertexA, const in float3 frustumEdgeVertexB )
-{
-	const float3 frustumEdgeDir = frustumEdgeVertexA - frustumEdgeVertexB;
-
-	[loop]
-	for ( uint axisIndex = 0; axisIndex < 3; axisIndex++ )
-	{
-		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, cross( frustumEdgeDir, obb.axes[0] ) ) )
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-
-// Frustum Obb Intersection
-//
-// Use a Separating Axis Test (SAT) to determine if there is an intersection.
-// Two convex volumes do not intersect if there is any axis over which projections of the volumes are separate.
-// The separating axes for convex polytope must be one of the face normals of each shape or the cross products between the edges of the shapes.
-// We test each of these in turn.
-
-bool TestFrustumObbIntersectionSAT( const in OrientedBoundingBox obb, const in FrustumFace frustumFaces[2] )
-{
-	/// Test box axes
-	// these are cheap to evaluate, and are orthogonal
-	// also, there is potential to early out, so do first
-	//int containmentMask = 0;
-
-	[unroll]
-	for ( uint axisIndex = 0; axisIndex < 3; axisIndex++ )
-	{
-//#if USE_OBB_FRUSTUM_EARLY_ACCEPT
-//		if ( R_AreFrustumObbProjectedIntervalsDisjointMask( obb, frustumFaces, obb.axes[axisIndex], containmentMask ) ) return false;
-//#else
-		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, obb.axes[axisIndex] ) ) return false;
-//#endif
-	}
-
-	//if ( containmentMask == 7 )
-	//	return true;
-
-	/// Test other axes. we want to check axes that are as different from each other as possible first to get early rejections
-	/// this means that some of the checks are interleaved
-
-//	// ROUND 1
-//#if USE_OBB_FRUSTUM_FACE_AXES
-//	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, obb.center - frustumFaces[0].center ) ) return false; // Frustum face center to OBB center
-//#endif
-//
-	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 0 ) ) ) return false; // Frustum plane
-	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 1 ) ) ) return false; // Frustum plane
-	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 2 ) ) ) return false; // Frustum plane
-
-//#if USE_OBB_FRUSTUM_EDGE_CROSSES
-//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 0 ), GetFrustumVertex( frustumFaces, 1 ) ) ) return false; // Edge cross product
-//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 0 ), GetFrustumVertex( frustumFaces, 2 ) ) ) return false; // Edge cross product
-//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 0 ), GetFrustumVertex( frustumFaces, 4 ) ) ) return false; // Edge cross product
-//#endif
-
-//	// ROUND 2
-//#if USE_OBB_FRUSTUM_FACE_AXES
-//	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, obb.center - frustumFaces[1].center ) ) return false; // Frustum face center to OBB center
-//#endif
-
-	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 3 ) ) ) return false; // Frustum plane
-	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 4 ) ) ) return false; // Frustum plane
-
-//#if USE_OBB_FRUSTUM_EDGE_CROSSES
-//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 3 ), GetFrustumVertex( frustumFaces, 7 ) ) ) return false; // Edge cross product
-//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 1 ), GetFrustumVertex( frustumFaces, 5 ) ) ) return false; // Edge cross product
-//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 2 ), GetFrustumVertex( frustumFaces, 6 ) ) ) return false; // Edge cross product
-//#endif
-
-	return true;
-}
-
-#else // #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
 
 
 struct OrientedBoundingBox
@@ -694,51 +280,48 @@ bool TestFrustumObbIntersectionSAT( const in OrientedBoundingBox obb, const in f
 		return false;
 	}
 
-	//// Test each frustum edge crossed with each box axis
+	// Test each frustum edge crossed with each box axis
 
-	//// Test view corner axes (view Z direction)
-	//if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[0] - frustumVertices[4] ) )
-	//{
-	//	return false;
-	//}
-	//if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[1] - frustumVertices[5] ) )
-	//{
-	//	return false;
-	//}
-	//if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[2] - frustumVertices[6] ) )
-	//{
-	//	return false;
-	//}
-	//if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[3] - frustumVertices[7] ) )
-	//{
-	//	return false;
-	//}
+	// Test view corner axes (view Z direction)
+	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[0] - frustumVertices[4] ) )
+	{
+		return false;
+	}
+	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[1] - frustumVertices[5] ) )
+	{
+		return false;
+	}
+	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[2] - frustumVertices[6] ) )
+	{
+		return false;
+	}
+	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[3] - frustumVertices[7] ) )
+	{
+		return false;
+	}
 
-	//// Test view axes (view X and Y axes)
-	//if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[0] - frustumVertices[1] ) )
-	//{
-	//	return false;
-	//}
-	//if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[0] - frustumVertices[2] ) )
-	//{
-	//	return false;
-	//}
+	// Test view axes (view X and Y axes)
+	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[0] - frustumVertices[1] ) )
+	{
+		return false;
+	}
+	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumVertices, frustumVertices[0] - frustumVertices[2] ) )
+	{
+		return false;
+	}
 
 	return true;
 }
-
-#endif // #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-
 
 
 uint DecalVolume_TestFrustumWorldSpace( in DecalVolume dv, in Frustum frustum, bool twoTests )
 {
 	float4 boxPlanes[6];
-	boxPlanes[0] = float4(  dv.x.xyz, -dot( dv.position.xyz - dv.x.xyz*dv.halfSize.x,  dv.x.xyz ) );
+	boxPlanes[0] = float4( dv.x.xyz, -dot( dv.position.xyz - dv.x.xyz*dv.halfSize.x, dv.x.xyz ) );
 	boxPlanes[1] = float4( -dv.x.xyz, -dot( dv.position.xyz + dv.x.xyz*dv.halfSize.x, -dv.x.xyz ) );
-	boxPlanes[2] = float4(  dv.y.xyz, -dot( dv.position.xyz - dv.y.xyz*dv.halfSize.y,  dv.y.xyz ) );
+	boxPlanes[2] = float4( dv.y.xyz, -dot( dv.position.xyz - dv.y.xyz*dv.halfSize.y, dv.y.xyz ) );
 	boxPlanes[3] = float4( -dv.y.xyz, -dot( dv.position.xyz + dv.y.xyz*dv.halfSize.y, -dv.y.xyz ) );
-	boxPlanes[4] = float4(  dv.z.xyz, -dot( dv.position.xyz - dv.z.xyz*dv.halfSize.z,  dv.z.xyz ) );
+	boxPlanes[4] = float4( dv.z.xyz, -dot( dv.position.xyz - dv.z.xyz*dv.halfSize.z, dv.z.xyz ) );
 	boxPlanes[5] = float4( -dv.z.xyz, -dot( dv.position.xyz + dv.z.xyz*dv.halfSize.z, -dv.z.xyz ) );
 
 	float3 boxCorners[8];
@@ -753,30 +336,17 @@ uint DecalVolume_TestFrustumWorldSpace( in DecalVolume dv, in Frustum frustum, b
 
 	if ( twoTests )
 	{
-		return frustumOBBIntersectOptimized( frustum.planes, frustum.frustumCorners, boxPlanes, dv.position.xyz, dv.halfSize.xyz, dv.x.xyz, dv.y.xyz, dv.z.xyz );
+		return DecalVolume_FrustumOBBIntersectTwoway( frustum.planes, frustum.frustumCorners, boxPlanes, dv.position.xyz, dv.halfSize.xyz, dv.x.xyz, dv.y.xyz, dv.z.xyz );
 	}
 	else
 	{
-		return frustumOBBIntersectSimpleOptimized( frustum.planes, dv.position.xyz, dv.halfSize.xyz, dv.x.xyz, dv.y.xyz, dv.z.xyz );
+		return DecalVolume_FrustumOBBIntersectOptimized( frustum.planes, dv.position.xyz, dv.halfSize.xyz, dv.x.xyz, dv.y.xyz, dv.z.xyz );
 	}
 }
 
 
 uint DecalVolume_TestFrustumWorldSpaceSAT( in DecalVolume dv, in Frustum frustum )
 {
-#if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-
-	OrientedBoundingBox obb;
-	obb.center = dv.position;
-	obb.halfSize = dv.halfSize;
-	obb.axes[0] = dv.x;
-	obb.axes[1] = dv.y;
-	obb.axes[2] = dv.z;
-
-	return TestFrustumObbIntersectionSAT( obb, frustum.faces ) ? 1 : 0;
-
-#else // #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-
 	OrientedBoundingBox obb;
 	obb.center = dv.position;
 	obb.halfSize = dv.halfSize;
@@ -791,8 +361,6 @@ uint DecalVolume_TestFrustumWorldSpaceSAT( in DecalVolume dv, in Frustum frustum
 	}
 
 	return TestFrustumObbIntersectionSAT( obb, frustum.frustumCorners, frustumAxes ) ? 1 : 0;
-
-#endif // #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
 }
 
 
@@ -885,17 +453,12 @@ void DecalVolume_GetCornersClipSpace2( DecalVolume dv, out float4 dvCornersXYW[8
 
 #define USE_Z_01 0
 
-//#ifndef DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH
-//#define DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH 0
-//#endif // #ifndef DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH
 
 void DecalVolume_BuildSubFrustumClipSpace( out Frustum frustum, const float3 cellCount, const float3 numCellsXYZF, const float3 cellCountRcp, float3 cellIndex, float nearPlane, float farPlane, float farPlaneOverNearPlane )
 {
 	frustum = (Frustum)0;
 
 #if DECAL_VOLUME_CLUSTER_3D
-	//float n = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z ) * cellCountRcp.z );
-	//float f = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
 	float n = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z, cellCountRcp.z );
 	float f = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z + 1.0f, cellCountRcp.z );
 #else // #if DECAL_VOLUME_CLUSTER_3D
@@ -915,10 +478,10 @@ void DecalVolume_BuildSubFrustumClipSpace( out Frustum frustum, const float3 cel
 
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 
-	frustum.clipSpacePlanes[0] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x     );
+	frustum.clipSpacePlanes[0] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x );
 	frustum.clipSpacePlanes[1] = -1 + ( 2.0f * cellCountRcp.x ) * ( cellIndex.x + 1 );
-	frustum.clipSpacePlanes[2] =  1 - ( 2.0f * cellCountRcp.y ) * ( cellIndex.y + 1 );
-	frustum.clipSpacePlanes[3] =  1 - ( 2.0f * cellCountRcp.y ) * ( cellIndex.y     );
+	frustum.clipSpacePlanes[2] = 1 - ( 2.0f * cellCountRcp.y ) * ( cellIndex.y + 1 );
+	frustum.clipSpacePlanes[3] = 1 - ( 2.0f * cellCountRcp.y ) * ( cellIndex.y );
 	frustum.clipSpacePlanes[4] = n;
 	frustum.clipSpacePlanes[5] = f;
 
@@ -946,12 +509,12 @@ uint DecalVolume_TestFrustumClipSpace( in DecalVolumeTest dvt, in DecalVolume dv
 	DecalVolume_GetCornersClipSpace2( dv, corners );
 #endif // #else // DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE
 
-	float left   = frustum.clipSpacePlanes[0];
-	float right  = frustum.clipSpacePlanes[1];
+	float left = frustum.clipSpacePlanes[0];
+	float right = frustum.clipSpacePlanes[1];
 	float bottom = frustum.clipSpacePlanes[2];
-	float top    = frustum.clipSpacePlanes[3];
-	float near   = frustum.clipSpacePlanes[4];
-	float far    = frustum.clipSpacePlanes[5];
+	float top = frustum.clipSpacePlanes[3];
+	float near = frustum.clipSpacePlanes[4];
+	float far = frustum.clipSpacePlanes[5];
 
 	bool allOutsideLeft = true;
 	bool allOutsideRight = true;
@@ -1005,13 +568,7 @@ Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCells
 #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
 	DecalVolume_BuildSubFrustumClipSpace( outFrustum, numCellsXYZ, numCellsXYZF, numCellsXYZRcp, cellXYZ, dvNearFar.x, dvNearFar.y, dvNearFar.z );
 #else // #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
-
-#if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-	DecalVolume_GetFrustumClusterFaces( outFrustum.faces, numCellsXYZ, numCellsXYZF, numCellsXYZRcp, cellXYZ, dvTanHalfFov.xy, dvNearFar.x, dvNearFar.y, dvNearFar.z );
-#else // #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
 	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZF, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.y, dvNearFar.z );
-#endif // #else #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-
 #endif // #else // #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE
 
 	return outFrustum;
@@ -1065,37 +622,29 @@ uint RoundUpToPowerOfTwo( uint v )
 }
 
 
-//uint3 DecalVolume_GetCell3DIndex( uint flatCellIndex, uint3 numCellsXYZ )
-//{
-//	uint sliceSize = numCellsXYZ.x * numCellsXYZ.y;
-//	uint cellZ = flatCellIndex / sliceSize;
-//	uint tileIndex = flatCellIndex % sliceSize;
-//	uint cellX = tileIndex % numCellsXYZ.x;
-//	uint cellY = tileIndex / numCellsXYZ.x;
-//
-//	return uint3( cellX, cellY, cellZ );
-//}
-
-
 uint DecalVolume_GetMaxOutDecalIndices()
 {
 	return dvPassLimits.x;
 }
+
 
 uint DecalVolume_GetMaxOutDecalIndicesPerCell()
 {
 	return dvPassLimits.y;
 }
 
+
 uint DecalVolume_GetMaxCurrentOutCellIndirectionsPerBucket()
 {
 	return dvPassLimits.z;
 }
 
+
 uint DecalVolume_GetMaxPrevOutCellIndirections()
 {
 	return dvPassLimits.w;
 }
+
 
 uint DecalVolume_GetBucketIndex()
 {
@@ -1151,7 +700,7 @@ uint DecalVolume_EncodeCell3D( uint3 cellXYZ )
 
 uint3 DecalVolume_DecodeCell3D( uint flatCellIndex )
 {
-	return uint3( flatCellIndex >> 20, (flatCellIndex >> 8) & 0xfff, flatCellIndex & 0xff );
+	return uint3( flatCellIndex >> 20, ( flatCellIndex >> 8 ) & 0xfff, flatCellIndex & 0xff );
 }
 
 
@@ -1212,7 +761,8 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 		uint flatCellIndex = DecalVolume_GetCellFlatIndex2D( cellXYZ.xy, dvCellCount.xy );
 #endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 
-		outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex - DecalVolume_CellCountCurrentPass() );
+		// offsetToFirstDecalIndex -= DecalVolume_CellCountCurrentPass(); // don't subtract it so respective addition can be removed when drawing
+		outDecalVolumeIndices[flatCellIndex] = DecalVolume_PackHeader( cellDecalCount, offsetToFirstDecalIndex );
 	}
 
 #else // DECAL_VOLUME_CLUSTER_LAST_PASS
@@ -1244,7 +794,7 @@ void DecalVolume_OutputCellIndirection( uint3 cellXYZ, uint encodedCellXYZ, uint
 
 #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 			ci.cellIndex = encodedCellXYZ;
-			outCellIndirection[ safe_mad24( cellSlot, maxCellIndirectionsPerBucket, cellIndirectionIndex / 8 ) ] = ci;
+			outCellIndirection[safe_mad24( cellSlot, maxCellIndirectionsPerBucket, cellIndirectionIndex / 8 )] = ci;
 #else // #if DECAL_VOLUME_CLUSTER_OUTPUT_CELL_OPTIMIZATION == 1
 			for ( uint i = 0; i < 8; ++i )
 			{
