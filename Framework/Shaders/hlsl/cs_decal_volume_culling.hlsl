@@ -26,7 +26,7 @@ RWStructuredBuffer<DecalVolumeTest> outDecalVolumesTest		REGISTER_BUFFER_DECAL_V
 RWStructuredBuffer<uint> outDecalVolumeCount				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_COUNT;
 
 Texture2D<float> inDepth									REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
-Texture2D<float2> inMinMaxDepth								REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
+//Texture2D<float2> inMinMaxDepth								REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
 RWTexture2D<float2> outMinMaxDepth							REGISTER_TEXTURE_DECAL_VOLUME_OUT_DEPTH;
 SamplerState inDepthSamp									REGISTER_SAMPLER_DECAL_VOLUME_IN_DEPTH;
 

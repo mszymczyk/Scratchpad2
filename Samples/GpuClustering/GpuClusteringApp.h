@@ -74,6 +74,7 @@ namespace spad
 		void UpdateAndRender( const Timer& timer ) override;
 		void UpdateImGui( const Timer& timer ) override;
 		//void RenderFrustum();
+		void RenderFrustum3();
 		void SceneReset();
 		void ModelStartUp();
 		void ModelRender( Dx11DeviceContext& deviceContext );
@@ -102,13 +103,14 @@ namespace spad
 		DepthStencil mainDS_ = DepthStencil( "mainDS_" );
 		CodeTexture clusterDS_ = CodeTexture( "clusterDS_" );
 
-		RenderTargetSize rtSize_ = RTW_1920_1080;
+		//RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
 		//RenderTargetSize rtSize_ = RTW_128_128;
-		TileSize tileSizeForTiling_ = TileSize_16x16;
+		RenderTargetSize rtSize_ = RTW_1024_1024;
+		TileSize tileSizeForTiling_ = TileSize_64x64;
 		//TileSize tileSizeForClustering_ = TileSize_32x32;
 		TileSize tileSizeForClustering_ = TileSize_16x16;
-		int numPassesForTiling_ = 3;
+		int numPassesForTiling_ = 1;
 		int numPassesForClustering_ = 4;
 
 		HlslShaderPtr decalVolumeRenderingShader_;
@@ -122,7 +124,7 @@ namespace spad
 		ConstantBuffer<CbDecalVolumeRenderingConstants> decalVolumeRenderingConstants_;
 
 		// Decal volumes
-		int maxDecalVolumes_ = 62;// 1024 * 4;
+		int maxDecalVolumes_ = 1;// 1024 * 4;
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
@@ -162,6 +164,7 @@ namespace spad
 			float nCellsYRcp;
 			float nCellsZRcp;
 			uint maxDecalIndices;
+			uint maxDecalIndicesPerCellFirstPass;
 			uint maxCellIndirectionsPerBucket;
 
 			StructuredBuffer<uint> decalIndices;
@@ -203,9 +206,9 @@ namespace spad
 			HlslShaderPtr shader_;
 			//DecalVolumeShared clustering_;
 			uint totalMemUsed_ = 0;
-			IntersectionMethod intersectionMethod_ = ClipSpace;
+			//IntersectionMethod intersectionMethod_ = ClipSpace;
 			//IntersectionMethod intersectionMethod_ = Standard;
-			//IntersectionMethod intersectionMethod_ = SAT;
+			IntersectionMethod intersectionMethod_ = SAT;
 			bool clustering_ = false;
 			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;
@@ -243,8 +246,8 @@ namespace spad
 			AppModeCount
 		};
 
-		//AppMode appMode_ = Tiling;
-		AppMode appMode_ = Clustering;
+		AppMode appMode_ = Tiling;
+		//AppMode appMode_ = Clustering;
 		//AppMode appMode_ = Scene;
 
 		enum OutputView : int

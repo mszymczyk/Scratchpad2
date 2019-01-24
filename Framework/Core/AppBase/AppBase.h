@@ -19,10 +19,10 @@ namespace spad
 		struct Param
 		{
 			const char* appName = nullptr;
-			u32 windowWidth = 1280;
-			u32 windowHeight = 720;
-			//u32 windowWidth = 1024;
-			//u32 windowHeight = 1024;
+			//u32 windowWidth = 1280;
+			//u32 windowHeight = 720;
+			u32 windowWidth = 1024;
+			u32 windowHeight = 1024;
 			bool debugDxDevice_ = false;
 		};
 

@@ -296,6 +296,393 @@ namespace spad
 		return anyOutside ? 0 : 1;
 	}
 
+
+	struct FrustumFace
+	{
+		Vector3 center;
+		Vector3 axes[2];
+	};
+
+	
+	float AdjustViewSpaceGridDepthFactor( const float z )
+	{
+		// This should match the c version of this function
+		//return z * z; // This should be the inverse of AdjustViewSpaceGridDepthFactorInverse()
+		return z;
+	}
+
+	Vector3 GetPositionInFrustum( const Vector3 inLerpFactors, const Vector3 frustumVertices[8] )
+	{
+		const Vector3 lerpFactors = Vector3( inLerpFactors.getX().getAsFloat(), inLerpFactors.getY().getAsFloat(), AdjustViewSpaceGridDepthFactor( inLerpFactors.getZ().getAsFloat() ) );
+		const Vector3 invLerpFactors = Vector3( 1.0f, 1.0f, 1.0f ) - lerpFactors;
+
+		Vector3 outPosition;
+
+		outPosition = frustumVertices[0] * ( invLerpFactors.getX().getAsFloat() * invLerpFactors.getY().getAsFloat() * invLerpFactors.getZ().getAsFloat() );
+		outPosition += frustumVertices[1] * ( lerpFactors.getX().getAsFloat() *    invLerpFactors.getY().getAsFloat() * invLerpFactors.getZ().getAsFloat() );
+		outPosition += frustumVertices[2] * ( invLerpFactors.getX().getAsFloat() * lerpFactors.getY().getAsFloat()    * invLerpFactors.getZ().getAsFloat() );
+		outPosition += frustumVertices[3] * ( lerpFactors.getX().getAsFloat() *    lerpFactors.getY().getAsFloat()    * invLerpFactors.getZ().getAsFloat() );
+
+		outPosition += frustumVertices[4] * ( invLerpFactors.getX().getAsFloat() * invLerpFactors.getY().getAsFloat() * lerpFactors.getZ().getAsFloat() );
+		outPosition += frustumVertices[5] * ( lerpFactors.getX().getAsFloat() *    invLerpFactors.getY().getAsFloat() * lerpFactors.getZ().getAsFloat() );
+		outPosition += frustumVertices[6] * ( invLerpFactors.getX().getAsFloat() * lerpFactors.getY().getAsFloat()    * lerpFactors.getZ().getAsFloat() );
+		outPosition += frustumVertices[7] * ( lerpFactors.getX().getAsFloat() *    lerpFactors.getY().getAsFloat()    * lerpFactors.getZ().getAsFloat() );
+
+		return outPosition;
+	}
+
+	void GetViewSpaceFrustumFaces( const Vector3 cellCountRcp, const Vector3 cellCoords, const Vector3 frustumVertices[8], FrustumFace outFrustumFaces[2], bool /*farPlaneUnbounded*/ )
+	{
+		//const float3 cellSize = float3( REFLECTION_PROBE_GRID_CELL_SIZE_X, REFLECTION_PROBE_GRID_CELL_SIZE_Y, REFLECTION_PROBE_GRID_CELL_SIZE_Z );
+		//const float3 cellSizeExtended = float3( REFLECTION_PROBE_GRID_CELL_SIZE_X, REFLECTION_PROBE_GRID_CELL_SIZE_Y, REFLECTION_PROBE_GRID_CELL_SIZE_Z * ( farPlaneUnbounded ? MAX_REFLECTION_CULL_RANGE : 1.0f ) );
+		const Vector3 cellSize = cellCountRcp;
+		const Vector3 cellSizeExtended = cellSize;
+		const Vector3 base = mulPerElem( Vector3( cellCoords ), cellSize );
+
+		// TODO: pass data in a nicer way to simplify the computations below: origin + screen_x_at_1 + screen_y_at_1 + z_axis + z_near_far
+
+		for ( int i = 0; i < 2; i++ )
+		{
+			Vector3 center = GetPositionInFrustum( base + mulPerElem( cellSizeExtended, Vector3( 0.5f, 0.5f, (float)i ) ), frustumVertices );
+			outFrustumFaces[i].center = center;
+			outFrustumFaces[i].axes[0] = center - GetPositionInFrustum( base + mulPerElem( cellSizeExtended, Vector3( 1.0f, 0.5f, (float)i ) ), frustumVertices );
+			outFrustumFaces[i].axes[1] = center - GetPositionInFrustum( base + mulPerElem( cellSizeExtended, Vector3( 0.5f, 1.0f, (float)i ) ), frustumVertices );
+		}
+	}
+
+	void GetFrustumCorners( const Vector3 eyeAxis[3], const Vector3 &eyeOffset, float depth0, float depth1, Vector3 frustumCorners[8] )
+	{
+		float left = -1;
+		float right = 1;
+
+		frustumCorners[0] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, -1, depth0 ) );
+		frustumCorners[1] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, -1, depth0 ) );
+		frustumCorners[2] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, 1, depth0 ) );
+		frustumCorners[3] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, 1, depth0 ) );
+
+		frustumCorners[4] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, -1, depth1 ) );
+		frustumCorners[5] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, -1, depth1 ) );
+		frustumCorners[6] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, 1, depth1 ) );
+		frustumCorners[7] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, 1, depth1 ) );
+	}
+
+	void DecalVolume_GetFrustumClusterFaces( FrustumFace faces[2], const Vector3 cellCount, const Vector3 cellCountRcp, Vector3 cellIndex, Vector4 tanHalfFov, float nearPlane, float farPlane, float /*farPlaneOverNearPlane*/, bool /*farClip = false*/ )
+	{
+		// clip-space (-1,1) position of the view ray through the centroid of the cluster frustum projected on screen
+		//float2 uv = ( ( float2( clusterXYZ.xy ) + 0.5f ) * g_sceneConstants.frustumGridClusterSize.xy + 0.5f ) / g_sceneConstants.frustumGridLightParams.zw;
+		Vector3 uv = mulPerElem( cellIndex + Vector3( 0.5f ), cellCountRcp );
+		//uv = uv * float2( -2.0f, -2.0f ) + float2( 1.0f, 1.0f );
+		//uv = uv * float2( 2.0f, 2.0f ) - float2( 1.0f, 1.0f );
+		uv = mulPerElem( uv, Vector3( 2.0f ) ) - Vector3( 1.0f );
+		//uv.y = -uv.y;
+
+		//float2 uv00 = cellIndex.xy * cellCountRcp.xy;
+		//float2 uv10 = (cellIndex.xy + float2(1,0)) * cellCountRcp.xy;
+
+		//// view-space depth of the near and far planes for the cluster frustum
+		//float depth0 = VolumeZPosToDepth( float( clusterXYZ.z ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth );
+		//float depth1 = ( farClip || ( clusterXYZ.z < FRUSTUM_GRID_CLUSTER_SIZE_Z - 1 ) ) ? VolumeZPosToDepth( float( clusterXYZ.z + 1 ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth ) : FRUSTUM_GRID_CLUSTERING_MAX_DEPTH;
+		//#if DECAL_VOLUME_CLUSTER_3D
+		//	float depth0 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
+		//	float depth1 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+		//#else // #if DECAL_VOLUME_CLUSTER_3D
+		float depth0 = nearPlane;
+		float depth1 = farPlane;
+		//float depth0 = farPlane;
+		//float depth1 = nearPlane;
+		//#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
+
+
+		// screen-space half size of the projected frustum
+		//float2 projHalfSize = 0.5f * frustumGridClusterSize.xy / frustumGridLightParams.zw;
+		//float2 projHalfSize = ( 0.5f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
+		//float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1920, 1080 );
+		//float2 projHalfSize = 0.5f * 1.0f / 32.0f;// ( 0.5f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
+		//float2 projHalfSize = ( 1.0f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
+		//float2 projHalfSize = 0.5f * cellCountRcp.xy;
+		//projHalfSize.y *= 2;
+		//projHalfSize *= 0.01f;
+		//Vector3 projHalfSize( 0.5f * 1.0f / 32.0f );
+		Vector3 projHalfSize( 0.5f );
+
+		Vector3 eyeAxis[3];
+		eyeAxis[0] = Vector3( 1, 0, 0 ) * tanHalfFov.getX();
+		eyeAxis[1] = Vector3( 0, 1, 0 ) * tanHalfFov.getY();
+		eyeAxis[2] = Vector3( 0, 0, -1 );
+		Vector3 eyeOffset = Vector3( 0, 0, 0 );
+
+		faces[0].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv.getX().getAsFloat(), uv.getY().getAsFloat(), depth0 );
+		faces[0].axes[0] = eyeAxis[0] * projHalfSize.getX() * depth0;
+		faces[0].axes[1] = eyeAxis[1] * projHalfSize.getY() * depth0;
+
+		faces[1].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv.getX().getAsFloat(), uv.getY().getAsFloat(), depth1 );
+		faces[1].axes[0] = eyeAxis[0] * projHalfSize.getX() * depth1;
+		faces[1].axes[1] = eyeAxis[1] * projHalfSize.getY() * depth1;
+
+		Vector3 uv00 = mulPerElem( cellIndex, cellCountRcp );
+		Vector3 uv10 = mulPerElem( cellIndex + Vector3( 1, 0, 0 ), cellCountRcp );
+		Vector3 uv01 = mulPerElem( cellIndex + Vector3( 0, 1, 0 ), cellCountRcp );
+
+		//Vector3 c000 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv00.getX().getAsFloat(), uv00.getY().getAsFloat(), depth0 );
+		Vector3 c100 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv10.getX().getAsFloat(), uv10.getY().getAsFloat(), depth0 );
+		//Vector3 c001 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv00.getX().getAsFloat(), uv00.getY().getAsFloat(), depth1 );
+		Vector3 c101 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv10.getX().getAsFloat(), uv10.getY().getAsFloat(), depth1 );
+
+		Vector3 c010 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv01.getX().getAsFloat(), uv01.getY().getAsFloat(), depth0 );
+		Vector3 c011 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv01.getX().getAsFloat(), uv01.getY().getAsFloat(), depth1 );
+
+		//faces[0].axes[0] = c100 - c000;
+		//faces[0].axes[1] = c100 - c000;
+		//faces[1].axes[0] = c101 - c001;
+		//faces[1].axes[1] = c101 - c001;
+		//faces[0].axes[0] = c100 - faces[0].center;
+		//faces[0].axes[1] = c100 - faces[0].center;
+		//faces[1].axes[0] = c101 - faces[1].center;
+		//faces[1].axes[1] = c101 - faces[1].center;
+		faces[0].axes[0] = c100 - faces[0].center;
+		faces[0].axes[1] = c010 - faces[0].center;
+		faces[1].axes[0] = c101 - faces[1].center;
+		faces[1].axes[1] = c011 - faces[1].center;
+
+
+		//float left = -1;
+		//float right = 1;
+
+		//frustumCorners[0] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, -1, depth0 ) );
+		//frustumCorners[1] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, -1, depth0 ) );
+		//frustumCorners[2] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, 1, depth0 ) );
+		//frustumCorners[3] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, 1, depth0 ) );
+
+		//frustumCorners[4] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, -1, depth1 ) );
+		//frustumCorners[5] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, -1, depth1 ) );
+		//frustumCorners[6] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, 1, depth1 ) );
+		//frustumCorners[7] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, 1, depth1 ) );
+
+		//GetViewSpaceFrustumFaces( cellCountRcp, cellIndex, frustumCorners, faces, false );
+	}
+
+	Vector3 GetFrustumVertex( const FrustumFace frustumFaces[2], int vertIndex )
+	{
+		int sx = vertIndex & 1;
+		int sy = ( vertIndex >> 1 ) & 1;
+		int iz = vertIndex >> 2;
+
+		//return frustumFaces[iz].center + frustumFaces[iz].axes[0] * (float)sx + frustumFaces[iz].axes[1] * (float)sy;
+
+		float sxn = sx * 2.0f - 1.0f;
+		float syn = sy * 2.0f - 1.0f;
+		return frustumFaces[iz].center + frustumFaces[iz].axes[0] * (float)sxn + frustumFaces[iz].axes[1] * (float)syn;
+	}
+
+
+	Vector3 GetFrustumAxis( const FrustumFace frustumFaces[2], int axisIndex )
+	{
+		// NOTE: These if statements are meant to be evaluated and removed at compile time after loop unrolling.
+		//       The idea is to avoid storing frustumAxes in registers. Maybe worth???
+
+		if ( axisIndex == 0 ) // z
+			return cross( frustumFaces[0].axes[0], frustumFaces[0].axes[1] );
+		if ( axisIndex == 1 ) // x1
+			return cross( frustumFaces[0].axes[0], GetFrustumVertex( frustumFaces, 4 ) - GetFrustumVertex( frustumFaces, 0 ) );
+		if ( axisIndex == 2 ) // y1
+			return cross( frustumFaces[0].axes[1], GetFrustumVertex( frustumFaces, 4 ) - GetFrustumVertex( frustumFaces, 0 ) );
+		if ( axisIndex == 3 ) // x2
+			return cross( frustumFaces[0].axes[0], GetFrustumVertex( frustumFaces, 7 ) - GetFrustumVertex( frustumFaces, 3 ) );
+		if ( axisIndex == 4 ) // y2
+			return cross( frustumFaces[0].axes[1], GetFrustumVertex( frustumFaces, 7 ) - GetFrustumVertex( frustumFaces, 3 ) );
+
+		return Vector3( 0, 0, 1 );
+	}
+
+	bool AreIntervalsDisjoint( const Float2 a, const Float2 b )
+	{
+		return ( a.y < b.x ) || ( b.y < a.x );
+	}
+
+
+	void ExtendIntervalWithValue( const float x, Float2 &inOutInterval )
+	{
+		if ( x < inOutInterval.x )
+		{
+			inOutInterval.x = x;
+		}
+		if ( x > inOutInterval.y )
+		{
+			inOutInterval.y = x;
+		}
+	}
+
+
+	void ExtendIntervalWithInterval( const Float2 v, Float2 &inOutInterval )
+	{
+		if ( v.x < inOutInterval.x )
+		{
+			inOutInterval.x = v.x;
+		}
+		if ( v.y > inOutInterval.y )
+		{
+			inOutInterval.y = v.y;
+		}
+	}
+
+	struct OrientedBoundingBox
+	{
+		Vector3 center;
+		Vector3 axes[3];
+		Vector3 halfSize;
+	};
+
+	Float2 GetObbProjectedInterval( const OrientedBoundingBox obb, const Vector3 axis )
+	{
+		const float centerProjectionOBB = dot( obb.center, axis ).getAsFloat();
+
+		// TODO: the halfSize can be premultiplied into the obb.axis vectors to save some computation. I'm not sure if that will break other code that relies on this header though...
+
+		const float extentsProjectionOBB
+			= fabs( dot( obb.axes[0], axis ).getAsFloat() * obb.halfSize.getX().getAsFloat() )
+			+ fabs( dot( obb.axes[1], axis ).getAsFloat() * obb.halfSize.getY().getAsFloat() )
+			+ fabs( dot( obb.axes[2], axis ).getAsFloat() * obb.halfSize.getZ().getAsFloat() );
+
+		return Float2( centerProjectionOBB - extentsProjectionOBB, centerProjectionOBB + extentsProjectionOBB );
+	}
+
+	Float2 GetFrustumFaceProjectedInterval( const FrustumFace ff, const Vector3 axis )
+	{
+		const float centerProjectionFF = dot( ff.center, axis ).getAsFloat();
+
+		const float extentsProjectionFF
+			= fabs( dot( ff.axes[0], axis ).getAsFloat() )
+			+ fabs( dot( ff.axes[1], axis ).getAsFloat() );
+
+		return Float2( centerProjectionFF - extentsProjectionFF, centerProjectionFF + extentsProjectionFF );
+	}
+
+
+	Float2 GetFrustumProjectedInterval( const FrustumFace frustumFaces[2], const Vector3 axis )
+	{
+		Float2 outInterval = GetFrustumFaceProjectedInterval( frustumFaces[0], axis );
+		ExtendIntervalWithInterval( GetFrustumFaceProjectedInterval( frustumFaces[1], axis ), outInterval );
+		return outInterval;
+
+		//Vector3 frustumCorners2[8];
+		//for ( int i = 0; i < 8; ++i )
+		//{
+		//	frustumCorners2[i] = GetFrustumVertex( frustumFaces, i );
+		//}
+
+		//const float projection0 = dot( frustumCorners2[0], axis ).getAsFloat();
+		//Float2 outInterval = Float2( projection0, projection0 );
+
+		//for ( uint vertexIndex = 1; vertexIndex < 8; vertexIndex++ )
+		//{
+		//	const float projection = dot( frustumCorners2[vertexIndex], axis ).getAsFloat();
+
+		//	outInterval.x = minOfPair( outInterval.x, projection );
+		//	outInterval.y = maxOfPair( outInterval.y, projection );
+		//}
+
+		//return outInterval;
+
+	}
+
+	bool R_AreFrustumObbProjectedIntervalsDisjoint( const OrientedBoundingBox obb, const FrustumFace frustumFaces[2], const Vector3 axis )
+	{
+		const Float2 obbInterval = GetObbProjectedInterval( obb, axis );
+		Float2 frustumInterval = GetFrustumProjectedInterval( frustumFaces, axis );
+		return AreIntervalsDisjoint( frustumInterval, obbInterval );
+	}
+
+	bool TestFrustumObbIntersectionSAT( const OrientedBoundingBox obb, const FrustumFace frustumFaces[2] )
+	{
+		/// Test box axes
+		// these are cheap to evaluate, and are orthogonal
+		// also, there is potential to early out, so do first
+		//int containmentMask = 0;
+
+		//[unroll]
+		for ( uint axisIndex = 0; axisIndex < 3; axisIndex++ )
+		{
+	//#if USE_OBB_FRUSTUM_EARLY_ACCEPT
+	//		if ( R_AreFrustumObbProjectedIntervalsDisjointMask( obb, frustumFaces, obb.axes[axisIndex], containmentMask ) ) return false;
+	//#else
+			if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, obb.axes[axisIndex] ) ) return false;
+	//#endif
+		}
+
+		//if ( containmentMask == 7 )
+		//	return true;
+
+		/// Test other axes. we want to check axes that are as different from each other as possible first to get early rejections
+		/// this means that some of the checks are interleaved
+
+	//	// ROUND 1
+	//#if USE_OBB_FRUSTUM_FACE_AXES
+	//	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, obb.center - frustumFaces[0].center ) ) return false; // Frustum face center to OBB center
+	//#endif
+	//
+		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 0 ) ) ) return false; // Frustum plane
+		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 1 ) ) ) return false; // Frustum plane
+		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 2 ) ) ) return false; // Frustum plane
+
+	//#if USE_OBB_FRUSTUM_EDGE_CROSSES
+	//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 0 ), GetFrustumVertex( frustumFaces, 1 ) ) ) return false; // Edge cross product
+	//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 0 ), GetFrustumVertex( frustumFaces, 2 ) ) ) return false; // Edge cross product
+	//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 0 ), GetFrustumVertex( frustumFaces, 4 ) ) ) return false; // Edge cross product
+	//#endif
+
+	//	// ROUND 2
+	//#if USE_OBB_FRUSTUM_FACE_AXES
+	//	if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, obb.center - frustumFaces[1].center ) ) return false; // Frustum face center to OBB center
+	//#endif
+
+		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 3 ) ) ) return false; // Frustum plane
+		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, GetFrustumAxis( frustumFaces, 4 ) ) ) return false; // Frustum plane
+
+	//#if USE_OBB_FRUSTUM_EDGE_CROSSES
+	//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 3 ), GetFrustumVertex( frustumFaces, 7 ) ) ) return false; // Edge cross product
+	//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 1 ), GetFrustumVertex( frustumFaces, 5 ) ) ) return false; // Edge cross product
+	//	if ( IsFrustumEdgeVsBoxAxesProjectionDisjoint( obb, frustumFaces, GetFrustumVertex( frustumFaces, 2 ), GetFrustumVertex( frustumFaces, 6 ) ) ) return false; // Edge cross product
+	//#endif
+
+		return true;
+	}
+
+
+	void FrustumTest( const Vector3 cellCount, const Vector3 cellCountRcp, Vector3 cellIndex, Vector4 tanHalfFov, float nearPlane, float farPlane )
+	{
+		Vector3 frustumCorners[8];
+		FrustumFace faces[2];
+
+		Vector3 eyeAxis[3];
+		eyeAxis[0] = Vector3( 1, 0, 0 ) * tanHalfFov.getX();
+		eyeAxis[1] = Vector3( 0, 1, 0 ) * tanHalfFov.getY();
+		eyeAxis[2] = Vector3( 0, 0, -1 );
+		Vector3 eyeOffset = Vector3( 0, 0, 0 );
+
+		GetFrustumCorners( eyeAxis, eyeOffset, nearPlane, farPlane, frustumCorners );
+		GetViewSpaceFrustumFaces( cellCountRcp, cellIndex, frustumCorners, faces, false );
+
+		Vector3 frustumCorners2[8];
+		for ( int i = 0; i < 8; ++i )
+		{
+			frustumCorners2[i] = GetFrustumVertex( faces, i );
+		}
+
+		OrientedBoundingBox obb;
+		obb.center = Vector3( 0, 0, -20 );
+		//obb.axes[0] = Vector3::xAxis();
+		//obb.axes[1] = Vector3::yAxis();
+		//obb.axes[2] = Vector3::zAxis();
+		Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad( -45.0f ) ) );
+		obb.axes[0] = rot.getCol0().getXYZ();
+		obb.axes[1] = rot.getCol1().getXYZ();
+		obb.axes[2] = rot.getCol2().getXYZ();
+		obb.halfSize = Vector3( 4, 1, 1 ) * floatInVec( 1.572f );
+
+		bool test = TestFrustumObbIntersectionSAT( obb, faces );
+		test = TestFrustumObbIntersectionSAT( obb, faces );
+	}
+
 	bool SettingsTestApp::StartUp()
 	{
 		uint numThreadsPerCell = 32;
@@ -1112,6 +1499,7 @@ namespace spad
 		}
 
 		//RenderFrustum2();
+		RenderFrustum3();
 
 		//DebugDrawDecalVolumes();
 
@@ -1120,7 +1508,7 @@ namespace spad
 		//debugDraw::AddLineWS( Vector3( 0, 0, 0 ), Vector3( 0, 0, 1 ), 0xffff0000, 1.0f, false );
 
 		//DrawDecalBoxes( immediateContextWrapper );
-		//DrawScreenSpaceGrid( immediateContextWrapper );
+		DrawScreenSpaceGrid( immediateContextWrapper );
 
 		//ModelStartUp();
 		//GenDecalVolumesModel();
@@ -1274,6 +1662,110 @@ namespace spad
 			clustering_ = DecalVolumeClusteringStartUp( true );
 		}
 	}
+
+	void SettingsTestApp::RenderFrustum3()
+	{
+		Vector4 tanHalfFov;
+		tanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+		tanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+		tanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+		tanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+
+		Vector3 cellCount = Vector3( 4, 4, 1 );
+		Vector3 cellCountRcp = divPerElem( Vector3( 1.0f ), cellCount );
+		FrustumTest( cellCount, cellCountRcp, Vector3( 0, 3, 0 ), tanHalfFov, 4.0f, 1000.0f );
+
+		Vector3 eyeAxis[3];
+		eyeAxis[0] = Vector3( 1, 0, 0 ) * tanHalfFov.getX();
+		eyeAxis[1] = Vector3( 0, 1, 0 ) * tanHalfFov.getY();
+		eyeAxis[2] = Vector3( 0, 0, -1 );
+		Vector3 eyeOffset = Vector3( 0, 0, 0 );
+
+		float depth0 = 4;
+		float depth1 = 1000;
+		Vector3 frustumCorners[8];
+
+		float sxRcp = 1.0f / 4.0f;
+		float syRcp = 1.0f / 4.0f;
+
+		for ( uint y = 0; y < 4; ++y )
+		{
+			for ( uint x = 0; x < 4; ++x )
+			{
+				float uvx = x * sxRcp;
+				float uvy = y * syRcp;
+
+				float left = uvx * 2 - 1;
+				float right = (uvx + sxRcp) * 2 - 1;
+				float bottom = uvy * 2 - 1;
+				float top = ( uvy + syRcp ) * 2 - 1;
+
+				frustumCorners[0] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, bottom, depth0 ) );
+				frustumCorners[1] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, bottom, depth0 ) );
+				frustumCorners[2] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, top, depth0 ) );
+				frustumCorners[3] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, top, depth0 ) );
+
+				frustumCorners[4] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, bottom, depth1 ) );
+				frustumCorners[5] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, bottom, depth1 ) );
+				frustumCorners[6] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( left, top, depth1 ) );
+				frustumCorners[7] = WorldPositionFromScreenCoords2( eyeAxis, eyeOffset, Vector3( right, top, depth1 ) );
+
+				debugDraw::AddLineWS( frustumCorners[0], frustumCorners[1], 0xffffffff, 1.0f, false );
+				debugDraw::AddLineWS( frustumCorners[1], frustumCorners[3], 0xffffffff, 1.0f, false );
+				debugDraw::AddLineWS( frustumCorners[3], frustumCorners[2], 0xffffffff, 1.0f, false );
+				debugDraw::AddLineWS( frustumCorners[2], frustumCorners[0], 0xffffffff, 1.0f, false );
+
+				debugDraw::AddLineWS( frustumCorners[0], frustumCorners[4], 0xffffffff, 1.0f, false );
+				debugDraw::AddLineWS( frustumCorners[1], frustumCorners[5], 0xffffffff, 1.0f, false );
+				debugDraw::AddLineWS( frustumCorners[2], frustumCorners[6], 0xffffffff, 1.0f, false );
+				debugDraw::AddLineWS( frustumCorners[3], frustumCorners[7], 0xffffffff, 1.0f, false );
+			}
+		}
+
+		OrientedBoundingBox obb;
+		obb.center = Vector3( 0, 0, -20 );
+		//obb.axes[0] = Vector3::xAxis();
+		//obb.axes[1] = Vector3::yAxis();
+		//obb.axes[2] = Vector3::zAxis();
+		Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad( -45.0f ) ) );
+		obb.axes[0] = rot.getCol0().getXYZ();
+		obb.axes[1] = rot.getCol1().getXYZ();
+		obb.axes[2] = rot.getCol2().getXYZ();
+		obb.halfSize = Vector3( 4, 1, 1 ) * floatInVec( 1.572f );
+
+		Vector3 x = obb.axes[0] * obb.halfSize.getX();
+		Vector3 y = obb.axes[1] * obb.halfSize.getY();
+		Vector3 z = obb.axes[2] * obb.halfSize.getZ();
+
+		Vector3 bc[8];
+		bc[0] = obb.center - x - y + z;
+		bc[1] = obb.center + x - y + z;
+		bc[2] = obb.center - x + y + z;
+		bc[3] = obb.center + x + y + z;
+
+		bc[4] = obb.center - x - y - z;
+		bc[5] = obb.center + x - y - z;
+		bc[6] = obb.center - x + y - z;
+		bc[7] = obb.center + x + y - z;
+
+		uint color = 0xff0000ff;
+		debugDraw::AddLineWS( bc[0], bc[1], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[1], bc[3], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[3], bc[2], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[2], bc[0], color, 1.0f, false );
+
+		debugDraw::AddLineWS( bc[4], bc[5], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[5], bc[7], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[7], bc[6], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[6], bc[4], color, 1.0f, false );
+
+		debugDraw::AddLineWS( bc[1], bc[5], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[3], bc[7], color, 1.0f, false );
+
+		debugDraw::AddLineWS( bc[0], bc[4], color, 1.0f, false );
+		debugDraw::AddLineWS( bc[2], bc[6], color, 1.0f, false );
+	}
+
 
 	u32 GetMipMapCountFromDimesions( u32 mipW, u32 mipH, u32 mipD )
 	{
@@ -1564,91 +2056,6 @@ namespace spad
 		outVertices[7] = v7;
 	}
 
-	struct FrustumFace
-	{
-		Vector3 center;
-		Vector3 axes[2];
-	};
-
-	void DecalVolume_GetFrustumClusterFaces( FrustumFace faces[2], const Vector3 cellCount, const Vector3 cellCountRcp, Vector3 cellIndex, Vector4 tanHalfFov, float nearPlane, float farPlane, float farPlaneOverNearPlane, bool farClip = false )
-	{
-		// clip-space (-1,1) position of the view ray through the centroid of the cluster frustum projected on screen
-		//float2 uv = ( ( float2( clusterXYZ.xy ) + 0.5f ) * g_sceneConstants.frustumGridClusterSize.xy + 0.5f ) / g_sceneConstants.frustumGridLightParams.zw;
-		Vector3 uv = mulPerElem( cellIndex + Vector3(0.5f), cellCountRcp );
-		//uv = uv * float2( -2.0f, -2.0f ) + float2( 1.0f, 1.0f );
-		//uv = uv * float2( 2.0f, 2.0f ) - float2( 1.0f, 1.0f );
-		uv = mulPerElem( uv, Vector3( 2.0f ) ) - Vector3( 1.0f );
-		//uv.y = -uv.y;
-
-		//float2 uv00 = cellIndex.xy * cellCountRcp.xy;
-		//float2 uv10 = (cellIndex.xy + float2(1,0)) * cellCountRcp.xy;
-
-		//// view-space depth of the near and far planes for the cluster frustum
-		//float depth0 = VolumeZPosToDepth( float( clusterXYZ.z ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth );
-		//float depth1 = ( farClip || ( clusterXYZ.z < FRUSTUM_GRID_CLUSTER_SIZE_Z - 1 ) ) ? VolumeZPosToDepth( float( clusterXYZ.z + 1 ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth ) : FRUSTUM_GRID_CLUSTERING_MAX_DEPTH;
-	//#if DECAL_VOLUME_CLUSTER_3D
-	//	float depth0 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
-	//	float depth1 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
-	//#else // #if DECAL_VOLUME_CLUSTER_3D
-		float depth0 = nearPlane;
-		float depth1 = farPlane;
-		//float depth0 = farPlane;
-		//float depth1 = nearPlane;
-	//#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
-
-
-		// screen-space half size of the projected frustum
-		//float2 projHalfSize = 0.5f * frustumGridClusterSize.xy / frustumGridLightParams.zw;
-		//float2 projHalfSize = ( 0.5f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
-		//float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1920, 1080 );
-		//float2 projHalfSize = 0.5f * 1.0f / 32.0f;// ( 0.5f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
-		//float2 projHalfSize = ( 1.0f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
-		//float2 projHalfSize = 0.5f * cellCountRcp.xy;
-		//projHalfSize.y *= 2;
-		//projHalfSize *= 0.01f;
-		//Vector3 projHalfSize( 0.5f * 1.0f / 32.0f );
-		Vector3 projHalfSize( 0.5f );
-
-		Vector3 eyeAxis[3];
-		eyeAxis[0] = Vector3( 1, 0, 0 ) * tanHalfFov.getX();
-		eyeAxis[1] = Vector3( 0, 1, 0 ) * tanHalfFov.getY();
-		eyeAxis[2] = Vector3( 0, 0, -1 );
-		Vector3 eyeOffset = Vector3( 0, 0, 0 );
-
-		faces[0].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv.getX().getAsFloat(), uv.getY().getAsFloat(), depth0 );
-		faces[0].axes[0] = eyeAxis[0] * projHalfSize.getX() * depth0;
-		faces[0].axes[1] = eyeAxis[1] * projHalfSize.getY() * depth0;
-
-		faces[1].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv.getX().getAsFloat(), uv.getY().getAsFloat(), depth1 );
-		faces[1].axes[0] = eyeAxis[0] * projHalfSize.getX() * depth1;
-		faces[1].axes[1] = eyeAxis[1] * projHalfSize.getY() * depth1;
-
-		Vector3 uv00 = mulPerElem( cellIndex, cellCountRcp );
-		Vector3 uv10 = mulPerElem( cellIndex + Vector3( 1, 0, 0 ), cellCountRcp );
-		Vector3 uv01 = mulPerElem( cellIndex + Vector3( 0, 1, 0 ), cellCountRcp );
-
-		//Vector3 c000 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv00.getX().getAsFloat(), uv00.getY().getAsFloat(), depth0 );
-		Vector3 c100 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv10.getX().getAsFloat(), uv10.getY().getAsFloat(), depth0 );
-		//Vector3 c001 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv00.getX().getAsFloat(), uv00.getY().getAsFloat(), depth1 );
-		Vector3 c101 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv10.getX().getAsFloat(), uv10.getY().getAsFloat(), depth1 );
-
-		Vector3 c010 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv01.getX().getAsFloat(), uv01.getY().getAsFloat(), depth0 );
-		Vector3 c011 = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv01.getX().getAsFloat(), uv01.getY().getAsFloat(), depth1 );
-
-		//faces[0].axes[0] = c100 - c000;
-		//faces[0].axes[1] = c100 - c000;
-		//faces[1].axes[0] = c101 - c001;
-		//faces[1].axes[1] = c101 - c001;
-		//faces[0].axes[0] = c100 - faces[0].center;
-		//faces[0].axes[1] = c100 - faces[0].center;
-		//faces[1].axes[0] = c101 - faces[1].center;
-		//faces[1].axes[1] = c101 - faces[1].center;
-		faces[0].axes[0] = c100 - faces[0].center;
-		faces[0].axes[1] = c010 - faces[0].center;
-		faces[1].axes[0] = c101 - faces[1].center;
-		faces[1].axes[1] = c011 - faces[1].center;
-	}
-
 	void SettingsTestApp::GenDecalVolumesRandom()
 	{
 		ClearDecalVolumes();
@@ -1723,21 +2130,25 @@ namespace spad
 			hsY *= decalVolumesRandomScale_;
 			hsZ *= decalVolumesRandomScale_;
 
-			//nX = 0.5f;
-			//nY = 0.5f;
-			//nZ = 0.01f;
+			nX = 0.5f;
+			nY = 0.5f;
+			nZ = 0.01f;
 
 			//Vector3 pos = unprojectNormalizedDx( Vector3( nX, nY, nZ ), viewProjInv );
 			float linearZ = testFrustumNearPlane + nZ * ( decalVolumeFarPlane_ - testFrustumNearPlane );
+			linearZ = 20;
 			Vector3 pos = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, nX * 2 - 1, nY * 2 - 1, linearZ );
 
 			dv.position = Float3( pos );
 
 			dv.halfSize = Vector4( hsX, hsY, hsZ, 0 );
+			//dv.halfSize = Vector4( hsX );
+			dv.halfSize = Vector4( 4, 1, 1, 0 );
+			dv.halfSize *= decalVolumesRandomScale_;
 
-			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
+			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
 			//Matrix4 rot = Matrix4::identity();
-			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad(45.0f) ) );
+			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad(-45.0f) ) );
 			dv.x = rot.getCol0();
 			dv.y = rot.getCol1();
 			dv.z = rot.getCol2();
@@ -1804,9 +2215,14 @@ namespace spad
 		decalVolumesCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
 		decalVolumesTestCulledGPU_.Initialize( dx11_->getDevice(), numDecalVolumes_, nullptr, false, true, false );
 
-		float nCellsX = 1.0f;
+		float nCellsX = 16.0f;
 		FrustumFace faces[2];
 		DecalVolume_GetFrustumClusterFaces( faces, Vector3( nCellsX ), Vector3( 1.0f / nCellsX ), Vector3( 0.0f ), tanHalfFov, testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, false );
+
+		for ( uint iCellX = 0; iCellX < 16; ++iCellX )
+		{
+			DecalVolume_GetFrustumClusterFaces( faces, Vector3( nCellsX, 1.0f, 1.0f ), Vector3( 1.0f / nCellsX, 1.0f, 1.0f ), Vector3( (float)iCellX, 0, 0 ), tanHalfFov, testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, false );
+		}
 	}
 
 	void SettingsTestApp::GenDecalVolumesModel()
@@ -2603,8 +3019,11 @@ namespace spad
 	{
 		SPAD_ASSERT( numPasses > 0 );
 
-		uint nCellsXBase = ( rtWidth + tileSize - 1 ) / tileSize;
-		uint nCellsYBase = ( rtHeight + tileSize - 1 ) / tileSize;
+		uint tileSizeX = tileSize;
+		uint tileSizeY = tileSize;// 1024;
+
+		uint nCellsXBase = ( rtWidth + tileSizeX - 1 ) / tileSizeX;
+		uint nCellsYBase = ( rtHeight + tileSizeY - 1 ) / tileSizeY;
 
 		//const uint maxDivider = 1 << ( numPasses - 1 );
 		//const uint a = nCellsYBase / maxDivider;
@@ -2660,7 +3079,14 @@ namespace spad
 
 		clusteringPtr->constants_.Initialize( dxDevice );
 		clusteringPtr->timer_.Initialize( dxDevice );
-		clusteringPtr->shader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
+		if ( clustering )
+		{
+			clusteringPtr->shader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_clustering.hlslc_packed" );
+		}
+		else
+		{
+			clusteringPtr->shader_ = LoadCompiledFxFile( "DataWin\\Shaders\\hlsl\\compiled\\cs_decal_volume_tiling.hlslc_packed" );
+		}
 
 		clusteringPtr->passes_.resize( clustering ? numPassesForClustering_ : numPassesForTiling_ );
 
@@ -2742,15 +3168,19 @@ namespace spad
 			{
 				if ( clustering )
 				{
-					p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 4, 1 );
+					p.maxDecalIndicesPerCellFirstPass = maxOfPair( maxDecalVolumes_ / 4, 1 );
 				}
 				else
 				{
-					p.maxDecalIndices = cellCount * maxOfPair( maxDecalVolumes_ / 4, 1 );
+					p.maxDecalIndicesPerCellFirstPass = maxOfPair( maxDecalVolumes_ / 2, 1 );
 				}
+
+				p.maxDecalIndices = cellCount * p.maxDecalIndicesPerCellFirstPass;
 			}
 			else if ( lastPass )
 			{
+				p.maxDecalIndicesPerCellFirstPass = 0;
+
 				if ( clustering )
 				{
 					p.maxDecalIndices = cellCount + cellCount * 8;// *( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
@@ -2765,6 +3195,8 @@ namespace spad
 			}
 			else
 			{
+				p.maxDecalIndicesPerCellFirstPass = 0;
+
 				if ( clustering )
 				{
 					//p.maxDecalIndices = ( cellCountSqr / 8 ) * (256 + 64) * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
@@ -3004,7 +3436,7 @@ namespace spad
 			data.constants_.data.dvCellCountRcp[2] = p.nCellsZRcp;
 			data.constants_.data.dvCellCountRcp[3] = 0;
 			data.constants_.data.dvPassLimits[0] = p.maxDecalIndices;
-			data.constants_.data.dvPassLimits[1] = data.clustering_ ? maxDecalVolumes_ / 4 : maxDecalVolumes_ / 2;
+			data.constants_.data.dvPassLimits[1] = p.maxDecalIndicesPerCellFirstPass;
 			data.constants_.data.dvPassLimits[2] = p.maxCellIndirectionsPerBucket;
 			data.constants_.data.dvPassLimits[3] = 0;
 
@@ -3042,7 +3474,7 @@ namespace spad
 
 			decalVolumesCulledCountGPU_.setCS_SRV( deviceContext.context, REGISTER_BUFFER_DECAL_VOLUME_IN_DECALS_COUNT );
 
-			if ( lastPass && !data.clustering_ )
+			if ( lastPass && !data.clustering_ && appMode_ == Scene )
 			{
 				deviceContext.setCS_SRV( REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH, clusterDS_.GetSRV( 0, 4 ) );
 			}
@@ -3504,20 +3936,22 @@ namespace spad
 
 	void SettingsTestApp::DrawScreenSpaceGrid( Dx11DeviceContext& /*deviceContext*/ )
 	{
-		//uint windowWidth = dx11_->getBackBufferWidth();
-		//uint windowHeight = dx11_->getBackBufferHeight();
-		//uint xStep = windowWidth / DECAL_VOLUME_CLUSTER_CELLS_X;
-		//uint yStep = windowHeight / DECAL_VOLUME_CLUSTER_CELLS_Y;
+		uint windowWidth = dx11_->getBackBufferWidth();
+		uint windowHeight = dx11_->getBackBufferHeight();
+		uint nCellsX = tiling_->passes_.back().nCellsX;
+		uint nCellsY = tiling_->passes_.back().nCellsY;
+		uint xStep = windowWidth / nCellsX;
+		uint yStep = windowHeight / nCellsY;
 
-		//for ( uint x = xStep; x < windowWidth; x += xStep )
-		//{
-		//	debugDraw::AddLineSS( x, 0, x, windowHeight, 0xffffffff );
-		//}
+		for ( uint x = xStep; x < windowWidth; x += xStep )
+		{
+			debugDraw::AddLineSS( x, 0, x, windowHeight, 0xffffffff );
+		}
 
-		//for ( uint y = 0; y < windowHeight; y += yStep )
-		//{
-		//	debugDraw::AddLineSS( 0, y, windowWidth, y, 0xff808080 );
-		//}
+		for ( uint y = 0; y < windowHeight; y += yStep )
+		{
+			debugDraw::AddLineSS( 0, y, windowWidth, y, 0xff808080 );
+		}
 	}
 
 	void SettingsTestApp::GetRenderTargetSize( RenderTargetSize rtSize, uint &rtWidth, uint &rtHeight )
