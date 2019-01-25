@@ -39,43 +39,43 @@ passes :
 		}
 	}
 
-	//cs_decal_volume_cluster_first_pass = {
-	//	ComputeProgram = {
-	//		EntryName = "cs_decal_volume_cluster_first_pass";
-	//		cdefines = {
-	//			DECAL_VOLUME_CLUSTER_FIRST_PASS = ( "1" );
-	//			DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1", "2", "3" );
-	//			DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-	//		}
-	//	}
-	//}
+	cs_decal_volume_cluster_first_pass = {
+		ComputeProgram = {
+			EntryName = "cs_decal_volume_cluster_first_pass";
+			cdefines = {
+				DECAL_VOLUME_CLUSTER_FIRST_PASS = ( "1" );
+				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1", "2", "3" );
+				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
+			}
+		}
+	}
 
-	//cs_decal_volume_cluster_mid_pass = {
-	//	ComputeProgram = {
-	//		EntryName = "cs_decal_volume_cluster_mid_pass";
-	//		cdefines = {
-	//			DECAL_VOLUME_CLUSTER_MID_PASS = ( "1" );
-	//			DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1", "2", "3" );
-	//			DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-	//			//DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
-	//			DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "-2" );
-	//		}
-	//	}
-	//}
+	cs_decal_volume_cluster_mid_pass = {
+		ComputeProgram = {
+			EntryName = "cs_decal_volume_cluster_mid_pass";
+			cdefines = {
+				DECAL_VOLUME_CLUSTER_MID_PASS = ( "1" );
+				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1", "2", "3" );
+				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
+				//DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
+				DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "-2" );
+			}
+		}
+	}
 
-	//cs_decal_volume_cluster_last_pass = {
-	//	ComputeProgram = {
-	//		EntryName = "cs_decal_volume_cluster_mid_pass";
-	//		cdefines = {
-	//			DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
-	//			//DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH = ( "1" )
-	//			DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1", "2", "3" );
-	//			DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
-	//			//DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
-	//			DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "-2" );
-	//		}
-	//	}
-	//}
+	cs_decal_volume_cluster_last_pass = {
+		ComputeProgram = {
+			EntryName = "cs_decal_volume_cluster_mid_pass";
+			cdefines = {
+				DECAL_VOLUME_CLUSTER_LAST_PASS = ( "1" );
+				//DECAL_VOLUME_CLUSTER_USE_MIN_MAX_DEPTH = ( "1" )
+				DECAL_VOLUME_INTERSECTION_METHOD = ( "0", "1", "2", "3" );
+				DECAL_VOLUME_CLUSTER_BUCKETS = ( "0", "1" );
+				//DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "2", "4", "8", "16", "32", "64", "-1", "-2" );
+				DECAL_VOLUME_CLUSTER_SUBGROUP = ( "1", "-2" );
+			}
+		}
+	}
 };
 #endif // FX_PASSES
 #endif // FX_HEADER

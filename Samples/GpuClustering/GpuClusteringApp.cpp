@@ -2130,58 +2130,58 @@ namespace spad
 			hsY *= decalVolumesRandomScale_;
 			hsZ *= decalVolumesRandomScale_;
 
-			nX = 0.5f;
-			nY = 0.5f;
-			nZ = 0.01f;
+			//nX = 0.5f;
+			//nY = 0.5f;
+			//nZ = 0.01f;
 
 			//Vector3 pos = unprojectNormalizedDx( Vector3( nX, nY, nZ ), viewProjInv );
 			float linearZ = testFrustumNearPlane + nZ * ( decalVolumeFarPlane_ - testFrustumNearPlane );
-			linearZ = 20;
+			//linearZ = 20;
 			Vector3 pos = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, nX * 2 - 1, nY * 2 - 1, linearZ );
 
 			dv.position = Float3( pos );
 
 			dv.halfSize = Vector4( hsX, hsY, hsZ, 0 );
 			//dv.halfSize = Vector4( hsX );
-			dv.halfSize = Vector4( 4, 1, 1, 0 );
+			//dv.halfSize = Vector4( 4, 1, 1, 0 );
 			dv.halfSize *= decalVolumesRandomScale_;
 
-			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
+			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
 			//Matrix4 rot = Matrix4::identity();
-			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad(-45.0f) ) );
+			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad(-45.0f) ) );
 			dv.x = rot.getCol0();
 			dv.y = rot.getCol1();
 			dv.z = rot.getCol2();
 
-			Vector4 boxVertices[8];
-			Vector4 xs = Vector4( dv.x.x * dv.halfSize.x, dv.x.y * dv.halfSize.x, dv.x.z * dv.halfSize.x, 1.0f );
-			Vector4 ys = Vector4( dv.y.x * dv.halfSize.y, dv.y.y * dv.halfSize.y, dv.y.z * dv.halfSize.y, 1.0f );
-			Vector4 zs = Vector4( dv.z.x * dv.halfSize.z, dv.z.y * dv.halfSize.z, dv.z.z * dv.halfSize.z, 1.0f );
-			GetBoxCorners( Vector4( pos, 1.0f ), xs, ys, zs, boxVertices );
+			//Vector4 boxVertices[8];
+			//Vector4 xs = Vector4( dv.x.x * dv.halfSize.x, dv.x.y * dv.halfSize.x, dv.x.z * dv.halfSize.x, 1.0f );
+			//Vector4 ys = Vector4( dv.y.x * dv.halfSize.y, dv.y.y * dv.halfSize.y, dv.y.z * dv.halfSize.y, 1.0f );
+			//Vector4 zs = Vector4( dv.z.x * dv.halfSize.z, dv.z.y * dv.halfSize.z, dv.z.z * dv.halfSize.z, 1.0f );
+			//GetBoxCorners( Vector4( pos, 1.0f ), xs, ys, zs, boxVertices );
 
-			for ( uint ib = 0; ib < 8; ++ib )
-			{
-				clipPoints[ib] = viewProj * Vector4( boxVertices[ib].getXYZ(), 1.0f );
-			}
+			//for ( uint ib = 0; ib < 8; ++ib )
+			//{
+			//	clipPoints[ib] = viewProj * Vector4( boxVertices[ib].getXYZ(), 1.0f );
+			//}
 
-			Vector4 v0 = viewProj * Vector4( boxVertices[0].getXYZ(), 1.0f );
-			Vector4 v4 = viewProj * Vector4( boxVertices[4].getXYZ(), 1.0f );
-			Vector4 v5 = viewProj * Vector4( boxVertices[5].getXYZ(), 1.0f );
-			Vector4 v7 = viewProj * Vector4( boxVertices[7].getXYZ(), 1.0f );
+			//Vector4 v0 = viewProj * Vector4( boxVertices[0].getXYZ(), 1.0f );
+			//Vector4 v4 = viewProj * Vector4( boxVertices[4].getXYZ(), 1.0f );
+			//Vector4 v5 = viewProj * Vector4( boxVertices[5].getXYZ(), 1.0f );
+			//Vector4 v7 = viewProj * Vector4( boxVertices[7].getXYZ(), 1.0f );
 
-			GetBoxCorners2( v4, v5, v7, v0, clipPoints + 8 );
-
-
+			//GetBoxCorners2( v4, v5, v7, v0, clipPoints + 8 );
 
 
-			//GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
 
-			Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
-			Vector4 xsClip = viewProj * xs;
-			Vector4 ysClip = viewProj * ys;
-			Vector4 zsClip = viewProj * zs;
 
-			GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 16 );
+			////GetBoxCorners( dv.position, dv.x, dv.y, dv.z, dv.halfSize, boxVertices );
+
+			//Vector4 positionClip = viewProj * Vector4( pos, 1.0f );
+			//Vector4 xsClip = viewProj * xs;
+			//Vector4 ysClip = viewProj * ys;
+			//Vector4 zsClip = viewProj * zs;
+
+			//GetBoxCorners( positionClip, xsClip, ysClip, zsClip, clipPoints + 16 );
 
 			//for ( uint iCellsZ = 0; iCellsZ < 2; ++iCellsZ )
 			//{
@@ -3172,7 +3172,7 @@ namespace spad
 				}
 				else
 				{
-					p.maxDecalIndicesPerCellFirstPass = maxOfPair( maxDecalVolumes_ / 2, 1 );
+					p.maxDecalIndicesPerCellFirstPass = maxOfPair( maxDecalVolumes_ / 1, 1 );
 				}
 
 				p.maxDecalIndices = cellCount * p.maxDecalIndicesPerCellFirstPass;
@@ -3188,7 +3188,7 @@ namespace spad
 				}
 				else
 				{
-					p.maxDecalIndices = cellCount + cellCount * 16;
+					p.maxDecalIndices = cellCount + cellCount * 64;
 					//p.maxDecalIndices = cellCount * 2 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 2048 ), 1 ) );
 					//p.maxDecalIndices = cellCount * 16;
 				}
@@ -3207,8 +3207,8 @@ namespace spad
 				}
 				else
 				{
-					//p.maxDecalIndices = cellCount * maxDecalVolumes_;
-					p.maxDecalIndices = cellCount * 32;
+					p.maxDecalIndices = cellCount * maxDecalVolumes_;
+					//p.maxDecalIndices = cellCount * 64;
 					//p.maxDecalIndices = ( cellCountSqr / 4 ) * 1024 * ( maxOfPair( (int)RoundUpToPowerOfTwo( maxDecalVolumes_ ) / ( 1024 ), 1 ) );
 				}
 			}
