@@ -300,7 +300,7 @@ void DecalVolume_GetFrustumClusterFaces2( out FrustumFace faces[2], float3 cellC
 }
 
 
-void DecalVolume_GetFrustumClusterFaces( out FrustumFace faces[2], float3 cellCount, float3 cellCountF, float3 cellCountRcp, float3 cellIndex, float2 tanHalfFov, float nearPlane, float farPlane, float farPlaneOverNearPlane, bool farClip = false )
+void DecalVolume_GetFrustumClusterFaces( out FrustumFace faces[2], float2 cellSize, float3 cellCount, float3 cellCountF, float3 cellCountRcp, float3 cellIndex, float2 tanHalfFov, float nearPlane, float farPlane, float farPlaneOverNearPlane, bool farClip = false )
 {
 	// clip-space (-1,1) position of the view ray through the centroid of the cluster frustum projected on screen
 	//float2 uv = ( ( float2( clusterXYZ.xy ) + 0.5f ) * g_sceneConstants.frustumGridClusterSize.xy + 0.5f ) / g_sceneConstants.frustumGridLightParams.zw;
@@ -311,39 +311,49 @@ void DecalVolume_GetFrustumClusterFaces( out FrustumFace faces[2], float3 cellCo
 	//float2 uv = 0.5f;
 	//float2 uv = ( cellIndex.xy + 0.0f ) * cellCountRcp.xy;
 	//uv = uv * float2( -2.0f, -2.0f ) + float2( 1.0f, 1.0f );
-	uv = uv * float2( 2.0f, 2.0f ) - float2( 1.0f, 1.0f );
-	uv.y = -uv.y;
+	uv = uv * float2( 2.0f, -2.0f ) - float2( 1.0f, -1.0f );
+	//uv.y = -uv.y;
 
 	//// view-space depth of the near and far planes for the cluster frustum
 	//float depth0 = VolumeZPosToDepth( float( clusterXYZ.z ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth );
 	//float depth1 = ( farClip || ( clusterXYZ.z < FRUSTUM_GRID_CLUSTER_SIZE_Z - 1 ) ) ? VolumeZPosToDepth( float( clusterXYZ.z + 1 ) * ( 1.0f / float( FRUSTUM_GRID_CLUSTER_SIZE_Z ) ), g_sceneConstants.volumetricDepth ) : FRUSTUM_GRID_CLUSTERING_MAX_DEPTH;
-//#if DECAL_VOLUME_CLUSTER_3D
-//	float depth0 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
-//	float depth1 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
-//#else // #if DECAL_VOLUME_CLUSTER_3D
+#if DECAL_VOLUME_CLUSTER_3D
+	//float depth0 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z     ) * cellCountRcp.z );
+	//float depth1 = nearPlane * pow( abs( farPlaneOverNearPlane ), (float)( cellIndex.z + 1 ) * cellCountRcp.z );
+	float depth0 = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z, cellCountRcp.z );
+	float depth1 = DecalVolume_CalculateSplit( nearPlane, farPlane, farPlaneOverNearPlane, cellIndex.z + 1.0f, cellCountRcp.z );
+#else // #if DECAL_VOLUME_CLUSTER_3D
 	float depth0 = nearPlane;
 	float depth1 = farPlane;
 	//float depth0 = farPlane;
 	//float depth1 = nearPlane;
-//#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
+#endif // #else // #if DECAL_VOLUME_CLUSTER_3D
 
 
 	// screen-space half size of the projected frustum
 	//float2 projHalfSize = 0.5f * frustumGridClusterSize.xy / frustumGridLightParams.zw;
 	//float2 projHalfSize = ( 0.5f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
 	//float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1920, 1080 );
-	float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
+	//float2 projHalfSize = ( 0.5f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
 	//float2 projHalfSize = ( 1.0f * float2( cellCount.xy ) ) / float2( 1024, 1024 );
+	//float2 projHalfSize = ( 2.0f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
 	//float2 projHalfSize = 0.5f * cellCountRcp.xy;
 	//float2 projHalfSize = 0.5f * 1.0f / 32.0f;
+	float2 projHalfSize = cellSize;
 	//projHalfSize.y *= 2;
 	//projHalfSize *= 0.01f;
 
+	//float3 eyeAxis[3];
+	//eyeAxis[0] = float3( 1, 0, 0 ) * tanHalfFov.x;
+	//eyeAxis[1] = float3( 0, 1, 0 ) * tanHalfFov.y;
+	//eyeAxis[2] = float3( 0, 0, -1 );
+	//float3 eyeOffset = float3( 0, 0, 0 );
 	float3 eyeAxis[3];
-	eyeAxis[0] = float3( 1, 0, 0 ) * tanHalfFov.x;
-	eyeAxis[1] = float3( 0, 1, 0 ) * tanHalfFov.y;
-	eyeAxis[2] = float3( 0, 0, -1 );
-	float3 eyeOffset = float3( 0, 0, 0 );
+	eyeAxis[0] = dvEyeAxisX.xyz;
+	eyeAxis[1] = dvEyeAxisY.xyz;
+	eyeAxis[2] = dvEyeAxisZ.xyz;
+	float3 eyeOffset = dvEyeOffset.xyz;
+
 	//float3 eyeOffset = float3( 0.5f, 0.5f, 0 );
 
 	faces[0].center = WorldPositionFromScreenCoords( eyeAxis, eyeOffset, uv, depth0 );
@@ -377,10 +387,10 @@ void DecalVolume_GetFrustumClusterFaces( out FrustumFace faces[2], float3 cellCo
 	//faces[0].axes[1] = c100 - c000;
 	//faces[1].axes[0] = c101 - c001;
 	//faces[1].axes[1] = c101 - c001;
-	faces[0].axes[0] = ( c100 - faces[0].center ) * 1;
-	faces[0].axes[1] = ( c010 - faces[0].center ) * 1;
-	faces[1].axes[0] = ( c101 - faces[1].center ) * 1;
-	faces[1].axes[1] = ( c011 - faces[1].center ) * 1;
+	////faces[0].axes[0] = ( c100 - faces[0].center ) * 1;
+	////faces[0].axes[1] = ( c010 - faces[0].center ) * 1;
+	////faces[1].axes[0] = ( c101 - faces[1].center ) * 1;
+	////faces[1].axes[1] = ( c011 - faces[1].center ) * 1;
 	//faces[0].axes[0] = ( c100 - faces[0].center ) * -2;
 	//faces[0].axes[1] = ( c010 - faces[0].center ) * -2;
 	//faces[1].axes[0] = ( c101 - faces[1].center ) * -2;
@@ -823,10 +833,15 @@ uint DecalVolume_TestFrustumWorldSpaceSAT( in DecalVolume dv, in Frustum frustum
 	OrientedBoundingBox obb;
 	obb.center = dv.position;
 	//obb.center.z *= -1;
-	obb.halfSize = dv.halfSize.xyz;
-	obb.axes[0] = dv.x;
-	obb.axes[1] = dv.y;
-	obb.axes[2] = dv.z;
+	//obb.halfSize = dv.halfSize.xyz;
+	//obb.axes[0] = dv.x;
+	//obb.axes[1] = dv.y;
+	//obb.axes[2] = dv.z;
+
+	obb.halfSize = float3( 1, 1, 1 );
+	obb.axes[0] = dv.x * dv.halfSize.x;
+	obb.axes[1] = dv.y * dv.halfSize.y;
+	obb.axes[2] = dv.z * dv.halfSize.z;
 
 	return TestFrustumObbIntersectionSAT( obb, frustum.faces ) ? 1 : 0;
 
@@ -1056,7 +1071,7 @@ Frustum DecalVolume_BuildFrustum( const uint3 numCellsXYZ, const float3 numCells
 #else // #elif DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE || DECAL_VOLUME_INTERSECTION_METHOD == DECAL_VOLUME_INTERSECTION_METHOD_CLIP_SPACE2
 
 #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
-	DecalVolume_GetFrustumClusterFaces( outFrustum.faces, numCellsXYZ, numCellsXYZF, numCellsXYZRcp, cellXYZ, dvTanHalfFov.xy, dvNearFar.x, dvNearFar.y, dvNearFar.z );
+	DecalVolume_GetFrustumClusterFaces( outFrustum.faces, dvCellSize.xy, numCellsXYZ, numCellsXYZF, numCellsXYZRcp, cellXYZ, dvTanHalfFov.xy, dvNearFar.x, dvNearFar.y, dvNearFar.z );
 	//DecalVolume_GetFrustumClusterFaces2( outFrustum.faces, numCellsXYZRcp, cellXYZ, dvTanHalfFov.xy, dvNearFar.x, dvNearFar.y );
 #else // #if !DECAL_VOLUME_CLUSTER_USE_OLD_SAT
 	DecalVolume_BuildSubFrustumWorldSpace( outFrustum, numCellsXYZ, numCellsXYZF, numCellsXYZRcp, cellXYZ, dvTanHalfFov.zw, dvViewMatrix, dvNearFar.x, dvNearFar.y, dvNearFar.z );

@@ -103,15 +103,15 @@ namespace spad
 		DepthStencil mainDS_ = DepthStencil( "mainDS_" );
 		CodeTexture clusterDS_ = CodeTexture( "clusterDS_" );
 
-		//RenderTargetSize rtSize_ = RTW_1920_1080;
+		RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
 		//RenderTargetSize rtSize_ = RTW_128_128;
-		RenderTargetSize rtSize_ = RTW_1024_1024;
+		//RenderTargetSize rtSize_ = RTW_1024_1024;
 		TileSize tileSizeForTiling_ = TileSize_64x64;
-		//TileSize tileSizeForClustering_ = TileSize_32x32;
-		TileSize tileSizeForClustering_ = TileSize_16x16;
+		TileSize tileSizeForClustering_ = TileSize_32x32;
+		//TileSize tileSizeForClustering_ = TileSize_16x16;
 		int numPassesForTiling_ = 1;
-		int numPassesForClustering_ = 4;
+		int numPassesForClustering_ = 5;
 
 		HlslShaderPtr decalVolumeRenderingShader_;
 		HlslShaderPtr decalVolumeCullShader_;
@@ -124,11 +124,11 @@ namespace spad
 		ConstantBuffer<CbDecalVolumeRenderingConstants> decalVolumeRenderingConstants_;
 
 		// Decal volumes
-		int maxDecalVolumes_ = 1;// 1024 * 4;
+		int maxDecalVolumes_ = 1024 * 4;
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
-		float decalVolumesRandomScale_ = 8.0f;
+		float decalVolumesRandomScale_ = 6.0f;
 		float decalVolumeFarPlane_ = 1000.0f;
 		DecalVolume *decalVolumesCPU_ = nullptr;
 		StructuredBuffer<DecalVolume> decalVolumesGPU_;
@@ -163,6 +163,8 @@ namespace spad
 			float nCellsXRcp;
 			float nCellsYRcp;
 			float nCellsZRcp;
+			float tileWidthClip_;
+			float tileHeightClip_;
 			uint maxDecalIndices;
 			uint maxDecalIndicesPerCellFirstPass;
 			uint maxCellIndirectionsPerBucket;
@@ -204,6 +206,8 @@ namespace spad
 			ConstantBuffer<DecalVolumeCsConstants> constants_;
 			GpuTimerQuery timer_;
 			HlslShaderPtr shader_;
+			//float tileWidthClip_;
+			//float tileHeightClip_;
 			//DecalVolumeShared clustering_;
 			uint totalMemUsed_ = 0;
 			//IntersectionMethod intersectionMethod_ = ClipSpace;
@@ -246,8 +250,8 @@ namespace spad
 			AppModeCount
 		};
 
-		AppMode appMode_ = Tiling;
-		//AppMode appMode_ = Clustering;
+		//AppMode appMode_ = Tiling;
+		AppMode appMode_ = Clustering;
 		//AppMode appMode_ = Scene;
 
 		enum OutputView : int

@@ -22,6 +22,9 @@ int main(int /*argc*/, _TCHAR* /*argv*/[])
 	SettingsTestApp::Param param;
 	param.appName = "GpuClustering";
 	param.debugDxDevice_ = true;
+	//param.windowWidth = 1024;
+	//param.windowHeight = 1024;
+
 
 	if ( app.StartUpBase( param ) )
 	{

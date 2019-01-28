@@ -55,6 +55,11 @@ MAKE_FLAT_CBUFFER( DecalVolumeCsConstants, REGISTER_CBUFFER_DECAL_VOLUME_CS_CONS
 	CBUFFER_UINT4( dvCellCount ); // w = dvCellCount.x * dvCellCount.y * dvCellCount.z
 	CBUFFER_FLOAT4( dvCellCountF );
 	CBUFFER_FLOAT4( dvCellCountRcp ); // w - unused
+	CBUFFER_FLOAT4( dvCellSize ); // xy = cell size / render target size, zw - unused
+	CBUFFER_FLOAT4( dvEyeAxisX ); // tanHalfFov builtin
+	CBUFFER_FLOAT4( dvEyeAxisY ); // tanHalfFov builtin
+	CBUFFER_FLOAT4( dvEyeAxisZ );
+	CBUFFER_FLOAT4( dvEyeOffset );
 	CBUFFER_UINT4( dvPassLimits ); // x - max output decal indices, y -max output decal indices per cell, z - max cell indirections per bucket, w - max cell indirections per bucket for previous pass
 	CBUFFER_UINT4( dvBuckets ); // x - bucket index
 };

@@ -1499,7 +1499,7 @@ namespace spad
 		}
 
 		//RenderFrustum2();
-		RenderFrustum3();
+		//RenderFrustum3();
 
 		//DebugDrawDecalVolumes();
 
@@ -1508,7 +1508,7 @@ namespace spad
 		//debugDraw::AddLineWS( Vector3( 0, 0, 0 ), Vector3( 0, 0, 1 ), 0xffff0000, 1.0f, false );
 
 		//DrawDecalBoxes( immediateContextWrapper );
-		DrawScreenSpaceGrid( immediateContextWrapper );
+		//DrawScreenSpaceGrid( immediateContextWrapper );
 
 		//ModelStartUp();
 		//GenDecalVolumesModel();
@@ -1644,10 +1644,14 @@ namespace spad
 
 		if ( appMode_ == Tiling || appMode_ == Scene )
 		{
+			const DecalVolumeClusteringPass &p = tiling_->passes_.back();
+			ImGui::Text( "Num decals in all cells %u / %u", p.stats.numDecalsInAllCells, p.maxDecalIndices );
 			ImGuiPrintClusteringInfo( *tiling_ );
 		}
 		else if ( appMode_ == Clustering || appMode_ == Scene )
 		{
+			const DecalVolumeClusteringPass &p = clustering_->passes_.back();
+			ImGui::Text( "Num decals in all cells %u / %u", p.stats.numDecalsInAllCells, p.maxDecalIndices );
 			ImGuiPrintClusteringInfo( *clustering_ );
 		}
 
@@ -3052,8 +3056,8 @@ namespace spad
 	{
 		std::cout << std::endl;
 
-		uint tileSize;
-		GetTileSize( clustering ? tileSizeForClustering_ : tileSizeForTiling_, tileSize );
+		uint tileSizeBase;
+		GetTileSize( clustering ? tileSizeForClustering_ : tileSizeForTiling_, tileSizeBase );
 
 		for ( uint rtSize = RTW_64_64; rtSize < RenderTargetSizeCount; ++rtSize )
 		{
@@ -3063,7 +3067,7 @@ namespace spad
 			uint nCellsX;
 			uint nCellsY;
 			uint nCellsZ;
-			CalculateCellCount( rtWidth, rtHeight, tileSize, static_cast<uint>(clustering ? numPassesForClustering_ : numPassesForTiling_), nCellsX, nCellsY, nCellsZ );
+			CalculateCellCount( rtWidth, rtHeight, tileSizeBase, static_cast<uint>(clustering ? numPassesForClustering_ : numPassesForTiling_), nCellsX, nCellsY, nCellsZ );
 			if ( !clustering )
 				nCellsZ = 1;
 
@@ -3093,10 +3097,13 @@ namespace spad
 		uint rtWidth, rtHeight;
 		GetRenderTargetSize( rtWidth, rtHeight );
 
+		//clusteringPtr->tileWidthClip_ = 2.0f * tileSize / (float)rtWidth;
+		//clusteringPtr->tileHeightClip_ = 2.0f * tileSize / (float)rtHeight;
+
 		uint nCellsX;
 		uint nCellsY;
 		uint nCellsZ;
-		CalculateCellCount( rtWidth, rtHeight, tileSize, static_cast<uint>( clustering ? numPassesForClustering_ : numPassesForTiling_ ), nCellsX, nCellsY, nCellsZ );
+		CalculateCellCount( rtWidth, rtHeight, tileSizeBase, static_cast<uint>( clustering ? numPassesForClustering_ : numPassesForTiling_ ), nCellsX, nCellsY, nCellsZ );
 		if ( !clustering )
 			nCellsZ = 1;
 
@@ -3105,6 +3112,7 @@ namespace spad
 		float nCellsZF = static_cast<float>( nCellsZ );
 
 		//uint cellCountSqr = static_cast<uint>( sqrtf( static_cast<float>( nCellsX * nCellsY * nCellsZ ) ) );
+		uint tileSize = tileSizeBase;
 
 		for ( int iPass = (int)clusteringPtr->passes_.size() - 1; iPass >= 0; --iPass )
 		{
@@ -3141,6 +3149,9 @@ namespace spad
 			//p.nCellsZF = static_cast<float>( nCellsZ );
 			p.nCellsZRcp = 1.0f / nCellsZ;
 
+			p.tileWidthClip_ = tileSize / (float)rtWidth;
+			p.tileHeightClip_ = tileSize / (float)rtHeight;
+
 			//nCellsX /= 2;
 			//nCellsY /= 2;
 			nCellsX = (nCellsX + 1) / 2;
@@ -3150,6 +3161,8 @@ namespace spad
 			nCellsXF *= 0.5f;
 			nCellsYF *= 0.5f;
 			nCellsZF = maxOfPair( nCellsZF * 0.5f, 1.0f );
+
+			tileSize *= 2;
 		}
 
 		uint totalMemoryUsed = 0;
@@ -3329,6 +3342,9 @@ namespace spad
 		//clusteringPasses_.back().decalPerCell.clearUAVUint( deviceContext.context, 0 );
 		data.passes_.back().decalIndicesCount.clearUAVUint( deviceContext.context, 0 );
 		
+		uint rtWidth, rtHeight;
+		GetRenderTargetSize( rtWidth, rtHeight );
+
 		const size_t numPasses = data.passes_.size();
 		for ( size_t iPass = 0; iPass < numPasses; ++iPass )
 		{
@@ -3369,7 +3385,8 @@ namespace spad
 				}
 				else
 				{
-					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)data.intersectionMethod_, bucketsEnabled } );
+					//const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)data.intersectionMethod_, bucketsEnabled } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_first_pass", { (uint)data.intersectionMethod_ } );
 					fxPass.setCS( deviceContext.context );
 				}
 			}
@@ -3377,7 +3394,8 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)data.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
+					//const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)data.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_last_pass", { (uint)data.intersectionMethod_ } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
@@ -3393,7 +3411,8 @@ namespace spad
 			{
 				if ( bucketsMergeEnabled )
 				{
-					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)data.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
+					//const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)data.intersectionMethod_, bucketsEnabled, DECAL_VOLUME_CLUSTER_SUBGROUP_BUCKET_MERGED } );
+					const HlslShaderPass& fxPass = *data.shader_->getPass( "cs_decal_volume_cluster_mid_pass", { (uint)data.intersectionMethod_ } );
 					fxPass.setCS( deviceContext.context );
 				}
 				else if ( bucketsEnabled )
@@ -3409,11 +3428,14 @@ namespace spad
 			data.constants_.data.dvViewMatrix = viewMatrixForDecalVolumes_;
 			data.constants_.data.dvViewProjMatrix = projMatrixForDecalVolumes_ * viewMatrixForDecalVolumes_;
 			data.constants_.data.dvNearFar = Vector4( testFrustumNearPlane, decalVolumeFarPlane_, decalVolumeFarPlane_ / testFrustumNearPlane, 0 );
-			data.constants_.data.dvTanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			data.constants_.data.dvTanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			data.constants_.data.dvTanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
-			data.constants_.data.dvTanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
-			//data.clusteringConstants_.data.renderTargetSize = Vector4( 0 );
+
+			Vector4 tanHalfFov;
+			tanHalfFov.setX( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			tanHalfFov.setY( floatInVec( 1.0f ) / projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			tanHalfFov.setZ( projMatrixForDecalVolumes_.getElem( 0, 0 ) );
+			tanHalfFov.setW( projMatrixForDecalVolumes_.getElem( 1, 1 ) );
+			data.constants_.data.dvTanHalfFov = tanHalfFov;
+
 			data.constants_.data.dvCellCount[0] = p.nCellsX;
 			data.constants_.data.dvCellCount[1] = p.nCellsY;
 			data.constants_.data.dvCellCount[2] = p.nCellsZ;
@@ -3435,6 +3457,16 @@ namespace spad
 			data.constants_.data.dvCellCountRcp[1] = p.nCellsYRcp;
 			data.constants_.data.dvCellCountRcp[2] = p.nCellsZRcp;
 			data.constants_.data.dvCellCountRcp[3] = 0;
+			data.constants_.data.dvCellSize[0] = p.tileWidthClip_;
+			data.constants_.data.dvCellSize[1] = p.tileHeightClip_;
+			data.constants_.data.dvCellSize[2] = 0;
+			data.constants_.data.dvCellSize[3] = 0;
+
+			data.constants_.data.dvEyeAxisX = viewMatrixForDecalVolumes_.getCol0() * tanHalfFov.getX();
+			data.constants_.data.dvEyeAxisY = viewMatrixForDecalVolumes_.getCol1() * tanHalfFov.getY();
+			data.constants_.data.dvEyeAxisZ = -viewMatrixForDecalVolumes_.getCol2();
+			data.constants_.data.dvEyeOffset = Vector4( viewMatrixForDecalVolumes_.getTranslation(), 0.0f );
+
 			data.constants_.data.dvPassLimits[0] = p.maxDecalIndices;
 			data.constants_.data.dvPassLimits[1] = p.maxDecalIndicesPerCellFirstPass;
 			data.constants_.data.dvPassLimits[2] = p.maxCellIndirectionsPerBucket;
