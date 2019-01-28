@@ -102,18 +102,28 @@ struct IndirectDispatchArgs
 };
 
 
-struct DecalVolume
+//struct DecalVolume
+//{
+//	cfloat3 position;
+//	cfloat3 x;
+//	cfloat3 y;
+//	cfloat3 z;
+//	cfloat3 halfSize;
+//};
+
+
+// x, y, z have halfSize premultiplied
+struct DecalVolumeScaled
 {
 	cfloat3 position;
 	cfloat3 x;
 	cfloat3 y;
 	cfloat3 z;
-	cfloat3 halfSize;
 };
 
 
 // Positions in clip space
-struct DecalVolumeTest
+struct DecalVolumeClipSpace
 {
 #if DECAL_VOLUME_USE_XYW_CORNERS
 	// every vector has clip space x, y and w

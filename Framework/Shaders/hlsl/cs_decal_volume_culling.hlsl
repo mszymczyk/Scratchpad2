@@ -21,8 +21,8 @@ passes :
 #include "cs_decal_volume_cshared.hlsl"
 #include "cs_decal_volume_util.hlsl"
 
-RWStructuredBuffer<DecalVolume> outDecalVolumes				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS;
-RWStructuredBuffer<DecalVolumeTest> outDecalVolumesTest		REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_TEST;
+RWStructuredBuffer<DecalVolumeScaled> outDecalVolumes				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS;
+RWStructuredBuffer<DecalVolumeClipSpace> outDecalVolumesTest		REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_TEST;
 RWStructuredBuffer<uint> outDecalVolumeCount				REGISTER_BUFFER_DECAL_VOLUME_OUT_DECALS_COUNT;
 
 Texture2D<float> inDepth									REGISTER_TEXTURE_DECAL_VOLUME_IN_DEPTH;
@@ -38,7 +38,7 @@ void cs_decal_volume_culling( uint3 dtid : SV_DispatchThreadID )
 	if ( decalVolumeIndex >= numDecalsToCull.x )
 		return;
 
-	DecalVolume dv = inDecalVolumes[decalVolumeIndex];
+	DecalVolumeScaled dv = inDecalVolumes[decalVolumeIndex];
 
 	Frustum frustum;
 	frustum.planes[0] = frustumPlane0;
@@ -56,9 +56,9 @@ void cs_decal_volume_culling( uint3 dtid : SV_DispatchThreadID )
 		outDecalVolumes[globalIndex] = dv;
 
 		float3 center = dv.position;
-		float3 xs = dv.x * dv.halfSize.x;
-		float3 ys = dv.y * dv.halfSize.y;
-		float3 zs = dv.z * dv.halfSize.z;
+		float3 xs = dv.x;
+		float3 ys = dv.y;
+		float3 zs = dv.z;
 
 		float3 v0 = center - xs - ys + zs;
 		float3 v4 = center - xs - ys - zs;
@@ -72,7 +72,7 @@ void cs_decal_volume_culling( uint3 dtid : SV_DispatchThreadID )
 
 #if DECAL_VOLUME_USE_XYW_CORNERS
 
-		DecalVolumeTest dvt;
+		DecalVolumeClipSpace dvt;
 		dvt.v0 = mul( ViewProjMatrix, float4( v0, 1 ) ).xyw;
 		dvt.v4 = mul( ViewProjMatrix, float4( v4, 1 ) ).xyw;
 		dvt.v5 = mul( ViewProjMatrix, float4( v5, 1 ) ).xyw;
@@ -80,7 +80,7 @@ void cs_decal_volume_culling( uint3 dtid : SV_DispatchThreadID )
 
 #else // #if DECAL_VOLUME_USE_XYW_CORNERS
 
-		DecalVolumeTest dvt;
+		DecalVolumeClipSpace dvt;
 		dvt.v0 = mul( ViewProjMatrix, float4( v0, 1 ) );
 		dvt.v4 = mul( ViewProjMatrix, float4( v4, 1 ) );
 		dvt.v5 = mul( ViewProjMatrix, float4( v5, 1 ) );

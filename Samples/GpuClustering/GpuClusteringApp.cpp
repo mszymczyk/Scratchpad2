@@ -2090,7 +2090,7 @@ namespace spad
 		std::default_random_engine generator( 1973U );
 		std::uniform_real_distribution<float> distribution( 0, 1 );
 
-		decalVolumesCPU_ = reinterpret_cast<DecalVolume*>( spadMallocAligned( sizeof( DecalVolume ) * maxDecalVolumes_, alignof( DecalVolume ) ) );
+		decalVolumesCPU_ = reinterpret_cast<DecalVolumeScaled*>( spadMallocAligned( sizeof( DecalVolumeScaled ) * maxDecalVolumes_, alignof( DecalVolumeScaled ) ) );
 		numDecalVolumes_ = maxDecalVolumes_;
 
 		Vector4 clipPoints[24];
@@ -2115,7 +2115,7 @@ namespace spad
 
 		for ( int i = 0; i < maxDecalVolumes_; ++i )
 		{
-			DecalVolume &dv = decalVolumesCPU_[i];
+			DecalVolumeScaled &dv = decalVolumesCPU_[i];
 
 			float angleX = distribution( generator ) * 2 * PI;
 			float angleY = distribution( generator ) * 2 * PI;
@@ -2145,17 +2145,17 @@ namespace spad
 
 			dv.position = Float3( pos );
 
-			dv.halfSize = Vector4( hsX, hsY, hsZ, 0 );
+			//dv.halfSize = Vector4( hsX, hsY, hsZ, 0 );
 			//dv.halfSize = Vector4( hsX );
 			//dv.halfSize = Vector4( 4, 1, 1, 0 );
-			dv.halfSize *= decalVolumesRandomScale_;
+			//dv.halfSize *= decalVolumesRandomScale_;
 
 			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
 			//Matrix4 rot = Matrix4::identity();
 			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad(-45.0f) ) );
-			dv.x = rot.getCol0();
-			dv.y = rot.getCol1();
-			dv.z = rot.getCol2();
+			dv.x = rot.getCol0() * hsX * decalVolumesRandomScale_;
+			dv.y = rot.getCol1() * hsY * decalVolumesRandomScale_;
+			dv.z = rot.getCol2() * hsZ * decalVolumesRandomScale_;
 
 			//Vector4 boxVertices[8];
 			//Vector4 xs = Vector4( dv.x.x * dv.halfSize.x, dv.x.y * dv.halfSize.x, dv.x.z * dv.halfSize.x, 1.0f );
@@ -2317,7 +2317,7 @@ namespace spad
 			}
 		}
 
-		decalVolumesCPU_ = reinterpret_cast<DecalVolume*>( spadMallocAligned( sizeof( DecalVolume ) * maxDecalVolumes_, alignof( DecalVolume ) ) );
+		decalVolumesCPU_ = reinterpret_cast<DecalVolumeScaled*>( spadMallocAligned( sizeof( DecalVolumeScaled ) * maxDecalVolumes_, alignof( DecalVolumeScaled ) ) );
 
 		std::default_random_engine generator( 1973U );
 		std::uniform_real_distribution<float> distribution( 0, 1 );
@@ -2325,17 +2325,17 @@ namespace spad
 		numDecalVolumes_ = 0;
 
 		{
-			DecalVolume &dv = decalVolumesCPU_[numDecalVolumes_];
+			DecalVolumeScaled &dv = decalVolumesCPU_[numDecalVolumes_];
 			numDecalVolumes_ += 1;
 			dv.position = Float3( 0, 2, 0 );
-			dv.halfSize = Float3( 0.5, 0.5, 0.5 );
+			//dv.halfSize = Float3( 0.5, 0.5, 0.5 );
 			//dv.x = Float3( 1, 0, 0 );
 			//dv.y = Float3( 0, 1, 0 );
 			//dv.z = Float3( 0, 0, 1 );
 			Matrix3 basis = createBasisZAxis( Vector3::yAxis() );
-			dv.x = basis.getCol0();
-			dv.y = basis.getCol1();
-			dv.z = basis.getCol2();
+			dv.x = basis.getCol0() * 0.5f;
+			dv.y = basis.getCol1() * 0.5f;
+			dv.z = basis.getCol2() * 0.5f;
 		}
 
 		while ( numDecalVolumes_ < maxDecalVolumes_ && !filteredTriangles.empty() )
@@ -2352,7 +2352,7 @@ namespace spad
 			Float3 center = ( v0.Position + v1.Position + v2.Position ) * 0.33333f;
 			Float3 normal = Float3::Normalize( v0.Normal + v1.Normal + v2.Normal );
 
-			DecalVolume &dv = decalVolumesCPU_[numDecalVolumes_];
+			DecalVolumeScaled &dv = decalVolumesCPU_[numDecalVolumes_];
 			numDecalVolumes_ += 1;
 
 			dv.position = Vector4( center.x, center.y, center.z, 1.0f );
@@ -2368,12 +2368,12 @@ namespace spad
 			float randomScale = distribution( generator );
 			s *= randomScale + 0.75f;
 
-			dv.halfSize = Vector4( s, s, s, 0 );
+			//dv.halfSize = Vector4( s, s, s, 0 );
 
 			Matrix3 decalVolumeBasis = createBasisZAxis( Vector3( normal.x, normal.y, normal.z ) );
-			dv.x = Vector4( decalVolumeBasis.getCol0(), floatInVec( 0.0f ) );
-			dv.y = Vector4( decalVolumeBasis.getCol1(), floatInVec( 0.0f ) );
-			dv.z = Vector4( decalVolumeBasis.getCol2(), floatInVec( 0.0f ) );
+			dv.x = Vector4( decalVolumeBasis.getCol0(), floatInVec( 0.0f ) ) * s;
+			dv.y = Vector4( decalVolumeBasis.getCol1(), floatInVec( 0.0f ) ) * s;
+			dv.z = Vector4( decalVolumeBasis.getCol2(), floatInVec( 0.0f ) ) * s;
 
 
 			if ( index != filteredTriangles.size() - 1 )

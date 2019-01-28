@@ -130,10 +130,10 @@ namespace spad
 		float decalVolumesModelScale_ = 1.0f;
 		float decalVolumesRandomScale_ = 6.0f;
 		float decalVolumeFarPlane_ = 1000.0f;
-		DecalVolume *decalVolumesCPU_ = nullptr;
-		StructuredBuffer<DecalVolume> decalVolumesGPU_;
-		StructuredBuffer<DecalVolume> decalVolumesCulledGPU_;
-		StructuredBuffer<DecalVolumeTest> decalVolumesTestCulledGPU_;
+		DecalVolumeScaled *decalVolumesCPU_ = nullptr;
+		StructuredBuffer<DecalVolumeScaled> decalVolumesGPU_;
+		StructuredBuffer<DecalVolumeScaled> decalVolumesCulledGPU_;
+		StructuredBuffer<DecalVolumeClipSpace> decalVolumesTestCulledGPU_;
 		StructuredBuffer<uint> decalVolumesCulledCountGPU_;
 		ConstantBuffer<DecalVolumeCsCullConstants> decalVolumeCullConstants_;
 		uint decalVolumesCulledCount_ = 0;
