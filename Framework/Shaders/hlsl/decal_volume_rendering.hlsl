@@ -252,7 +252,8 @@ vs_output DecalVolumesAccumVp( /*uint vertexId : SV_VertexID,*/ float3 position 
 	//float4 positionWorld = mul( World, float4( position, 1 ) );
 	DecalVolumeScaled dv = inDecalVolumes[instanceId];
 	//float3 halfSize = dv.halfSize;
-	float3 halfSize = float3( 0.5f, 0.5f, 0.5f );
+	//float3 halfSize = float3( 0.5f, 0.5f, 0.5f );
+	float3 halfSize = 1;
 	//halfSize.x = length( dv.x );
 	//halfSize.y = length( dv.y );
 	//halfSize.z = length( dv.z );

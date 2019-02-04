@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Util\vectormath.h>
+#include "HLSLEmulation.h"
 
 // planes point inward, into center of frustum
 struct ViewFrustum
@@ -67,3 +68,42 @@ inline const Vector3 unprojectNormalizedDx( const Vector3& screenPos01, const Ma
 
 
 ViewFrustum extractFrustum( const Matrix4& viewProjection, bool dxStyleProjection );
+
+
+inline float3 WorldPositionFromScreenCoords( float3 eyeAxis[3], float3 eyeOffset, float2 screenCoords, float depth )
+{
+	float3 eyeRay = eyeAxis[0] * screenCoords.xxx +
+		eyeAxis[1] * screenCoords.yyy +
+		eyeAxis[2];
+
+	return eyeOffset + eyeRay * depth;
+}
+
+struct FrustumFace
+{
+	float3 center;
+	float3 axes[2];
+};
+
+struct OrientedBoundingBox
+{
+	float3 center;
+	float3 axes[3];
+	float3 halfSize;
+};
+
+inline float3 GetFrustumVertex( const HLSL_in FrustumFace frustumFaces[2], int vertIndex )
+{
+	int sx = vertIndex & 1;
+	int sy = ( vertIndex >> 1 ) & 1;
+	int iz = vertIndex >> 2;
+
+	//return frustumFaces[iz].center + frustumFaces[iz].axes[0] * (float)sx + frustumFaces[iz].axes[1] * (float)sy; // incorrect
+	float sxn = sx * 2.0f - 1.0f;
+	float syn = sy * 2.0f - 1.0f;
+	return frustumFaces[iz].center + frustumFaces[iz].axes[0] * (float)sxn + frustumFaces[iz].axes[1] * (float)syn;
+}
+
+bool TestFrustumObbIntersectionSAT( const OrientedBoundingBox obb, const FrustumFace frustumFaces[2] );
+//void GetFrustumClusterFaces( HLSL_out FrustumFace faces[2], float3 eyeAxis[3], float3 eyeOffset, float2 cellSize, float3 cellCount, float3 cellCountF, float3 cellCountRcp, float3 cellIndex, float2 tanHalfFov, float nearPlane, float farPlane, float farPlaneOverNearPlane, bool farClip = false );
+void GetFrustumClusterFaces( HLSL_out FrustumFace faces[2], float3 eyeAxis[3], float3 eyeOffset, float2 cellSize, float3 cellCount, float3 cellCountF, float3 cellCountRcp, float3 cellIndex, float2 tanHalfFov, float nearPlane, float farPlane, float farPlaneOverNearPlane, bool farClip = false );

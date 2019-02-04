@@ -79,7 +79,7 @@ float3 WorldPositionFromScreenCoords( float3 eyeAxis[3], float3 eyeOffset, float
 #endif
 
 #ifndef USE_OBB_FRUSTUM_FACE_AXES
-#define USE_OBB_FRUSTUM_FACE_AXES			1
+#define USE_OBB_FRUSTUM_FACE_AXES			0
 #endif
 
 #ifndef USE_OBB_FRUSTUM_EDGE_CROSSES
@@ -105,6 +105,7 @@ void DecalVolume_GetFrustumClusterFaces( out FrustumFace faces[2], float2 cellSi
 
 	// screen-space half size of the projected frustum
 	//float2 projHalfSize = ( 1.0f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
+	//float2 projHalfSize = cellSize * 0.5f; // incorrect
 	float2 projHalfSize = cellSize;
 
 	//float3 eyeAxis[3];
@@ -282,7 +283,8 @@ bool IsFrustumEdgeVsBoxAxesProjectionDisjoint( const in OrientedBoundingBox obb,
 	[loop]
 	for ( uint axisIndex = 0; axisIndex < 3; axisIndex++ )
 	{
-		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, cross( frustumEdgeDir, obb.axes[0] ) ) )
+		//if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, cross( frustumEdgeDir, obb.axes[0] ) ) )
+		if ( R_AreFrustumObbProjectedIntervalsDisjoint( obb, frustumFaces, cross( frustumEdgeDir, obb.axes[axisIndex] ) ) )
 		{
 			return true;
 		}

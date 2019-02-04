@@ -189,11 +189,11 @@ namespace spad
 		deviceContext.inputLayoutCache.setInputLayout( context, layoutHash, fxPass.vsInputSignatureHash_
 			, layout, 2, reinterpret_cast<const u8*>( fxPass.vsInputSignature_->GetBufferPointer() ), (u32)fxPass.vsInputSignature_->GetBufferSize() );
 
-		textRendererConstants_.data.Color = Vector4( 1, 1, 1, 1 );
-		textRendererConstants_.data.ViewportSize = Vector4( (float)canvasWidth, (float)canvasHeight, 1.0f / (float)canvasWidth, 1.0f / (float)canvasHeight );
+		textRendererConstants_.data.Color = float4( 1, 1, 1, 1 );
+		textRendererConstants_.data.ViewportSize = float4( (float)canvasWidth, (float)canvasHeight, 1.0f / (float)canvasWidth, 1.0f / (float)canvasHeight );
 		float texW = (float) bmFont->getTextureWidth();
 		float texH = (float) bmFont->getTextureHeight();
-		textRendererConstants_.data.TextureSize = Vector4( texW, texH, 1.0f / texW, 1.0f / texH );
+		textRendererConstants_.data.TextureSize = float4( texW, texH, 1.0f / texW, 1.0f / texH );
 
 		canvasWidth_ = canvasWidth;
 		canvasHeight_ = canvasHeight;
@@ -260,8 +260,8 @@ namespace spad
 		if ( !ascii[0] )
 			return;
 
-		float x = textRendererConstants_.data.ViewportSize.getX().getAsFloat() * x01;
-		float y = textRendererConstants_.data.ViewportSize.getY().getAsFloat() * y01;
+		float x = textRendererConstants_.data.ViewportSize.x * x01;
+		float y = textRendererConstants_.data.ViewportSize.y * y01;
 
 		_Draw( deviceContext, x, y, colorABGR, fontScale, ascii );
 	}
@@ -362,8 +362,8 @@ void TextRenderer::_Draw( Dx11DeviceContext& deviceContext, float userX, float u
 	SPAD_STATIC_ASSERT( sizeof( _BMFontVertex ) == 16, "_BMFontVertex must be 16 byte wide" );
 
 
-	textRendererConstants_.data.Color = abgrToRgba( colorABGR );
-	textRendererConstants_.data.Transform = Matrix4::translation( Vector3( userX, userY, 0 ) ) * Matrix4::scale( Vector3( fontScale, fontScale, 1 ) );
+	textRendererConstants_.data.Color = ToFloat4( abgrToRgba( colorABGR ) );
+	textRendererConstants_.data.Transform = ToFloat4x4( Matrix4::translation( Vector3( userX, userY, 0 ) ) * Matrix4::scale( Vector3( fontScale, fontScale, 1 ) ) );
 
 	const float textStartX = 0;
 	const float textStartY = -bmFont->getBaseLine();

@@ -78,14 +78,14 @@ namespace debugDraw
 
 		if ( screenSpace_ )
 		{
-			drawContext.shaderConstants.data.WorldViewProjection = normalizedScreenCoords_ ? Matrix4::orthographic( -1, 1, -1, 1, -1, 1 ) : Matrix4::orthographic( 0, drawContext.rtWidthF, drawContext.rtHeightF, 0, -1, 1 );
+			drawContext.shaderConstants.data.WorldViewProjection = ToFloat4x4( normalizedScreenCoords_ ? Matrix4::orthographic( -1, 1, -1, 1, -1, 1 ) : Matrix4::orthographic( 0, drawContext.rtWidthF, drawContext.rtHeightF, 0, -1, 1 ) );
 		}
 		else
 		{
-			drawContext.shaderConstants.data.WorldViewProjection = drawContext.viewProj;
+			drawContext.shaderConstants.data.WorldViewProjection = ToFloat4x4( drawContext.viewProj );
 		}
 
-		drawContext.shaderConstants.data.Color = abgrToRgba( colorABGR_ );
+		drawContext.shaderConstants.data.Color = ToFloat4( abgrToRgba( colorABGR_ ) );
 		drawContext.shaderConstants.updateGpu( context );
 
 		context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_LINELIST );
@@ -164,8 +164,8 @@ namespace debugDraw
 		Vector3 tr = plane_.getXYZ() * plane_.getW();
 		Matrix4 world = Matrix4( rot, tr );
 
-		drawContext.shaderConstants.data.WorldViewProjection = drawContext.viewProj * world;
-		drawContext.shaderConstants.data.Color = abgrToRgba( colorABGR_ );
+		drawContext.shaderConstants.data.WorldViewProjection = ToFloat4x4( drawContext.viewProj * world );
+		drawContext.shaderConstants.data.Color = ToFloat4( abgrToRgba( colorABGR_ ) );
 		drawContext.shaderConstants.updateGpu( context );
 
 		context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_LINELIST );
@@ -250,8 +250,8 @@ namespace debugDraw
 	{
 		ID3D11DeviceContext* context = deviceContext.context;
 
-		drawContext.shaderConstants.data.WorldViewProjection = screenSpace_ ? Matrix4::orthographic( -1, 1, -1, 1, -1, 1 ) : drawContext.viewProj;
-		drawContext.shaderConstants.data.Color = abgrToRgba( colorABGR_ );
+		drawContext.shaderConstants.data.WorldViewProjection = ToFloat4x4( screenSpace_ ? Matrix4::orthographic( -1, 1, -1, 1, -1, 1 ) : drawContext.viewProj );
+		drawContext.shaderConstants.data.Color = ToFloat4( abgrToRgba( colorABGR_ ) );
 		drawContext.shaderConstants.updateGpu( context );
 
 		if ( lineStrip_ )
@@ -305,8 +305,8 @@ namespace debugDraw
 	{
 		ID3D11DeviceContext* context = deviceContext.context;
 
-		drawContext.shaderConstants.data.WorldViewProjection = normalizedScreenCoords_ ? Matrix4::orthographic( -1, 1, -1, 1, -1, 1 ) : Matrix4::orthographic( 0, drawContext.rtWidthF, drawContext.rtHeightF, 0, -1, 1 );
-		drawContext.shaderConstants.data.Color = abgrToRgba( colorABGR_ );
+		drawContext.shaderConstants.data.WorldViewProjection = ToFloat4x4( normalizedScreenCoords_ ? Matrix4::orthographic( -1, 1, -1, 1, -1, 1 ) : Matrix4::orthographic( 0, drawContext.rtWidthF, drawContext.rtHeightF, 0, -1, 1 ) );
+		drawContext.shaderConstants.data.Color = ToFloat4( abgrToRgba( colorABGR_ ) );
 		drawContext.shaderConstants.updateGpu( context );
 
 		context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
@@ -421,8 +421,8 @@ namespace debugDraw
 		ctx.viewProj = ctx.proj * ctx.view;
 		ctx.rtWidthF = static_cast<float>( rtWidth );
 		ctx.rtHeightF = static_cast<float>( rtHeight );
-		ctx.shaderConstants.data.WorldViewProjection = ctx.viewProj;
-		ctx.shaderConstants.data.Color = Vector4( 1.0f );
+		ctx.shaderConstants.data.WorldViewProjection = ToFloat4x4( ctx.viewProj );
+		ctx.shaderConstants.data.Color = float4( 1.0f );
 
 		for ( const auto& dob : _gImpl->objects_ )
 		{

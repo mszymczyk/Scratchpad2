@@ -24,6 +24,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Math\DirectXMathWrap.cpp" />
+    <ClCompile Include="Math\HLSLEmulation.cpp" />
     <ClCompile Include="Math\ViewFrustum.cpp" />
     <ClCompile Include="Mesh\Model.cpp" />
     <ClCompile Include="Mesh\SDKMesh.cpp" />
@@ -41,6 +42,7 @@
     <ClInclude Include="Dx11\Dx11Wrappers.h" />
     <ClInclude Include="Gfx_pch.h" />
     <ClInclude Include="Math\DirectXMathWrap.h" />
+    <ClInclude Include="Math\HLSLEmulation.h" />
     <ClInclude Include="Math\ViewFrustum.h" />
     <ClInclude Include="Mesh\Model.h" />
     <ClInclude Include="Mesh\SDKMesh.h" />
