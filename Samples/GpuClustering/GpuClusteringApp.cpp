@@ -2745,6 +2745,7 @@ namespace spad
 			ImGui::Combo( "Intersection method", reinterpret_cast<int*>( &data.intersectionMethod_ ), items, IM_ARRAYSIZE( items ) );
 		}
 
+		ImGui::Checkbox( "SAT Last Pass Only", &data.satOnlyInLastPass_ );
 		ImGui::Checkbox( "Buckets", &data.enableBuckets_ );
 		ImGui::Checkbox( "Dynamic buckets", &data.dynamicBuckets_ );
 		ImGui::Checkbox( "Dynamic buckets merge", &data.dynamicBucketsMerge_ );

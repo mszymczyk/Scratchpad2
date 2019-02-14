@@ -157,10 +157,10 @@ float3 GetFrustumVertex( const in FrustumFace frustumFaces[2], int vertIndex )
 	int sy = ( vertIndex >> 1 ) & 1;
 	int iz = vertIndex >> 2;
 
-	//return frustumFaces[iz].center + frustumFaces[iz].axes[0] * sx + frustumFaces[iz].axes[1] * sy;
-	float sxn = sx * 2.0f - 1.0f;
-	float syn = sy * 2.0f - 1.0f;
-	return frustumFaces[iz].center + frustumFaces[iz].axes[0] * (float)sxn + frustumFaces[iz].axes[1] * (float)syn;
+	return frustumFaces[iz].center + frustumFaces[iz].axes[0] * sx + frustumFaces[iz].axes[1] * sy;
+	//float sxn = sx * 2.0f - 1.0f;
+	//float syn = sy * 2.0f - 1.0f;
+	//return frustumFaces[iz].center + frustumFaces[iz].axes[0] * (float)sxn + frustumFaces[iz].axes[1] * (float)syn;
 }
 
 

@@ -228,6 +228,7 @@ namespace spad
 			//IntersectionMethod intersectionMethod_ = ClipSpace;
 			//IntersectionMethod intersectionMethod_ = Standard;
 			IntersectionMethod intersectionMethod_ = SAT;
+			bool satOnlyInLastPass_ = false;
 			bool clustering_ = false;
 			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;

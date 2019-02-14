@@ -19,6 +19,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GpuClustering", "Samples\Gp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Imgui", "Framework\Core\Imgui\Imgui.vcxproj", "{8A4A185A-8BE0-4AF0-BC0C-C6597F8F5B06}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BCEncodeApp", "Samples\BCEncode\BCEncodeApp.vcxproj", "{852A0A4B-B92A-4166-937B-B99A93882386}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -49,6 +51,10 @@ Global
 		{8A4A185A-8BE0-4AF0-BC0C-C6597F8F5B06}.Debug|x64.Build.0 = Debug|x64
 		{8A4A185A-8BE0-4AF0-BC0C-C6597F8F5B06}.Release|x64.ActiveCfg = Release|x64
 		{8A4A185A-8BE0-4AF0-BC0C-C6597F8F5B06}.Release|x64.Build.0 = Release|x64
+		{852A0A4B-B92A-4166-937B-B99A93882386}.Debug|x64.ActiveCfg = Debug|x64
+		{852A0A4B-B92A-4166-937B-B99A93882386}.Debug|x64.Build.0 = Debug|x64
+		{852A0A4B-B92A-4166-937B-B99A93882386}.Release|x64.ActiveCfg = Release|x64
+		{852A0A4B-B92A-4166-937B-B99A93882386}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -60,6 +66,7 @@ Global
 		{C21FB832-6B29-44F9-8EA5-CFEB78F5612A} = {D4ADB784-D6E9-4BE8-8B5C-A88499C4237C}
 		{AC279EA0-1B0E-41F5-8185-136E6B8CFC1F} = {766D59B0-6ECB-4EAE-A0D1-AD62B4F4ED7D}
 		{8A4A185A-8BE0-4AF0-BC0C-C6597F8F5B06} = {D4ADB784-D6E9-4BE8-8B5C-A88499C4237C}
+		{852A0A4B-B92A-4166-937B-B99A93882386} = {766D59B0-6ECB-4EAE-A0D1-AD62B4F4ED7D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0C6F41FE-B16C-43D8-B26D-CB62B95EE5D5}
