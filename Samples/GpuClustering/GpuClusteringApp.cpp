@@ -689,6 +689,43 @@ namespace spad
 		uint32_t cellMask = ( (uint32_t)1 << numThreadsPerCell );
 		cellMask -= 1;
 
+		{
+			union MyULong
+			{
+				struct
+				{
+					uint low;
+					uint hi;
+				};
+				uint64_t quad;
+			};
+
+			uint64_t a = 0x000000ffffffffff;
+			uint64_t b = 0x000000ff00000000;
+			uint64_t c = a - b;
+
+			MyULong qa, qb, qc;
+			qa.quad = a;
+			qb.quad = b;
+
+			//c1 = a1 + b1
+			//c2 = a2 + b2
+			//if ( c1 < a1 || c1 < b1 )
+			//	c2 += 1
+
+			qc.low = qa.low - qb.low;
+
+			uint borrow = 0;
+			if ( qa.low < qb.low )
+			{
+				borrow = 1;
+			}
+
+			qc.hi = qa.hi - borrow - qb.hi;
+
+			qc.hi = qc.hi;
+		}
+
 		//for ( uint i = 0; i < 4; ++i )
 		//{
 		//	uint row = i / 2;
@@ -2130,6 +2167,11 @@ namespace spad
 			hsX *= 0.25f;
 			hsY *= 0.25f;
 			hsZ *= 0.25f;
+
+			//hsX = 4;
+			//hsY = 1;
+			//hsZ = 1;
+
 			hsX *= decalVolumesRandomScale_;
 			hsY *= decalVolumesRandomScale_;
 			hsZ *= decalVolumesRandomScale_;
@@ -2153,9 +2195,9 @@ namespace spad
 			Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, angleY, angleX ) );
 			//Matrix4 rot = Matrix4::identity();
 			//Matrix4 rot = Matrix4::rotationZYX( Vector3( 0, 0, deg2rad(-45.0f) ) );
-			dv.x = rot.getCol0() * hsX * decalVolumesRandomScale_;
-			dv.y = rot.getCol1() * hsY * decalVolumesRandomScale_;
-			dv.z = rot.getCol2() * hsZ * decalVolumesRandomScale_;
+			dv.x = rot.getCol0() * hsX;
+			dv.y = rot.getCol1() * hsY;
+			dv.z = rot.getCol2() * hsZ;
 
 			//Vector4 boxVertices[8];
 			//Vector4 xs = Vector4( dv.x.x * dv.halfSize.x, dv.x.y * dv.halfSize.x, dv.x.z * dv.halfSize.x, 1.0f );

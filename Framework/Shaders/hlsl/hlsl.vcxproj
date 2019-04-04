@@ -143,6 +143,7 @@
     </ProjDoc>
   </ItemGroup>
   <ItemGroup>
+    <FxCompilerFile Include="analytical_geometry.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_clustering.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_cluster_impl.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_cluster_impl_generic.hlsl" />

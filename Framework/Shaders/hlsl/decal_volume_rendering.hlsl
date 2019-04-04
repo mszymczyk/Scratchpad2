@@ -252,11 +252,15 @@ vs_output DecalVolumesAccumVp( /*uint vertexId : SV_VertexID,*/ float3 position 
 	//float4 positionWorld = mul( World, float4( position, 1 ) );
 	DecalVolumeScaled dv = inDecalVolumes[instanceId];
 	//float3 halfSize = dv.halfSize;
-	float3 halfSize = float3( 0.5f, 0.5f, 0.5f );
+
+	// this should be paired with decal debug bounding box setup in application
+	// currently spanning <-0.5,0.5>
+
+	float3 halfSize = 1;// float3( 0.5f, 0.5f, 0.5f );
 	//halfSize.x = length( dv.x );
 	//halfSize.y = length( dv.y );
 	//halfSize.z = length( dv.z );
-	float3 posWorld = position * halfSize * 2;
+	float3 posWorld = position * ( halfSize * 2 );
 	posWorld = mul( transpose( float3x3( dv.x, dv.y, dv.z ) ), posWorld );
 	posWorld = posWorld + dv.position;
 	//float3 posWorld = position;// dv.position;
@@ -289,11 +293,15 @@ vs_axes_output DecalVolumeAxesVp( float3 position : POSITION, uint instanceId : 
 	vs_axes_output OUT;
 
 	DecalVolumeScaled dv = inDecalVolumes[instanceId];
-	float3 halfSize = float3( 0.5f, 0.5f, 0.5f );
+
+	// this should be paired with decal debug bounding box setup in application
+	// currently spanning <-0.5,0.5>
+
+	float3 halfSize = 1;// float3( 0.5f, 0.5f, 0.5f );
 	//halfSize.x = length( dv.x );
 	//halfSize.y = length( dv.y );
 	//halfSize.z = length( dv.z );
-	float3 posWorld = position * halfSize * 2 * 0.6f;
+	float3 posWorld = position * ( halfSize * 2 * 0.6f );
 	posWorld = mul( transpose( float3x3( dv.x, dv.y, dv.z ) ), posWorld );
 	posWorld = posWorld + dv.position;
 
