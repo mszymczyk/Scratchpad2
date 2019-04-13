@@ -6,11 +6,12 @@
 #define COMPILING_SHADER_CODE 0
 
 #include <Util\Vectormath.h>
-#include <Gfx\Math\DirectXMathWrap.h>
+//#include <Gfx\Math\DirectXMathWrap.h>
+#include <Gfx\Math\HLSLEmulation.h>
 
-typedef Matrix4 float4x4;
-typedef Vector4 float4;
-typedef spad::dxmath::Float3 float3;
+//typedef Matrix4 float4x4;
+//typedef Vector4 float4;
+//typedef spad::dxmath::Float3 float3;
 
 #define cfloat3 float3
 

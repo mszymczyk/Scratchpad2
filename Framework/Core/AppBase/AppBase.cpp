@@ -136,9 +136,15 @@ AppBase* AppBase::instance_;
 		{
 			if ( !imguiWantsCaptureMouse )
 			{
-				mouseLDown_ = true;
 				mouseX_ = mousePrevX_ = LOWORD( lParam );
 				mouseY_ = mousePrevY_ = HIWORD( lParam );
+
+				if ( !mouseLDown_ )
+				{
+					MousePressed( mouseX_, mouseY_ );
+				}
+
+				mouseLDown_ = true;
 			}
 			else
 			{
@@ -162,6 +168,17 @@ AppBase* AppBase::instance_;
 				mouseX_ = LOWORD( lParam );
 				mouseY_ = HIWORD( lParam );
 			}
+
+			mouseXContinous_ = LOWORD( lParam );
+			mouseYContinous_ = HIWORD( lParam );
+
+			return 0;
+		}
+
+		case WM_MOUSEWHEEL:
+		{
+			//mousePrevWheel_ = mouseWheel_;
+			mouseWheel_ += GET_WHEEL_DELTA_WPARAM( wParam );
 			return 0;
 		}
 
@@ -228,7 +245,7 @@ AppBase* AppBase::instance_;
 			ImGui::Render();
 			ImGui_ImplDX11_RenderDrawData( ImGui::GetDrawData() );
 
-			dx11_->Present( 0 );
+			dx11_->Present( 1 );
 		}
 	}
 
@@ -363,9 +380,62 @@ AppBase* AppBase::instance_;
 
 			Matrix3 newOrient = Matrix3( newRot );
 			world.setUpper3x3( newOrient );
+
+			world.setTranslation( ( Matrix4( newOrient, Vector3(0.0f) ) * Point3( 0.0f, 0.0f, 5.0f )).getXYZ() );
 		}
 
 		worldMatrix = world;
+	}
+
+	void AppBase::UpdateCameraOrbit( Matrix4 &worldMatrix, Vector3 &offset, float deltaTimeSec )
+	{
+		const float dt = deltaTimeSec;
+
+		floatInVec CamMoveSpeed( 10.0f * dt );
+		floatInVec CamRotSpeed( 10.0f * dt );
+
+		int mouseDx = mouseX_ - mousePrevX_;
+		int mouseDy = mouseY_ - mousePrevY_;
+		mousePrevX_ = mouseX_;
+		mousePrevY_ = mouseY_;
+
+		float mouseWheelDelta = static_cast<float>( mouseWheel_ - mousePrevWheel_ );
+		mousePrevWheel_ = mouseWheel_;
+
+		float wheelStrength = 0.25f;
+		if ( IsKeyDown( static_cast<KeyboardState::Keys>( 0x11 ) ) ) // VK_CONTROL
+		{
+			wheelStrength = 1.0f;
+		}
+
+		float newOffset = offset.getZ().getAsFloat() - mouseWheelDelta * dt * wheelStrength;
+		offset.setZ( std::max( newOffset, 0.0f ) );
+
+		if ( mouseLDown_ && ( mouseDx != 0 || mouseDy != 0 ) )
+		{
+			Matrix4 world = worldMatrix;
+
+			Quat rot = normalize( Quat( world.getUpper3x3() ) );
+
+			floatInVec deltaX = floatInVec( (float)mouseDx );
+			floatInVec deltaY = floatInVec( (float)mouseDy );
+
+			deltaX *= floatInVec( PI / 180.0f ) * CamRotSpeed;
+			deltaY *= floatInVec( PI / 180.0f ) * CamRotSpeed;
+
+			Quat rotY = Quat::rotationY( -deltaX );
+			Quat rotX = Quat::rotation( -deltaY, world.getCol0().getXYZ() );
+			Quat rotOffs = rotY * rotX;
+			Quat newRot = rotOffs * rot;
+			newRot = normalize( newRot );
+
+			Matrix3 newOrient = Matrix3( newRot );
+			world.setUpper3x3( newOrient );
+
+			worldMatrix = world;
+		}
+
+		worldMatrix.setTranslation( ( Matrix4( worldMatrix.getUpper3x3(), Vector3( 0.0f ) ) * Point3( offset ) ).getXYZ() );
 	}
 
 } // namespace spad

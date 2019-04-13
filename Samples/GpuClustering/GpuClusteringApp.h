@@ -6,6 +6,8 @@
 #include <Core/Gfx/Camera.h>
 #include <Core\Gfx\Dx11\Dx11Shader.h>
 
+#define TEST_SAT 0
+
 namespace spad
 {
 	constexpr uint maxBuckets = 7;
@@ -103,6 +105,13 @@ namespace spad
 		DepthStencil mainDS_ = DepthStencil( "mainDS_" );
 		CodeTexture clusterDS_ = CodeTexture( "clusterDS_" );
 
+#if TEST_SAT
+		RenderTargetSize rtSize_ = RTW_1024_1024;
+		TileSize tileSizeForTiling_ = TileSize_32x32;
+		TileSize tileSizeForClustering_ = TileSize_32x32;
+		int numPassesForTiling_ = 1;
+		int numPassesForClustering_ = 1;
+#else // #if TEST_SAT
 		RenderTargetSize rtSize_ = RTW_1920_1080;
 		//RenderTargetSize rtSize_ = RTW_64_64;
 		//RenderTargetSize rtSize_ = RTW_128_128;
@@ -112,6 +121,7 @@ namespace spad
 		//TileSize tileSizeForClustering_ = TileSize_16x16;
 		int numPassesForTiling_ = 1;
 		int numPassesForClustering_ = 4;
+#endif // #else // #if TEST_SAT
 
 		HlslShaderPtr decalVolumeRenderingShader_;
 		HlslShaderPtr decalVolumeCullShader_;
@@ -124,11 +134,16 @@ namespace spad
 		ConstantBuffer<CbDecalVolumeRenderingConstants> decalVolumeRenderingConstants_;
 
 		// Decal volumes
+#if TEST_SAT
+		int maxDecalVolumes_ = 1.0f;
+		float decalVolumesRandomScale_ = 1.0f;
+#else // #if TEST_SAT
 		int maxDecalVolumes_ = 1024 * 4;
+		float decalVolumesRandomScale_ = 6.0f;
+#endif // #else // #if TEST_SAT
 		int numDecalVolumes_ = 0;
 		float decalVolumesAreaThreshold_ = 2.0f;
 		float decalVolumesModelScale_ = 1.0f;
-		float decalVolumesRandomScale_ = 6.0f;
 		float decalVolumeFarPlane_ = 1000.0f;
 		DecalVolumeScaled *decalVolumesCPU_ = nullptr;
 		StructuredBuffer<DecalVolumeScaled> decalVolumesGPU_;
@@ -213,6 +228,7 @@ namespace spad
 			//IntersectionMethod intersectionMethod_ = ClipSpace;
 			//IntersectionMethod intersectionMethod_ = Standard;
 			IntersectionMethod intersectionMethod_ = SAT;
+			bool satOnlyInLastPass_ = false;
 			bool clustering_ = false;
 			bool enableBuckets_ = true;
 			bool dynamicBuckets_ = false;

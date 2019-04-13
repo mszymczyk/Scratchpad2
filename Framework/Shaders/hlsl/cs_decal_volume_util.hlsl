@@ -88,6 +88,7 @@ void DecalVolume_GetFrustumClusterFaces( out FrustumFace faces[2], float2 cellSi
 
 	// screen-space half size of the projected frustum
 	//float2 projHalfSize = ( 1.0f * float2( 32.0f, 32.0f ) ) / float2( 1920, 1080 );
+	//float2 projHalfSize = cellSize * 0.5f; // incorrect
 	float2 projHalfSize = cellSize;
 
 	//float3 eyeAxis[3];

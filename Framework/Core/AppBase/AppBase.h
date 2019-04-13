@@ -51,6 +51,11 @@ namespace spad
 			(void)alt;
 			(void)ctrl;
 		}
+		virtual void MousePressed( uint mouseX, uint mouseY )
+		{
+			(void)mouseX;
+			(void)mouseY;
+		}
 
 	private:
 		static LRESULT CALLBACK WinProcStatic( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam );
@@ -62,6 +67,7 @@ namespace spad
 
 	protected:
 		void UpdateCamera( Matrix4 &worldMatrix, float deltaTime );
+		void UpdateCameraOrbit( Matrix4 &worldMatrix, Vector3 &offset, float deltaTime );
 
 		bool IsKeyDown( KeyboardState::Keys key ) const
 		{
@@ -78,7 +84,11 @@ namespace spad
 		bool keysDown_[256] = { false };
 		bool mouseLDown_ = false;
 		int mouseX_ = 0, mouseY_ = 0;
+		int mouseXContinous_ = 0, mouseYContinous_ = 0;
+		int mouseWheel_ = 0;
+		int mousePrevWheel_ = 0;
 		int mousePrevX_ = 0, mousePrevY_ = 0;
+		int mouseWheelControlDown_ = false;
 
 		Timer timer_;
 
