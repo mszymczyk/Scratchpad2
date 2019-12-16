@@ -1,0 +1,40 @@
+#ifndef BLOCK_COMPRESSION_CSHARED_HLSL
+#define BLOCK_COMPRESSION_CSHARED_HLSL
+
+//#ifndef __CSTRUCT_H__
+//	#error Must include "shaders/lib/common/cstruct.hlsl" or "src/gfx_d3d/r_constantbuffer.h" before this file.
+//#endif // #ifndef __CSTRUCT_H__
+#include "HlslFrameworkInterop.h"
+
+#define COMPRESS_ONE_MIP_THREADGROUP_WIDTH	8
+#define COMPRESS_TWO_MIPS_THREADGROUP_WIDTH 16
+
+#define RC_REGISTER_UNCOMPRESSED_TEXTURE						MAKE_REGISTER_TEXTURE( 0 )
+
+#define RC_REGISTER_MIP_OUTPUT									MAKE_REGISTER_RWTEXTURE( 0 )
+#define RC_REGISTER_SECOND_MIP_OUTPUT							MAKE_REGISTER_RWTEXTURE( 1 )
+
+#define RC_REGISTER_16_MIP_OUTPUT								MAKE_REGISTER_RWTEXTURE( 0 )
+#define RC_REGISTER_8_MIP_OUTPUT								MAKE_REGISTER_RWTEXTURE( 1 )
+#define RC_REGISTER_4_MIP_OUTPUT								MAKE_REGISTER_RWTEXTURE( 2 )
+#define RC_REGISTER_2_MIP_OUTPUT								MAKE_REGISTER_RWTEXTURE( 3 )
+#define RC_REGISTER_1_MIP_OUTPUT								MAKE_REGISTER_RWTEXTURE( 4 )
+
+#define RC_REGISTER_CONSTANTS									MAKE_REGISTER_CBUFFER( 0 )
+
+
+MAKE_FLAT_CBUFFER( ConstantBufferRuntimeCompression, RC_REGISTER_CONSTANTS )
+{
+	CBUFFER_FLOAT( g_oneOverTextureWidth );
+	CBUFFER_UINT( arraySlice );
+};
+
+
+//MAKE_FLAT_CBUFFER( ConstantBufferRuntimeCompressionBC7, RC_REGISTER_CONSTANTS )
+//{
+//	CBUFFER_UINT2( outputSize );
+//	CBUFFER_UINT( outputAsSRGB );
+//};
+
+#endif // BLOCK_COMPRESSION_CSHARED_HLSL
+

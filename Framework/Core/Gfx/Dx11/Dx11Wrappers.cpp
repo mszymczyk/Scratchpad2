@@ -350,19 +350,29 @@ void CodeTexture::Initialize( ID3D11Device* device, u32 width, u32 height, u32 d
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	ZeroMemory( &srvDesc, sizeof( srvDesc ) );
 	srvDesc.Format = format;
-	if ( arraySize == 1 )
+
+	if ( cubeMap )
 	{
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = (UINT)-1;
-		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+		srvDesc.TextureCube.MipLevels = (UINT)-1;
+		srvDesc.TextureCube.MostDetailedMip = 0;
 	}
 	else
 	{
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-		srvDesc.Texture2DArray.ArraySize = arraySize;
-		srvDesc.Texture2DArray.FirstArraySlice = 0;
-		srvDesc.Texture2DArray.MipLevels = (UINT)-1;
-		srvDesc.Texture2DArray.MostDetailedMip = 0;
+		if ( arraySize == 1 )
+		{
+			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Texture2D.MipLevels = (UINT)-1;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+		}
+		else
+		{
+			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+			srvDesc.Texture2DArray.ArraySize = arraySize;
+			srvDesc.Texture2DArray.FirstArraySlice = 0;
+			srvDesc.Texture2DArray.MipLevels = (UINT)-1;
+			srvDesc.Texture2DArray.MostDetailedMip = 0;
+		}
 	}
 
 	DXCall( device->CreateShaderResourceView( texture_, &srvDesc, &srv_ ) );
@@ -433,7 +443,7 @@ void CodeTexture::Initialize( ID3D11Device* device, u32 width, u32 height, u32 d
 			{
 				ID3D11UnorderedAccessView *uaView;
 				DXCall( device->CreateUnorderedAccessView( texture_, &uavDesc, &uaView ) );
-				debug::Dx11SetDebugName3( srView, "CodeTexture %s, UAV(slice %u, mip %u)", debugName_.c_str(), i, iMip );
+				debug::Dx11SetDebugName3( uaView, "CodeTexture %s, UAV(slice %u, mip %u)", debugName_.c_str(), i, iMip );
 				uavMips_[i * numMipLevels + iMip] = uaView;
 			}
 		}
@@ -456,6 +466,7 @@ void CodeTexture::DeInitialize()
 
 	spad::clear_cont( srvArraySlices_, [&]( ID3D11ShaderResourceView* h ) { h->Release(); } );
 	spad::clear_cont( srvMips_, [&]( ID3D11ShaderResourceView* h ) { h->Release(); } );
+	spad::clear_cont( uavMips_, [&]( ID3D11UnorderedAccessView* h ) { h->Release(); } );
 
 	width_ = 0;
 	height_ = 0;

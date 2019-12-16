@@ -51,6 +51,8 @@ public:
 		context->CSSetUnorderedAccessViews( 0, 8, uavsClear, initialCounts );
 	}
 
+	void BindGlobalSamplers();
+
 	void BeginMarker( const char *name );
 	void BeginMarker( const char *name, uint index );
 	void EndMarker();
