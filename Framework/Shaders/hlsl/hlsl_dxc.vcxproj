@@ -1,0 +1,194 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Diagnostic|x64">
+      <Configuration>Diagnostic</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Shipping|x64">
+      <Configuration>Shipping</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C9C7961D-D1E2-4A9A-A8A2-CC99F1A8B1FB}</ProjectGuid>
+    <RootNamespace>hlsl</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Diagnostic|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="..\..\vsprops\FxCompiler.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Diagnostic|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</OutDir>
+    <IntDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Diagnostic|x64'">
+    <OutDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</OutDir>
+    <IntDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</OutDir>
+    <IntDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'">
+    <OutDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</OutDir>
+    <IntDir>$(SCRATCHPAD_DIR)\Build\$(SolutionName)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <FxCompilerFile>
+      <AdditionalOptions>--dxc --debug %(AdditionalOptions)</AdditionalOptions>
+    </FxCompilerFile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Diagnostic|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <FxCompilerFile>
+      <AdditionalOptions>--dxc --diagnostic %(AdditionalOptions)</AdditionalOptions>
+    </FxCompilerFile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+    <FxCompilerFile>
+      <AdditionalOptions>--dxc --release %(AdditionalOptions)</AdditionalOptions>
+    </FxCompilerFile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Shipping|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+    <FxCompilerFile>
+      <AdditionalOptions>--dxc --shipping %(AdditionalOptions)</AdditionalOptions>
+    </FxCompilerFile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjDoc Include="font.hlsl">
+      <FileType>Document</FileType>
+    </ProjDoc>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompilerFile Include="BCEncode.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_clustering.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster_impl.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster_impl_generic.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster_impl_one_thread_per_cell.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cluster_impl_subgroup.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_cshared.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_culling.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_tiling.hlsl" />
+    <FxCompilerFile Include="cs_decal_volume_util.hlsl" />
+    <FxCompilerFile Include="decal_volume_cshared.hlsl" />
+    <FxCompilerFile Include="decal_volume_rendering.hlsl" />
+    <FxCompilerFile Include="FxDoc.hlsl" />
+    <FxCompilerFile Include="texture.hlsl">
+      <FileType>Document</FileType>
+    </FxCompilerFile>
+    <FxCompilerFile Include="textureAtlas.hlsl" />
+    <FxCompilerFile Include="uvDerivatives.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompilerFile Include="mesh.hlsl">
+      <FileType>Document</FileType>
+    </FxCompilerFile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AlwaysIncludedByFxCompiler.h" />
+    <ClInclude Include="DebugRendererConstants.h" />
+    <ClInclude Include="decal_volume_rendering_cshared.h" />
+    <ClInclude Include="HlslFrameworkInterop.h" />
+    <ClInclude Include="PassConstants.h" />
+    <ClInclude Include="TextRendererConstants.h" />
+    <ClInclude Include="textureAtlasConstants.h" />
+    <ClInclude Include="UvDerivativesConstants.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompilerFile Include="TextRenderer.hlsl">
+      <FileType>Document</FileType>
+    </FxCompilerFile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompilerFile Include="DebugRenderer.hlsl">
+      <FileType>Document</FileType>
+    </FxCompilerFile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\..\vsprops\FxCompiler.targets" />
+  </ImportGroup>
+</Project>
