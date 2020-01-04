@@ -6,6 +6,224 @@
 namespace spad
 {
 	static uint bc7Block[4];
+	typedef unsigned short ushort;
+
+	struct LRUCache
+	{
+		const static ushort CacheSize = 4;
+		const static ushort FrontIndex = 0;
+		const static ushort BackIndex = CacheSize + 1;
+		const static ushort ListSize = CacheSize + 2;
+		const static ushort HashMapSize = CacheSize + CacheSize / 2 + 1;
+		const static ushort InvalidHashMapKey = 0xffff;
+
+		struct ListNode
+		{
+			ushort next;
+			ushort prev;
+			ushort mapProbeIndex;
+			ushort cacheSlotIndex;
+		};
+
+		struct HashMapCell
+		{
+			ushort key;
+			ushort value;
+		};
+
+		ListNode listNodes[ListSize];
+		HashMapCell hashMapCells[HashMapSize];
+		ushort cacheCount;
+
+		void Init()
+		{
+			for ( uint i = 1; i < CacheSize + 1; ++i )
+			{
+				ListNode &node = listNodes[i];
+				node.next = i + 1;
+				node.prev = i - 1;
+				node.cacheSlotIndex = i - 1; // CacheSize - i
+				node.mapProbeIndex = 0xffff;
+			}
+
+			ListNode &front = listNodes[0];
+			front.prev = 0xffff;
+			front.next = 1;
+			front.mapProbeIndex = 0xffff;
+			front.cacheSlotIndex = 0xffff;
+
+			ListNode &back = listNodes[CacheSize + 1];
+			back.prev = CacheSize;
+			back.next = 0xffff;
+			back.mapProbeIndex = 0xffff;
+			back.cacheSlotIndex = 0xffff;
+
+			memset( hashMapCells, InvalidHashMapKey, sizeof( hashMapCells ) );
+			cacheCount = 0;
+		}
+
+		bool CacheEmpty() const
+		{
+			return cacheCount == 0;
+		}
+
+		bool CacheFull() const
+		{
+			return cacheCount == CacheSize;
+		}
+
+		ushort HashMapInitSlot( ushort key )
+		{
+			return key % HashMapSize;
+		}
+
+		ushort HashMapNextSlot( ushort slot )
+		{
+			return slot == ( HashMapSize - 1 ) ? 0 : slot + 1;
+		}
+
+		HashMapCell *HashMapFind( ushort key )
+		{
+			ushort slot = HashMapInitSlot( key );
+			HashMapCell *cell = &hashMapCells[slot];
+			while ( cell->key != InvalidHashMapKey && cell->key != key )
+			{
+				slot = HashMapNextSlot( slot );
+				cell = &hashMapCells[slot];
+			}
+
+			return cell->key != InvalidHashMapKey ? cell : nullptr;
+		}
+
+		void HashMapErase( ushort key )
+		{
+			assert( !CacheEmpty() );
+
+			ushort slot = HashMapInitSlot( key );
+			HashMapCell *cell = &hashMapCells[slot];
+			while ( cell->key != InvalidHashMapKey && cell->key != key )
+			{
+				slot = HashMapNextSlot( slot );
+				cell = &hashMapCells[slot];
+			}
+
+			assert( cell->key == key );
+			cell->key = InvalidHashMapKey;
+			cell->value = InvalidHashMapKey;
+			cacheCount -= 1;
+		}
+
+		HashMapCell *HashMapInsert( ushort key, ushort value )
+		{
+			assert( !CacheFull() );
+
+			ushort slot = HashMapInitSlot( key );
+			HashMapCell *cell = &hashMapCells[slot];
+			while ( cell->key != InvalidHashMapKey )
+			{
+				slot = HashMapNextSlot( slot );
+				cell = &hashMapCells[slot];
+			}
+
+			cell->key = key;
+			cell->value = value;
+			cacheCount += 1;
+			return cell;
+		}
+
+		ListNode *NodeIndexToPtr( ushort index )
+		{
+			return &listNodes[index];
+		}
+
+		ushort NodePtrToIndex( const ListNode *ptr )
+		{
+			intptr_t diff = reinterpret_cast<intptr_t>( ptr ) - reinterpret_cast<intptr_t>( listNodes );
+			return diff / sizeof( ListNode );
+		}
+
+		ListNode *ListUnlink( ushort index )
+		{
+			ListNode *node = &listNodes[index];
+			listNodes[node->prev].next = node->next;
+			listNodes[node->next].prev = node->prev;
+			return node;
+		}
+
+		ListNode *ListPopBack()
+		{
+			return ListUnlink( listNodes[BackIndex].prev );
+		}
+
+		void ListPushFront( ListNode *node )
+		{
+			ushort entryIndex = NodePtrToIndex( node );
+			node->next = listNodes[FrontIndex].next;
+			node->prev = FrontIndex;
+			listNodes[listNodes[FrontIndex].next].prev = entryIndex;
+			listNodes[FrontIndex].next = entryIndex;
+		}
+
+		void ListPushBack( ListNode *node )
+		{
+			ushort entryIndex = NodePtrToIndex( node );
+			node->next = BackIndex;
+			node->prev = listNodes[BackIndex].prev;
+			listNodes[listNodes[BackIndex].prev].next = entryIndex;
+			listNodes[BackIndex].prev = entryIndex;
+		}
+
+		bool CacheGetSlot( ushort mapProbeIndex, ushort &outSlotIndex )
+		{
+			HashMapCell *cell = HashMapFind( mapProbeIndex );
+			if ( cell )
+			{
+				ListNode *node = ListUnlink( cell->value );
+				ListPushFront( node );
+
+				outSlotIndex = node->cacheSlotIndex;
+
+				return true;
+			}
+
+			if ( CacheFull() )
+			{
+				ListNode *node = ListPopBack();
+				HashMapErase( node->mapProbeIndex );
+
+				node->mapProbeIndex = mapProbeIndex;
+				HashMapInsert( mapProbeIndex, NodePtrToIndex( node ) );
+
+				ListPushFront( node );
+
+				outSlotIndex = node->cacheSlotIndex;
+
+				return false;
+			}
+
+			// not found and not full
+			ListNode *node = ListPopBack();
+			node->mapProbeIndex = mapProbeIndex;
+			ListPushFront( node );
+
+			HashMapInsert( mapProbeIndex, NodePtrToIndex( node ) );
+
+			outSlotIndex = node->cacheSlotIndex;
+
+			return false;
+		}
+
+		void CacheInvalidate( ushort mapProbeIndex )
+		{
+			HashMapCell *cell = HashMapFind( mapProbeIndex );
+			if ( cell )
+			{
+				ListNode *node = ListUnlink( cell->value );
+				ListPushBack( node );
+				HashMapErase( mapProbeIndex );
+			}
+		}
+	};
 
 	bool BCEncode::StartUp()
 	{
