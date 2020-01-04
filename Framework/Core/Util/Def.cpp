@@ -20,6 +20,33 @@ void assertPrintAndBreak2(const char* text, const char* msg)
 	__debugbreak();
 }
 
+void assertPrintAndBreak3( const char* format, ... )
+{
+	va_list	args;
+
+	va_start( args, format );
+	const u32 bufferOnStackSize = 2 * 1024;
+	char str_buffer_onStack[bufferOnStackSize];
+	const char* str_buffer = str_buffer_onStack;
+	std::string str_buffer_onHeap;
+	int str_bufferLen = vsnprintf( str_buffer_onStack, bufferOnStackSize, format, args );
+	if ( str_bufferLen >= bufferOnStackSize || str_bufferLen < 0 )
+	{
+		// when there's not enough space in buffer, vsnprintf returns "encoding error" (value < 0)
+		// in this case, alloc mem dynamically and call it again
+		const u32 bufferOnHeapSize = 32 * 1024;
+		str_buffer_onHeap.resize( bufferOnHeapSize );
+		str_buffer = str_buffer_onHeap.c_str();
+		str_bufferLen = vsnprintf( &str_buffer_onHeap[0], bufferOnHeapSize, format, args );
+		if ( str_bufferLen >= bufferOnHeapSize )
+			str_buffer_onHeap[bufferOnHeapSize - 1] = 0;
+	}
+	va_end( args );
+
+	logErrorAlways( str_buffer );
+	__debugbreak();
+}
+
 int spad_snprintf( char* buffer, size_t bufferSize, const char* format, ... )
 {
 	va_list	args;

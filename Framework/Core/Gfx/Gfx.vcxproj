@@ -11,6 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\3rdParty\vulkan\volk\volk.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DebugDraw.cpp" />
     <ClCompile Include="Dx11\Dx11.cpp" />
@@ -30,6 +33,7 @@
     <ClCompile Include="Mesh\SDKMesh.cpp" />
     <ClCompile Include="Text\BMFont.cpp" />
     <ClCompile Include="Text\TextRenderer.cpp" />
+    <ClCompile Include="Vulkan\Vulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -48,6 +52,7 @@
     <ClInclude Include="Mesh\SDKMesh.h" />
     <ClInclude Include="Text\BMFont.h" />
     <ClInclude Include="Text\TextRenderer.h" />
+    <ClInclude Include="Vulkan\Vulkan.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C21FB832-6B29-44F9-8EA5-CFEB78F5612A}</ProjectGuid>

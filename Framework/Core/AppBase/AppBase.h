@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Gfx\Dx11\Dx11.h>
+#include <Gfx\Vulkan\Vulkan.h>
 #include <Util\Timer.h>
 #include <Util\Vectormath.h>
 #include "Input.h"
@@ -16,6 +17,13 @@ namespace spad
 			ShutDownBase();
 		}
 
+		enum class APIType
+		{
+			Dx11,
+			Vulkan,
+			Count
+		};
+
 		struct Param
 		{
 			const char* appName = nullptr;
@@ -24,6 +32,7 @@ namespace spad
 			//u32 windowWidth = 1024;
 			//u32 windowHeight = 1024;
 			bool debugDxDevice_ = false;
+			APIType apiType_ = APIType::Dx11;
 		};
 
 		bool StartUpBase( const Param& param );
@@ -83,6 +92,7 @@ namespace spad
 		Timer timer_;
 
 		std::unique_ptr<Dx11> dx11_;
+		std::unique_ptr<Vulkan> vulkan_;
 
 		static AppBase* instance_;
 	};

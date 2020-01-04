@@ -28,11 +28,13 @@
 
 	void assertPrintAndBreak( const char* text );
 	void assertPrintAndBreak2( const char* text, const char* msg );
+	void assertPrintAndBreak3( const char* format, ... );
 
 	#if defined(_MSC_VER)
 
 		#define SPAD_ASSERT(expression)			(void)( (!!(expression)) || (assertPrintAndBreak( "ASSERTION FAILED " #expression " " AT "\n" ), 0) )
 		#define SPAD_ASSERT2(expression, msg)	(void)( (!!(expression)) || (assertPrintAndBreak2( "ASSERTION FAILED " #expression " " AT "\n", (msg) ), 0) )
+		#define SPAD_ASSERTMSG(...)				assertPrintAndBreak3( __VA_ARGS__ )
 
 	#endif //
 
@@ -44,6 +46,7 @@
 #endif // SPAD_ASSERTIONS_ENABLED
 
 #define SPAD_STATIC_ASSERT(expr, msg) static_assert( expr, "static assertion failed: " #expr ": " msg )
+#define cassert( xxx ) SPAD_STATIC_ASSERT( xxx, "" )
 
 #define SPAD_NOT_IMPLEMENTED assertPrintAndBreak( "NOT IMPLEMENTED!" AT )
 
@@ -202,6 +205,87 @@ inline size_t spadAlignPowerOfTwo( size_t val, size_t alignment )
 	return ( ( val + alignment ) & ~alignment );
 }
 
+
+#define ARRAY_COUNT(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
+
+
+// Implementation detail for truncate_cast to get it to work correctly for enum types where we
+// need to operate on the underlying type. That's because std::is_signed<EnumType> and std::is_unsigned<EnumType> is always false!
+// Unfortunately we can't just use std::underlying_type for both enum and integral types because it only compiles for enum types,
+// so we have to do trait-based dispatch.
+template <typename T>
+struct make_integral
+{
+	template <typename U, bool isEnum = false> struct dispatch { cassert( std::is_integral<T>::value ); using type = U; };
+	template <typename U> struct dispatch<U, true> { using type = typename std::underlying_type<U>::type; };
+
+	using type = typename dispatch<T, std::is_enum<T>::value>::type;
+};
+
+template <typename SmallType, typename BigType>
+inline SmallType truncate_cast( BigType val )
+{
+	cassert( std::is_integral<BigType>::value || std::is_enum<BigType>::value );
+	cassert( std::is_integral<SmallType>::value || std::is_enum<SmallType>::value );
+	cassert( sizeof( BigType ) >= sizeof( SmallType ) );
+	cassert( sizeof( BigType ) <= sizeof( uintmax_t ) );
+
+	const SmallType ret = SmallType( val );
+
+#if SPAD_ASSERTIONS_ENABLED
+	using SmallIntType = typename make_integral<SmallType>::type;
+	using BigIntType = typename make_integral<BigType>::type;
+
+	constexpr bool isSmallTypeSigned = std::is_signed<SmallIntType>::value;
+	constexpr bool isBigTypeSigned = std::is_signed<BigIntType>::value;
+
+#ifdef _MSC_VER
+#pragma warning( suppress: 6326 ) // 6326: Potential comparison of a constant with another constant.
+#endif
+	constexpr bool same_signedness = isBigTypeSigned == isSmallTypeSigned;
+	using SignedBigType = std::make_signed_t<BigIntType>;
+	using UnsignedBigType = std::make_unsigned_t<BigIntType>;
+	using ComparisonType = std::conditional_t<same_signedness, BigIntType, std::conditional_t<isBigTypeSigned, UnsignedBigType, SignedBigType>>;
+
+	constexpr auto maxSignedBigType = ( std::numeric_limits<SignedBigType>::max )( ); // Parentheses necessary here to prevent macro expansion for min/max macros
+	constexpr auto minSmallType = ( std::numeric_limits<SmallIntType>::min )( );
+	constexpr auto maxSmallType = ( std::numeric_limits<SmallIntType>::max )( );
+
+	// To survive a signedness conversion in either direction, BigType needs to
+	// be in the range 0 <= val <= signed_max;
+	bool ok = same_signedness || val >= (BigType)0;
+	ok = ok && ( same_signedness || val <= (BigType)maxSignedBigType );
+
+	// Otherwise just check that we're correctly within limits.
+	ok = ok && (ComparisonType)minSmallType <= (ComparisonType)val;
+	ok = ok && (ComparisonType)maxSmallType >= (ComparisonType)val;
+
+	if ( !ok )
+	{
+#ifdef _MSC_VER
+		constexpr const char *const funcName = __FUNCSIG__;
+#else
+		constexpr const char *const funcName = __PRETTY_FUNCTION__;
+#endif
+
+		SPAD_ASSERTMSG( "%s (SmallType) %s 0x%jx == (BigType) %s 0x%jx", funcName,
+			isSmallTypeSigned ? "signed" : "unsigned", static_cast<uintmax_t>( ret ),
+			isBigTypeSigned ? "signed" : "unsigned", static_cast<uintmax_t>( val ) );
+	}
+#endif // #if SPAD_ASSERTIONS_ENABLED
+
+	return ret;
+}
+
+// Like truncate_cast, but stores to the given output pointer.  This is useful for cases where you don't want to
+// explicitly state the type (as doing so is fragile because the type of the cast has to match the type of the
+// variable).
+template <typename SmallType, typename BigType>
+inline void truncate_store( SmallType *outValue, BigType inValue )
+{
+	*outValue = truncate_cast<SmallType>( inValue );
+}
 //#ifdef __cplusplus
 //}
 //#endif //

@@ -52,15 +52,32 @@ AppBase* AppBase::instance_;
 		if ( hWnd_ == nullptr )
 			return false;
 
-		Dx11::Param dx11Param;
-		dx11Param.hWnd = hWnd_;
-		dx11Param.backBufferWidth_ = param.windowWidth;
-		dx11Param.backBufferHeight_ = param.windowHeight;
-		dx11Param.debugDevice = param.debugDxDevice_;
-		dx11_ = std::make_unique<Dx11>();
-		bool res = dx11_->StartUp( dx11Param );
-		if ( !res )
-			return false;
+		if ( param.apiType_ == APIType::Dx11 )
+		{
+			Dx11::Param dx11Param;
+			dx11Param.hWnd = hWnd_;
+			dx11Param.backBufferWidth_ = param.windowWidth;
+			dx11Param.backBufferHeight_ = param.windowHeight;
+			dx11Param.debugDevice = param.debugDxDevice_;
+			dx11_ = std::make_unique<Dx11>();
+			bool res = dx11_->StartUp( dx11Param );
+			if ( !res )
+				return false;
+		}
+		else
+		{
+			SPAD_ASSERT( param.apiType_ == APIType::Vulkan );
+			Vulkan::Param apiParam;
+			apiParam.hWnd_ = hWnd_;
+			apiParam.hInstance_ = hThisInst_;
+			apiParam.backBufferWidth_ = param.windowWidth;
+			apiParam.backBufferHeight_ = param.windowHeight;
+			apiParam.debugDevice = param.debugDxDevice_;
+			vulkan_ = std::make_unique<Vulkan>();
+			bool res = vulkan_->StartUp( apiParam );
+			if ( !res )
+				return false;
+		}
 
 		debugDraw::DontTouchThis::Initialize( dx11_->getDevice() );
 
@@ -179,6 +196,7 @@ AppBase* AppBase::instance_;
 		debugDraw::DontTouchThis::DeInitialize();
 
 		dx11_.reset();
+		vulkan_.reset();
 
 		if ( hWnd_ != nullptr )
 		{
