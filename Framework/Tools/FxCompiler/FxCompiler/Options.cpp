@@ -73,6 +73,8 @@ enum optionIndex
 	// hlsl
 	hlsl_outputDir,
 	hlsl_intermediateDir,
+	hlsl_dxc,
+	hlsl_emitSPIRV
 };
 
 
@@ -98,6 +100,11 @@ const option::Descriptor usage[] =
 	// hlsl
 	{ hlsl_outputDir, 0, "","hlslOutDir", Arg::Required,"  --hlslOutDir=<path>" },
 	{ hlsl_intermediateDir, 0, "","hlslIntDir", Arg::Required,"  --hlslIntDir=<path>" },
+
+	{ hlsl_dxc, 0, "","dxc", Arg::None,"  --dxc" },
+
+	// hlsl / SPIRV
+	{ hlsl_emitSPIRV, 0, "","spirv", Arg::None,"  --spirv" },
 
 	{ UNKNOWN, 0,"", "",        Arg::None, "" },
 
@@ -172,7 +179,16 @@ int ParseOptions( spad::fxlib::FxFileCompileOptions& options
 		spad::AppendBackslashToDirectoryName( hlslOptions.intermediateDirectory_ );
 	}
 
+	if ( const option::Option* opt = parsedOptions[hlsl_dxc] )
+	{
+		hlslOptions.useDXC = true;
+	}
 
+	if ( const option::Option* opt = parsedOptions[hlsl_emitSPIRV] )
+	{
+		hlslOptions.useDXC = true;
+		hlslOptions.emitSPIRV = true;
+	}
 
 
 	// files

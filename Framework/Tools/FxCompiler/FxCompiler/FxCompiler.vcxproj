@@ -53,6 +53,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <OutputFile>$(SCRATCHPAD_DIR)\Framework\bin\$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalDependencies>$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\dxclib.lib;$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\dxcompiler.lib;$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\dxlib_sample.lib;$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\d3dcompiler_dxc_bridge.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -62,6 +63,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <OutputFile>$(SCRATCHPAD_DIR)\Framework\bin\$(TargetName)$(TargetExt)</OutputFile>
+      <AdditionalDependencies>$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\dxclib.lib;$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\dxcompiler.lib;$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\dxlib_sample.lib;$(SCRATCHPAD_DIR)\Framework\3rdParty\dxc\lib\d3dcompiler_dxc_bridge.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

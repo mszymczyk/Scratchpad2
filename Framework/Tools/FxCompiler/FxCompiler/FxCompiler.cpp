@@ -64,7 +64,7 @@ int doIt( const std::string& programName
 	{
 		if (res != 0)
 		{
-			std::cerr << programName << ": " << "Compilation failed for at least one input file!" << std::endl;
+			std::cerr << programName << ": " << "Compilation failed for at least one input file! " << ( hlslOptions.useDXC ? "(DXC ON)" : "(DXC OFF)" ) << std::endl;
 			return res;
 		}
 	}
@@ -99,12 +99,12 @@ int _tmain( int argc, char* argv[] )
 
 	int ires = 0;
 
-	//Sleep( 5000 );
-
 	CpuTimeQuery totalDuration;
 	BeginCpuTimeQuery( totalDuration );
 
 	std::string programName = argv[0];
+
+	std::cerr << programName << ": Version 1.0" << std::endl;
 
 	const char* SCRATCHPAD_DIR_env = getenv( "SCRATCHPAD_DIR" );
 	if ( !SCRATCHPAD_DIR_env )
@@ -164,6 +164,16 @@ int _tmain( int argc, char* argv[] )
 	// setup output dirs
 	hlslOptions.outputDirectory_ = SCRATCHPAD_DIR + "dataWin\\Shaders\\hlsl\\";
 	hlslOptions.intermediateDirectory_ = SCRATCHPAD_DIR + "Build\\dataWin\\Shaders\\hlsl\\";
+	if ( hlslOptions.emitSPIRV )
+	{
+		hlslOptions.outputDirectory_ += "spirv\\";
+		hlslOptions.intermediateDirectory_ += "spirv\\";
+	}
+	else if ( hlslOptions.useDXC )
+	{
+		hlslOptions.outputDirectory_ += "dxc\\";
+		hlslOptions.intermediateDirectory_ += "dxc\\";
+	}
 
 	if (cleanOutputFiles)
 	{

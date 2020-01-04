@@ -3,6 +3,7 @@
 #include <Core/Dx11Util/Dx11Util.h>
 #include "../FxCompilerLib/FxCompilerLib.h"
 #include "../FxCompilerLib/IncludeDependencies.h"
+#include "..\..\..\3rdParty\dxc\include\dxc\dxcapi.h"
 
 namespace spad
 {
@@ -11,11 +12,22 @@ namespace fxlib
 namespace hlsl
 {
 
+//typedef CComPtr<IDxcBlobEncoding> IDxcBlobEncodingPtr;
+//typedef _com_ptr_t<IDxcBlobEncoding> IDxcBlobEncodingPtr;
+_COM_SMARTPTR_TYPEDEF( IDxcBlobEncoding, __uuidof( IDxcBlobEncoding ) );
+//typedef _com_ptr_t<IDxcBlob> IDxcBlobPtr;
+_COM_SMARTPTR_TYPEDEF( IDxcBlob, __uuidof( IDxcBlob ) );
+_COM_SMARTPTR_TYPEDEF( IDxcOperationResult, __uuidof( IDxcOperationResult ) );
+_COM_SMARTPTR_TYPEDEF( IDxcLibrary, __uuidof( IDxcLibrary ) );
+_COM_SMARTPTR_TYPEDEF( IDxcCompiler, __uuidof( IDxcCompiler ) );
+
 struct FxFileHlslCompileOptions
 {
 	u32 dxCompilerFlags = 0;
 	bool generatePreprocessedOutput = false;
 	bool generateDisassembly = false;
+	bool useDXC = false;
+	bool emitSPIRV = false;
 
 	std::string outputDirectory_; // contains backslash at the end
 	std::string intermediateDirectory_; // contains backslash at the end
@@ -35,8 +47,10 @@ struct HlslCompileContext
 
 struct HlslProgramData
 {
-	ID3D10BlobPtr shaderBlob_;
-	ID3D10BlobPtr vsSignatureBlob_;
+	ID3D10BlobPtr shaderBlob_ = nullptr;
+	ID3D10BlobPtr vsSignatureBlob_ = nullptr;
+
+	IDxcBlobPtr shaderBlobDxc_ = nullptr;
 };
 
 class HlslException : public Exception
