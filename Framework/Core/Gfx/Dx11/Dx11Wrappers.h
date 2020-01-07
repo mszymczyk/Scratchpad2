@@ -431,6 +431,19 @@ public:
 		deviceContext->ClearUnorderedAccessViewUint( getUAV(), clearValue4 );
 	}
 
+	void updateGpu( ID3D11DeviceContext* deviceContext, const T *data )
+	{
+		SPAD_ASSERT( dxBuffer_ != nullptr );
+
+		deviceContext->UpdateSubresource( dxBuffer_, 0, nullptr, data, 0, 0 );
+	}
+
+	void setVS_SRV( ID3D11DeviceContext* deviceContext, u32 slot ) const
+	{
+		ID3D11ShaderResourceView* bufferArray[1] = { getSRV() };
+		deviceContext->VSSetShaderResources( slot, 1, bufferArray );
+	}
+
 	void setCS_SRV( ID3D11DeviceContext* deviceContext, u32 slot ) const
 	{
 		ID3D11ShaderResourceView* bufferArray[1] = { getSRV() };

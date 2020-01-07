@@ -25,6 +25,7 @@
 #define MAKE_FLAT_CBUFFER( _name, _register ) struct _name
 
 #define CBUFFER_FLOAT4X4( name )								Matrix4 name
+#define CBUFFER_UINT( name )									uint name; uint pad[3]
 #define CBUFFER_UINT4( name )									uint name[4]
 #define CBUFFER_FLOAT4( name )									Vector4 name
 
@@ -51,6 +52,7 @@
 #define MAKE_FLAT_CBUFFER( _name, _register ) cbuffer _name _register
 
 #define CBUFFER_FLOAT4X4( name )								float4x4 name
+#define CBUFFER_UINT( name )									uint name; uint3 pad
 #define CBUFFER_UINT4( name )									uint4 name
 #define CBUFFER_FLOAT4( name )									float4 name
 

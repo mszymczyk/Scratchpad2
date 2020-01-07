@@ -156,6 +156,7 @@
     <FxCompilerFile Include="decal_volume_cshared.hlsl" />
     <FxCompilerFile Include="decal_volume_rendering.hlsl" />
     <FxCompilerFile Include="FxDoc.hlsl" />
+    <FxCompilerFile Include="skinning.hlsl" />
     <FxCompilerFile Include="texture.hlsl">
       <FileType>Document</FileType>
     </FxCompilerFile>
@@ -173,6 +174,7 @@
     <ClInclude Include="decal_volume_rendering_cshared.h" />
     <ClInclude Include="HlslFrameworkInterop.h" />
     <ClInclude Include="PassConstants.h" />
+    <ClInclude Include="skinning_cshared.h" />
     <ClInclude Include="TextRendererConstants.h" />
     <ClInclude Include="textureAtlasConstants.h" />
     <ClInclude Include="UvDerivativesConstants.h" />
