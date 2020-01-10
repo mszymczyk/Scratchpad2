@@ -8,59 +8,30 @@
 
 namespace spad
 {
-	struct DDMMesh
-	{
-		struct Graph
-		{
-			std::vector<std::string> nodes;
-			std::vector<int> parents;
-			std::vector<Matrix4, stdutil::aligned_allocator<Matrix4, alignof( Matrix4 )>> origPoses;
-			std::vector<Matrix4, stdutil::aligned_allocator<Matrix4, alignof( Matrix4 )>> localPoses;
-			std::vector<Matrix4, stdutil::aligned_allocator<Matrix4, alignof( Matrix4 )>> globalPoses;
-		};
+	typedef std::vector<Matrix4, stdutil::aligned_allocator<Matrix4, alignof( Matrix4 )>> Matrix4Vector;
+	//typedef std::vector<Matrix4Vector, stdutil::aligned_allocator<Matrix4Vector, alignof( Matrix4Vector )>> Matrix4Matrix;
+	typedef std::vector<OmegaRef> OmegaRefVector;
+	typedef std::vector<float3x3> Float3x3Vector;
 
-		struct Bone
-		{
-			Matrix4 bindMatrix;
-			std::string name;
-			uint graphNodeIndex;
-		};
+	//void PrecomputeDDM( DDMMesh &mesh );
+	void PrecomputeDDM(
+		  const std::vector<BaseVertexPrecompute> &vertices
+		, const std::vector<uint> &indices
+		, const uint numTransforms
+		, OmegaRefVector &outOmegaRefs
+		, Matrix4Vector &outOmegas
+		, std::vector<uint> &outTransformIndices
+	);
 
-		struct BoneAnimation
-		{
-			//uint boneIndex;
-			uint graphNodeIndex;
-			std::vector<Vector4, stdutil::aligned_allocator<Vector4, alignof( Vector4 )>> translateKeys;
-			std::vector<Quat, stdutil::aligned_allocator<Quat, alignof( Quat )>> rotateKeys;
-			std::vector<float> rotateKeyTimes;
-		};
-
-		struct Animation
-		{
-			float durationSeconds;
-			std::vector<BoneAnimation> boneAnims;
-		};
-
-		std::vector<uint> indices;
-		std::vector<BaseVertex> vertices;
-
-		Graph graph;
-		std::vector<Bone, stdutil::aligned_allocator<Bone, alignof( Bone )>> bones;
-
-		std::vector<Animation, stdutil::aligned_allocator<Animation, alignof( Bone )>> animations;
-
-		std::vector<Matrix4, stdutil::aligned_allocator<Matrix4, alignof( Matrix4 )>> bonesScratch;
-
-		//ID3D11BufferPtr vertexBuffer;
-		ID3D11BufferPtr indexBuffer;
-		StructuredBuffer<BaseVertex> baseVertices;
-		StructuredBuffer<SkinnedVertex> skinnedVertices;
-		StructuredBuffer<Matrix4> bonesBuffer;
-		//std::vector<D3D11_INPUT_ELEMENT_DESC> inputElements;
-		//uint32_t inputElementsHash;
-	};
-
-	void PrecomputeDDM( DDMMesh &mesh );
+	void DDMSkinCPU(
+		  const std::vector<BaseVertex> &vertices
+		, const Matrix4Vector &transforms
+		, const OmegaRefVector &omegaRefs
+		, const Matrix4Vector &omegas
+		, const std::vector<uint> &transformIndices
+		, std::vector<SkinnedVertex> &outSkinnedVertices
+		, std::vector<DebugOutput> &outDebug
+	);
 }
 
 #endif // DIRECTDELTAMUSHSKINNINGPRECOMPUTE_H

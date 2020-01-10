@@ -9,6 +9,8 @@
 #include "..\..\..\3rdParty\assimp-4.1.0\include\assimp\scene.h"
 #include "..\..\..\3rdParty\assimp-4.1.0\include\assimp\postprocess.h"
 
+#pragma optimize( "", off )
+//#pragma optimize( "", on )
 
 namespace spad
 {
@@ -26,8 +28,11 @@ namespace spad
 		const float aspect = (float)dx11_->getBackBufferWidth() / (float)dx11_->getBackBufferHeight();
 		projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 1.0f, 1000.0f );
 
-		LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth.fbx" );
-		//PrecomputeDDM( meshes[0] );
+		//LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth.fbx" );
+		LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth_4.fbx" );
+		//LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth_32_tri.fbx" );
+		//LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_rigid.fbx" );
+		PrecomputeDDM( dxDevice, meshes[0] );
 
 		return true;
 	}
@@ -174,9 +179,6 @@ namespace spad
 
 		deviceContext.BeginMarker( "SkinMesh" );
 
-		const HlslShaderPass& fxPass = *shader_->getPass( "cs_linear_blend_skinning" );
-		fxPass.setCS( deviceContext.context );
-
 		const uint numVertices = truncate_cast<uint>( mesh.vertices.size() );
 
 		skinningConstants_.data.numVertices = numVertices;
@@ -184,6 +186,8 @@ namespace spad
 		skinningConstants_.setCS( deviceContext.context, REGISTER_CBUFFER_SKINNING_CONSTANTS );
 
 		Matrix4 *bonesScratch = mesh.bonesScratch.data();
+
+		//animTime_ = 0.5f;
 
 		if ( !mesh.animations.empty() )
 		{
@@ -220,16 +224,63 @@ namespace spad
 			}
 		}
 
-		mesh.bonesBuffer.updateGpu( deviceContext.context, bonesScratch );
-		mesh.bonesBuffer.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_SKINNING_MATRICES );
+		{
+			//const HlslShaderPass& fxPass = *shader_->getPass( "cs_linear_blend_skinning" );
+			const HlslShaderPass& fxPass = *shader_->getPass( "cs_ddm_skinning_v0" );
+			//const HlslShaderPass& fxPass = *shader_->getPass( "cs_ddm_skinning_v1" );
+			fxPass.setCS( deviceContext.context );
 
-		mesh.baseVertices.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_BASE_VERTICES );
-		mesh.skinnedVertices.setCS_UAV( deviceContext.context, REGISTER_BUFFER_SKINNING_OUT_SKINNED_VERTICES );
+			mesh.bonesBuffer.updateGpu( deviceContext.context, bonesScratch );
+			mesh.bonesBuffer.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_SKINNING_MATRICES );
 
-		uint nGroupsX = ( numVertices + SKINNING_NUM_THREADS_X - 1 ) / SKINNING_NUM_THREADS_X;
-		deviceContext.context->Dispatch( nGroupsX, 1, 1 );
+			mesh.baseVerticesBuffer.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_BASE_VERTICES );
+			mesh.skinnedVerticesBuffer.setCS_UAV( deviceContext.context, REGISTER_BUFFER_SKINNING_OUT_SKINNED_VERTICES );
+			mesh.debugOutputBuffer.setCS_UAV( deviceContext.context, REGISTER_BUFFER_SKINNING_OUT_DEBUG );
 
-		deviceContext.UnbindCSUAVs();
+			{
+				mesh.omegaRefsBuffer.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_OMEGA_REFS );
+				mesh.omegasBuffer.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_OMEGAS );
+				mesh.transformIndicesBuffer.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_TRANSFORM_INDICES );
+			}
+
+			uint nGroupsX = ( numVertices + SKINNING_NUM_THREADS_X - 1 ) / SKINNING_NUM_THREADS_X;
+			deviceContext.context->Dispatch( nGroupsX, 1, 1 );
+
+			deviceContext.UnbindCSUAVs();
+		}
+
+		{
+			const DebugOutput *doutput = mesh.debugOutputBuffer.CPUReadbackStart( deviceContext.context );
+
+			DDMSkinCPU( mesh.vertices, mesh.bonesScratch, mesh.omegaRefs, mesh.omegas, mesh.transformIndices, mesh.skinnedVerticesScratch, mesh.debugOutputScratch );
+			//mesh.skinnedVerticesBuffer.updateGpu( deviceContext.context, mesh.skinnedVerticesScratch.data() );
+
+			mesh.debugOutputBuffer.CPUReadbackEnd( deviceContext.context );
+		}
+
+		{
+			const HlslShaderPass& fxPass = *shader_->getPass( "cs_svd_debug" );
+			fxPass.setCS( deviceContext.context );
+
+			std::vector<float3x3> svd;
+			svd.reserve( mesh.vertices.size() );
+			for ( size_t i = 0; i < mesh.vertices.size(); ++i )
+			{
+				svd.push_back( mesh.debugOutputScratch[i].m );
+			}
+
+			mesh.svdBuffer.updateGpu( deviceContext.context, svd.data() );
+			mesh.svdBuffer.setCS_SRV( deviceContext.context, REGISTER_BUFFER_SKINNING_IN_SVD );
+			mesh.debugOutputBuffer.setCS_UAV( deviceContext.context, REGISTER_BUFFER_SKINNING_OUT_DEBUG );
+
+			uint nGroupsX = ( numVertices + SKINNING_NUM_THREADS_X - 1 ) / SKINNING_NUM_THREADS_X;
+			deviceContext.context->Dispatch( nGroupsX, 1, 1 );
+
+			deviceContext.UnbindCSUAVs();
+
+			const DebugOutput *doutput = mesh.debugOutputBuffer.CPUReadbackStart( deviceContext.context );
+			mesh.debugOutputBuffer.CPUReadbackEnd( deviceContext.context );
+		}
 
 		deviceContext.EndMarker();
 	}
@@ -259,6 +310,7 @@ namespace spad
 		fxPass.setPS( deviceContext.context );
 
 		deviceContext.context->RSSetState( RasterizerStates::WireframeBackFaceCull() );
+		//deviceContext.context->RSSetState( RasterizerStates::BackFaceCull() );
 		deviceContext.context->OMSetBlendState( BlendStates::blendDisabled, nullptr, 0xffffffff );
 		deviceContext.context->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 		deviceContext.context->OMSetDepthStencilState( DepthStencilStates::DepthEnabled(), 0 );
@@ -266,7 +318,7 @@ namespace spad
 		deviceContext.context->IASetInputLayout( nullptr );
 		deviceContext.context->IASetIndexBuffer( mesh.indexBuffer, DXGI_FORMAT_R32_UINT, 0 );
 
-		mesh.skinnedVertices.setVS_SRV( immediateContext, REGISTER_BUFFER_SKINNING_IN_SKINNED_VERTICES );
+		mesh.skinnedVerticesBuffer.setVS_SRV( immediateContext, REGISTER_BUFFER_SKINNING_IN_SKINNED_VERTICES );
 
 		deviceContext.context->DrawIndexed( truncate_cast<uint>( mesh.indices.size() ), 0, 0 );
 
@@ -337,6 +389,58 @@ namespace spad
 		return 0xffffffff;
 	}
 
+	static void FindUniquePositions( const std::vector<BaseVertex> &baseVertices, std::vector<BaseVertexPrecompute> &outVertices, std::vector<uint> &outVertexMap )
+	{
+		struct TmpVert
+		{
+			float x, y, z;
+		};
+
+		struct CmpTmpVert
+		{
+			bool operator()( const TmpVert& a, const TmpVert& b ) const
+			{
+				return memcmp( &a, &b, sizeof( TmpVert ) ) < 0;
+			}
+		};
+
+		typedef std::map<TmpVert, uint, CmpTmpVert> VertexMappingMap;
+
+		VertexMappingMap vmap;
+
+		outVertices.reserve( baseVertices.size() );
+		outVertexMap.reserve( baseVertices.size() );
+
+		for ( size_t iVert = 0; iVert < baseVertices.size(); ++iVert )
+		{
+			const BaseVertex &bv = baseVertices[iVert];
+			TmpVert tmpv = { bv.x, bv.y, bv.z };
+
+			VertexMappingMap::const_iterator it = vmap.find( tmpv );
+			if ( it == vmap.end() )
+			{
+				outVertexMap.push_back( truncate_cast<uint>( outVertices.size() ) );
+				vmap[tmpv] = truncate_cast<uint>( outVertices.size() );
+
+				outVertices.emplace_back();
+				BaseVertexPrecompute &ov = outVertices.back();
+				ov.x = bv.x;
+				ov.y = bv.y;
+				ov.z = bv.z;
+				ov.numWeights = bv.numWeights;
+				for ( size_t i = 0; i < ARRAY_COUNT( BaseVertexPrecompute::w ); ++i )
+				{
+					ov.w[i] = bv.w[i];
+					ov.b[i] = bv.b[i];
+				}
+			}
+			else
+			{
+				outVertexMap.push_back( it->second );
+			}
+		}
+	}
+
 	void DirectDeltaMushSkinning::LoadModelsWithAssimp( ID3D11Device* device, const char* fileName )
 	{
 		SPAD_ASSERT( FileExists( fileName ) );
@@ -350,16 +454,16 @@ namespace spad
 
 		Assimp::Importer importer;
 
-		if ( FileExists( assbinFileName.c_str() ) )
-		{
-			scene = importer.ReadFile( assbinFileName.c_str(), 0 );
+		//if ( FileExists( assbinFileName.c_str() ) )
+		//{
+		//	scene = importer.ReadFile( assbinFileName.c_str(), 0 );
 
-			if ( scene == nullptr )
-			{
-				THROW_MESSAGE( "Failed to load model %s. Err: ", fileName, importer.GetErrorString() );
-			}
-		}
-		else
+		//	if ( scene == nullptr )
+		//	{
+		//		THROW_MESSAGE( "Failed to load model %s. Err: ", fileName, importer.GetErrorString() );
+		//	}
+		//}
+		//else
 		{
 			scene = importer.ReadFile( fileName, 0 );
 
@@ -380,8 +484,8 @@ namespace spad
 			flags |= aiProcess_Triangulate;
 			flags |= aiProcess_JoinIdenticalVertices;
 			//flags |= aiProcess_MakeLeftHanded;
-			flags |= aiProcess_RemoveRedundantMaterials;
-			flags |= aiProcess_FlipUVs;
+			//flags |= aiProcess_RemoveRedundantMaterials;
+			//flags |= aiProcess_FlipUVs;
 			//flags |= aiProcess_FlipWindingOrder;
 			//flags |= aiProcess_PreTransformVertices;
 			//flags |= aiProcess_OptimizeMeshes;
@@ -414,6 +518,8 @@ namespace spad
 			const uint numTriangles = assimpMesh.mNumFaces;
 
 			mesh.vertices.resize( numVertices );
+			mesh.skinnedVerticesScratch.resize( numVertices );
+			mesh.debugOutputScratch.resize( numVertices );
 
 			for ( uint iVert = 0; iVert < numVertices; ++iVert )
 			{
@@ -474,7 +580,6 @@ namespace spad
 
 			mesh.indices.resize( numTriangles * 3 );
 			uint *dstIndices = mesh.indices.data();
-
 			for ( uint triIdx = 0; triIdx < numTriangles; ++triIdx )
 			{
 				dstIndices[triIdx * 3 + 0] = static_cast<u16>( assimpMesh.mFaces[triIdx].mIndices[0] );
@@ -537,8 +642,16 @@ namespace spad
 				}
 			}
 
-			mesh.baseVertices.Initialize( device, numVertices, mesh.vertices.data(), true, false, false, false );
-			mesh.skinnedVertices.Initialize( device, numVertices, nullptr, false, true, false, false );
+			FindUniquePositions( mesh.vertices, mesh.verticesPrecompute, mesh.verticesPrecomputeMap );
+
+			mesh.indicesPrecompute.resize( numTriangles * 3 );
+			for ( size_t iIndex = 0; iIndex < mesh.indices.size(); ++iIndex )
+			{
+				mesh.indicesPrecompute[iIndex] = mesh.verticesPrecomputeMap[mesh.indices[iIndex]];
+			}
+
+			mesh.baseVerticesBuffer.Initialize( device, numVertices, mesh.vertices.data(), true, false, false, false );
+			mesh.skinnedVerticesBuffer.Initialize( device, numVertices, nullptr, false, true, false, false );
 
 			mesh.bonesBuffer.Initialize( device, numBones, nullptr, false, false, false, false );
 
@@ -583,12 +696,34 @@ namespace spad
 					}
 				}
 			}
+
+			mesh.debugOutputBuffer.Initialize( device, numVertices, nullptr, false, true, true, false );
+			mesh.svdBuffer.Initialize( device, numVertices, nullptr, false, false, false, false );
 		}
 	}
 
-	void DirectDeltaMushSkinning::PrecomputeDDM( DDMMesh &mesh )
+	void DirectDeltaMushSkinning::PrecomputeDDM( ID3D11Device* device, DDMMesh &mesh )
 	{
-		spad::PrecomputeDDM( mesh );
+		//spad::PrecomputeDDM( mesh.vertices, mesh.indices, truncate_cast<uint>( mesh.bones.size() ), mesh.omegaRefs, mesh.omegas, mesh.transformIndices );
+		//spad::PrecomputeDDM( mesh.verticesPrecompute, mesh.indicesPrecompute, truncate_cast<uint>( mesh.bones.size() ), mesh.omegaRefs, mesh.omegas, mesh.transformIndices );
+
+		OmegaRefVector omegaRefs;
+		spad::PrecomputeDDM( mesh.verticesPrecompute, mesh.indicesPrecompute, truncate_cast<uint>( mesh.bones.size() ), omegaRefs, mesh.omegas, mesh.transformIndices );
+
+		SPAD_ASSERT( omegaRefs.size() == mesh.verticesPrecompute.size() );
+
+		mesh.omegaRefs.resize( mesh.vertices.size() );
+		for ( size_t iVert = 0; iVert < mesh.vertices.size(); ++iVert )
+		{
+			mesh.omegaRefs[iVert] = omegaRefs[mesh.verticesPrecomputeMap[iVert]];
+		}
+
+		SPAD_ASSERT( mesh.omegaRefs.size() == mesh.vertices.size() );
+		SPAD_ASSERT( mesh.omegas.size() == mesh.transformIndices.size() );
+
+		mesh.omegaRefsBuffer.Initialize( device, truncate_cast<uint>( mesh.omegaRefs.size() ), mesh.omegaRefs.data(), true, false, false, false );
+		mesh.omegasBuffer.Initialize( device, truncate_cast<uint>( mesh.omegas.size() ), mesh.omegas.data(), true, false, false, false );
+		mesh.transformIndicesBuffer.Initialize( device, truncate_cast<uint>( mesh.transformIndices.size() ), mesh.transformIndices.data(), true, false, false, false );
 	}
 
 }

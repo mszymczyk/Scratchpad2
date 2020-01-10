@@ -14,7 +14,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>$(ProjectName)_pch.h</PrecompiledHeaderFile>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;__SSE__;_CRT_SECURE_NO_WARNINGS;LIBCONFIG_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SCRATCHPAD_DIR)\Framework;$(SCRATCHPAD_DIR)\Framework\3rdParty;$(SCRATCHPAD_DIR)\Framework\3rdParty\tinyxml2;$(SCRATCHPAD_DIR)\Framework\3rdParty\libconfig\lib;$(SCRATCHPAD_DIR)\Framework\Core;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SCRATCHPAD_DIR)\Framework;$(SCRATCHPAD_DIR)\Framework\3rdParty;$(SCRATCHPAD_DIR)\Framework\3rdParty\tinyxml2;$(SCRATCHPAD_DIR)\Framework\3rdParty\libconfig\lib;$(SCRATCHPAD_DIR)\Framework\3rdParty\assimp-4.1.0\include;$(SCRATCHPAD_DIR)\Framework\Core;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
