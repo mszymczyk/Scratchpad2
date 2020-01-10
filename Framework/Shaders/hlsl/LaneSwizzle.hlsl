@@ -72,10 +72,10 @@ float4 fullscreen_fp( in vs_output IN ) : SV_Target
 	uint quadmask = 0x00000303;
 	//if ( groupIndex & ~( 16 | 8 | 2 | 1 ) )
 	//if ( groupIndex & ~( 8 | 1 ) )
-	//if ( ( groupIndex & ( 16 | 8 | 2 | 1 ) ) == 0 )
+	if ( ( groupIndex & ( 16 | 8 | 2 | 1 ) ) == 0 )
 	//if ( ( groupIndex & ( 16 | 8 | 2 | 1 ) ) == 0 )
 	//if ( ( groupIndex & ( ( 4 ) ) ) == 0 )
-	if ( groupIndex < 32 && ( groupBit & quadmask ) != 0 )
+	//if ( groupIndex < 32 && ( groupBit & quadmask ) != 0 )
 	//if ( ( groupIndex & ~( 16 | 8 ) ) )
 	{
 		color = float3( 1, 0, 0 );

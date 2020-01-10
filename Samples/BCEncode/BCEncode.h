@@ -28,7 +28,7 @@ namespace spad
 		ID3D11ShaderResourceView* srv_ = nullptr;
 
 		ID3D11Texture2D* tmpBC7_ = nullptr;
-		//ID3D11ShaderResourceView* tmpBC7SRV_ = nullptr;
+		ID3D11ShaderResourceView* tmpBC7SRV_ = nullptr;
 		ID3D11UnorderedAccessView* tmpBC7UAV_ = nullptr;
 	};
 }

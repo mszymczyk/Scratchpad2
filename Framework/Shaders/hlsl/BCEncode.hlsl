@@ -23,7 +23,7 @@ RWTexture2D<uint4> outBC7Tex								MAKE_REGISTER_UAV( 0 );
 [numthreads( 1, 1, 1 )]
 void cs_bc7_encode_constant()
 {
-	float4 color = float4( 1, 0, 0, 1 );
+	float4 color = float4( 1, 0, 1, 1 );
 
 	uint4 res = 0;
 
@@ -31,10 +31,15 @@ void cs_bc7_encode_constant()
 	uint mode = 0x20;
 	uint rotation = 0;
 
-	uint r = 127;
-	uint g = 127;
-	uint b = 127;
-	uint a = 127;
+	//uint r = 127;
+	//uint g = 127;
+	//uint b = 127;
+	//uint a = 127;
+
+	uint r = ( uint )( color.r * 127 );
+	uint g = ( uint )( color.g * 127 );
+	uint b = ( uint )( color.b * 127 );
+	uint a = ( uint )( color.a * 255 );
 
 	uint idxColor = 0;
 	uint idxAlpha = 0;

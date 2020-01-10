@@ -1,0 +1,28 @@
+#ifndef OCTAHEDRON_CSHARED_H
+#define OCTAHEDRON_CSHARED_H
+
+#include "HlslFrameworkInterop.h"
+
+#define REGISTER_CBUFFER_OCTAHEDRON_CONSTANTS				MAKE_REGISTER_CBUFFER( 2 )
+//#define REGISTER_SAMPLER_TEX_SAMPLER						MAKE_REGISTER_SAMPLER( 0 )
+//#define REGISTER_SAMPLER_CUBE_MAP_SAMPLER					MAKE_REGISTER_SAMPLER( 1 )
+
+
+MAKE_FLAT_CBUFFER( CbOctahedronConstants, REGISTER_CBUFFER_OCTAHEDRON_CONSTANTS )
+{
+	CBUFFER_FLOAT4( texSize ); // rcp in y
+	CBUFFER_FLOAT4( borderWidth ); // rcp in y
+	CBUFFER_FLOAT4( eyeOrigin; );
+	CBUFFER_FLOAT4( eyeAxisX );
+	CBUFFER_FLOAT4( eyeAxisY );
+	CBUFFER_FLOAT4( eyeAxisZ );
+	CBUFFER_FLOAT4( sampleMipLevel );
+	CBUFFER_FLOAT4X4( normalRotation );
+	CBUFFER_FLOAT4( picPosition );
+	CBUFFER_FLOAT4( manualMipLerp );
+	CBUFFER_FLOAT4( cbSpecularGloss );
+	CBUFFER_UINT4( solidAngleMode );
+	//CBUFFER_UINT4( importanceSampleParams );
+};
+
+#endif // OCTAHEDRON_CSHARED_H

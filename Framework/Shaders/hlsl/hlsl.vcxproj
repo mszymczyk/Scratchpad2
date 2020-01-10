@@ -143,7 +143,10 @@
     </ProjDoc>
   </ItemGroup>
   <ItemGroup>
+    <FxCompilerFile Include="analytical_geometry.hlsl" />
     <FxCompilerFile Include="BCEncode.hlsl" />
+    <FxCompilerFile Include="block_compression.hlsl" />
+    <FxCompilerFile Include="block_compression_cshared.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_clustering.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_cluster_impl.hlsl" />
     <FxCompilerFile Include="cs_decal_volume_cluster_impl_generic.hlsl" />
@@ -157,6 +160,9 @@
     <FxCompilerFile Include="decal_volume_rendering.hlsl" />
     <FxCompilerFile Include="FxDoc.hlsl" />
     <FxCompilerFile Include="skinning.hlsl" />
+    <FxCompilerFile Include="global_samplers.hlsl" />
+    <FxCompilerFile Include="LaneSwizzle.hlsl" />
+    <FxCompilerFile Include="octahedron.hlsl" />
     <FxCompilerFile Include="texture.hlsl">
       <FileType>Document</FileType>
     </FxCompilerFile>
@@ -173,6 +179,7 @@
     <ClInclude Include="DebugRendererConstants.h" />
     <ClInclude Include="decal_volume_rendering_cshared.h" />
     <ClInclude Include="HlslFrameworkInterop.h" />
+    <ClInclude Include="octahedron_cshared.h" />
     <ClInclude Include="PassConstants.h" />
     <ClInclude Include="skinning_cshared.h" />
     <ClInclude Include="TextRendererConstants.h" />

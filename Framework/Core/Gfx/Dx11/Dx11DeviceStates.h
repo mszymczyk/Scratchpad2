@@ -114,13 +114,22 @@ public:
     static void Initialize(ID3D11Device* device);
 	static void DeInitialize();
 
-	static ID3D11SamplerState* linear;
-	static ID3D11SamplerState* linearNoMips;
+	static ID3D11SamplerState* linearWrap;
+	static ID3D11SamplerState* linearWrapU;
+	static ID3D11SamplerState* linearWrapV;
 	static ID3D11SamplerState* linearClamp;
-	static ID3D11SamplerState* linearBorder;
-	static ID3D11SamplerState* point;
-	static ID3D11SamplerState* anisotropic;
-	static ID3D11SamplerState* anisotropic4x;
+	static ID3D11SamplerState* linearWrapNoMips;
+	static ID3D11SamplerState* linearClampNoMips;
+	static ID3D11SamplerState* linearClampMipPoint;
+	//static ID3D11SamplerState* linearBorder;
+	static ID3D11SamplerState* pointWrapNoMips;
+	static ID3D11SamplerState* pointClamp;
+	static ID3D11SamplerState* pointClampNoMips;
+	//static ID3D11SamplerState* anisotropic;
+	static ID3D11SamplerState* anisotropic4xWrap;
+	static ID3D11SamplerState* anisotropic4xWrapU;
+	static ID3D11SamplerState* anisotropic4xWrapV;
+	static ID3D11SamplerState* anisotropic4xClamp;
 	static ID3D11SamplerState* shadowMap;
 	static ID3D11SamplerState* shadowMapPCF;
 
@@ -134,13 +143,22 @@ public:
  //   static ID3D11SamplerState* ShadowMap() { return shadowMap; };
  //   static ID3D11SamplerState* ShadowMapPCF() { return shadowMapPCF; };
 
-    static D3D11_SAMPLER_DESC LinearDesc();
-	static D3D11_SAMPLER_DESC LinearNoMipsDesc();
+	static D3D11_SAMPLER_DESC LinearWrapDesc();
+	static D3D11_SAMPLER_DESC LinearWrapUDesc();
+	static D3D11_SAMPLER_DESC LinearWrapVDesc();
 	static D3D11_SAMPLER_DESC LinearClampDesc();
-    static D3D11_SAMPLER_DESC LinearBorderDesc();
-    static D3D11_SAMPLER_DESC PointDesc();
-    static D3D11_SAMPLER_DESC AnisotropicDesc();
-	static D3D11_SAMPLER_DESC AnisotropicDesc4x();
+	static D3D11_SAMPLER_DESC LinearWrapNoMipsDesc();
+	static D3D11_SAMPLER_DESC LinearClampNoMipsDesc();
+	static D3D11_SAMPLER_DESC LinearClampMipPointDesc();
+	static D3D11_SAMPLER_DESC LinearBorderDesc();
+    static D3D11_SAMPLER_DESC PointWrapNoMipsDesc();
+	static D3D11_SAMPLER_DESC PointClampDesc();
+	static D3D11_SAMPLER_DESC PointClampNoMipsDesc();
+	//static D3D11_SAMPLER_DESC AnisotropicDesc();
+	static D3D11_SAMPLER_DESC Anisotropic4xWrapDesc();
+	static D3D11_SAMPLER_DESC Anisotropic4xWrapUDesc();
+	static D3D11_SAMPLER_DESC Anisotropic4xWrapVDesc();
+	static D3D11_SAMPLER_DESC Anisotropic4xClampDesc();
 	static D3D11_SAMPLER_DESC ShadowMapDesc();
     static D3D11_SAMPLER_DESC ShadowMapPCFDesc();
 };

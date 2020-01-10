@@ -244,7 +244,7 @@ namespace spad
 			desc.SampleDesc.Count = 1;
 			desc.SampleDesc.Quality = 0;
 			desc.CPUAccessFlags = 0;
-			desc.Format = DXGI_FORMAT_BC7_UNORM_SRGB;
+			desc.Format = DXGI_FORMAT_BC7_UNORM;
 			desc.MipLevels = 1;
 			desc.Usage = D3D11_USAGE_DEFAULT;
 
@@ -253,7 +253,7 @@ namespace spad
 
 			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 			ZeroMemory( &srvDesc, sizeof( srvDesc ) );
-			srvDesc.Format = DXGI_FORMAT_BC7_UNORM_SRGB;
+			srvDesc.Format = DXGI_FORMAT_BC7_UNORM;
 			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 			srvDesc.Texture2D.MipLevels = (UINT)-1;
 			srvDesc.Texture2D.MostDetailedMip = 0;

@@ -120,7 +120,7 @@ namespace spad
 		TileSize tileSizeForClustering_ = TileSize_32x32;
 		//TileSize tileSizeForClustering_ = TileSize_16x16;
 		int numPassesForTiling_ = 1;
-		int numPassesForClustering_ = 5;
+		int numPassesForClustering_ = 4;
 #endif // #else // #if TEST_SAT
 
 		HlslShaderPtr decalVolumeRenderingShader_;

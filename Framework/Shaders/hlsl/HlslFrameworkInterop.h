@@ -20,13 +20,15 @@
 #define MAKE_REGISTER_CBUFFER( index )		index
 #define MAKE_REGISTER_SRV( index )			index
 #define MAKE_REGISTER_UAV( index )			index
-
+#define MAKE_REGISTER_TEXTURE( index )		index
+#define MAKE_REGISTER_RWTEXTURE( index )	index
 
 #define MAKE_FLAT_CBUFFER( _name, _register ) struct _name
 
 #define CBUFFER_FLOAT4X4( name )								Matrix4 name
-#define CBUFFER_UINT( name )									uint name; uint pad[3]
+#define CBUFFER_UINT( name )									uint name; float name##_pad[3]
 #define CBUFFER_UINT4( name )									uint name[4]
+#define CBUFFER_FLOAT( name )									float  name; uint name##_pad[3]
 #define CBUFFER_FLOAT4( name )									Vector4 name
 
 #else
@@ -45,6 +47,8 @@
 #define MAKE_REGISTER_CBUFFER( index )		MAKE_REGISTER( b, index )
 #define MAKE_REGISTER_SRV( index )			MAKE_REGISTER( t, index )
 #define MAKE_REGISTER_UAV( index )			MAKE_REGISTER( u, index )
+#define MAKE_REGISTER_TEXTURE( index )		t ## index
+#define MAKE_REGISTER_RWTEXTURE( index )	u ## index
 
 
 #define CBUFFER cbuffer
@@ -52,8 +56,9 @@
 #define MAKE_FLAT_CBUFFER( _name, _register ) cbuffer _name _register
 
 #define CBUFFER_FLOAT4X4( name )								float4x4 name
-#define CBUFFER_UINT( name )									uint name; uint3 pad
+#define CBUFFER_UINT( name )									uint name; float3 name##_pad
 #define CBUFFER_UINT4( name )									uint4 name
+#define CBUFFER_FLOAT( name )									float  name; uint3 name##_pad
 #define CBUFFER_FLOAT4( name )									float4 name
 
 //#define safe_mul24( x, y ) ( x * y )

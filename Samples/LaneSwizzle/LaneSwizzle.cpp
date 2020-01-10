@@ -43,6 +43,12 @@ namespace spad
 		printf( "%12zu - %s\n", n, binBuf );
 	}
 
+	uint LaneSwizzleHelper( uint n, uint andMask, uint orMask, uint xorMask )
+	{
+		uint p = ( n & ( 0x20 | andMask ) | orMask ) ^ xorMask;
+		return p;
+	}
+
 	bool LaneSwizzle::StartUp()
 	{
 		//ID3D11Device* dxDevice = dx11_->getDevice();
@@ -70,6 +76,20 @@ namespace spad
 		printf( "blah\n" );
 		printBin64( ~( 8ULL | 1ULL ) );
 		printBin64( ~( 16ULL | 8ULL | 2ULL | 1ULL ) );
+
+		printf( "LaneSwizzle\nn -> p\n" );
+		for ( uint i = 0; i < 64; ++i )
+		{
+			uint p = LaneSwizzleHelper( i, 0x1f, 0, 4 );
+			printf( "%u -> %u\n", i, p );
+		}
+
+		printf( "blah\n" );
+		for ( uint groupIndex = 0; groupIndex < 64; ++groupIndex )
+		{
+			if ( ( groupIndex & ( 16 | 8 | 2 | 1 ) ) == 0 )
+				printf( "lane %u active\n", groupIndex );
+		}
 
 		return true;
 	}
