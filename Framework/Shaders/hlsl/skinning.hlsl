@@ -223,25 +223,25 @@ void cs_ddm_skinning_v1( uint3 dtid : SV_DispatchThreadID )
 	}
 
 	float3x3 Q_i = ( float3x3 )qmat;
-	float3 p_i_T = qmat[3].xyz;
+	float3 Qp_i_T = qmat[3].xyz;
 	float3 q_i = float3( qmat[0][3], qmat[1][3], qmat[2][3] );
 
-	float3x3 qm = Q_i - MulMat( q_i, p_i_T );
+	float3x3 qm = Q_i - MulMat( q_i, Qp_i_T );
 
 	float3x3 P_i = ( float3x3 )pmat;
-	//float3 p_i = pmat[3].xyz;
-	float3 p_i = float3( qmat[0][3], qmat[1][3], qmat[2][3] );
+	float3 Pp_i_T = pmat[3].xyz;
+	float3 Pp_i = float3( pmat[0][3], pmat[1][3], pmat[2][3] );
 
-	float3x3 pm = P_i - MulMat( p_i, p_i_T );
+	float3x3 pm = P_i - MulMat( Pp_i, Pp_i_T );
 
 	float detqm = determinant( qm );
 	float detpm = determinant( pm );
 
-	float3x3 R_i = ( detqm / detpm ) * transpose( inverse( qm ) ) * pm;
+	float3x3 R_i = ( detqm / detpm ) * mul( transpose( inverse( qm ) ), pm );
 
 	//SVD_mats B = svd( qm );
 	//float3x3 R_i = mul( B.U, B.V );
-	float3 t_i = q_i - mul( R_i, p_i_T );
+	float3 t_i = q_i - mul( R_i, Qp_i_T );
 
 	float3 pos = mul( R_i, float3( bv.x, bv.y, bv.z ) ) + t_i;
 	float3 nrm = mul( R_i, float3( bv.nx, bv.ny, bv.nz ) );
@@ -264,7 +264,7 @@ void cs_ddm_skinning_v1( uint3 dtid : SV_DispatchThreadID )
 	DebugOutput dout = (DebugOutput)0;
 	dout.qmat = qmat;
 	dout.Q_i = Q_i;
-	dout.p_i_T = p_i_T;
+	dout.p_i_T = Qp_i_T;
 	dout.q_i = q_i;
 	dout.m = qm;
 	//dout.svdU = B.U;

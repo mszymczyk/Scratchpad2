@@ -223,12 +223,12 @@ void PrecomputeDDM(
 	Eigen::SparseLU<EigenSparse> solver_b;
 	Eigen::SparseLU<EigenSparse> solver_c;
 
-	//const float transSmooth = 10.1f;
-	//const float rotSmooth = 10.1f;
-	//const uint steps = 20;
-	const float transSmooth = 1.0f;
-	const float rotSmooth = 1.0f;
-	const uint steps = 2;
+	const float transSmooth = 10.1f;
+	const float rotSmooth = 10.1f;
+	const uint steps = 20;
+	//const float transSmooth = 1.0f;
+	//const float rotSmooth = 1.0f;
+	//const uint steps = 2;
 	const float dmBlend = 0.0f;
 
 	// Implicitly solve.
@@ -423,20 +423,6 @@ void DDMSkinCPU(
 		EigenMat3 V = svd.matrixV().transpose();
 		EigenMat3 R = ( U * V );
 
-		outDebug[vertIndex].qmat = EigenMat4ToFloat4x4( qmat );
-		outDebug[vertIndex].Q_i = EigenMat3ToFloat3x3( Qi );
-		outDebug[vertIndex].q_i = EigenVec3ToFloat3( qi );
-		outDebug[vertIndex].p_i_T = EigenVec3ToFloat3( pi );
-		outDebug[vertIndex].m = EigenMat3ToFloat3x3( M );
-		outDebug[vertIndex].svdU = EigenMat3ToFloat3x3( U );
-		outDebug[vertIndex].svdV = EigenMat3ToFloat3x3( V );
-		float3x3 S;
-		memset( &S, 0, sizeof( S ) );
-		S[0][0] = static_cast<float>( svd.singularValues()[0] );
-		S[1][1] = static_cast<float>( svd.singularValues()[1] );
-		S[2][2] = static_cast<float>( svd.singularValues()[2] );
-		outDebug[vertIndex].svdS = S;
-
 		const DDM_NUMTYPE *UData = U.data();
 		const DDM_NUMTYPE *VData = V.data();
 
@@ -459,9 +445,132 @@ void DDMSkinCPU(
 		sv.nx = 1;
 		sv.ny = 0;
 		sv.nz = 0;
+
+		outDebug[vertIndex].qmat = EigenMat4ToFloat4x4( qmat );
+		outDebug[vertIndex].Q_i = EigenMat3ToFloat3x3( Qi );
+		outDebug[vertIndex].q_i = EigenVec3ToFloat3( qi );
+		outDebug[vertIndex].p_i_T = EigenVec3ToFloat3( pi );
+		outDebug[vertIndex].m = EigenMat3ToFloat3x3( M );
+		outDebug[vertIndex].svdU = EigenMat3ToFloat3x3( U );
+		outDebug[vertIndex].svdV = EigenMat3ToFloat3x3( V );
+		float3x3 S;
+		memset( &S, 0, sizeof( S ) );
+		S[0][0] = static_cast<float>( svd.singularValues()[0] );
+		S[1][1] = static_cast<float>( svd.singularValues()[1] );
+		S[2][2] = static_cast<float>( svd.singularValues()[2] );
+		outDebug[vertIndex].svdS = S;
 	}
 
 
+}
+
+
+void DDMSkinCPUV1(
+	const std::vector<BaseVertex> &vertices
+	, const Matrix4Vector &transforms
+	, const OmegaRefVector &omegaRefs
+	, const Matrix4Vector &omegas
+	, const std::vector<uint> &transformIndices
+	, std::vector<SkinnedVertex> &outSkinnedVertices
+	, std::vector<DebugOutput> &outDebug
+)
+{
+	for ( size_t vertIndex = 0; vertIndex < vertices.size(); ++vertIndex )
+	{
+		const BaseVertex &bv = vertices[vertIndex];
+		const OmegaRef &oref = omegaRefs[vertIndex];
+
+		EigenMat4 qmat;
+		qmat.setZero();
+		EigenMat4 pmat;
+		pmat.setZero();
+
+		for ( uint iRef = 0; iRef < oref.indexCount; ++iRef )
+		{
+			uint j = iRef + oref.firstIndex;
+			uint boneIndex = transformIndices[j];
+			Matrix4 skinMat = transforms[boneIndex];
+			Matrix4 omega_ij = omegas[j];
+
+			EigenMat4 eskinMat = Matrix4ToEigenMat4( transpose( skinMat ) );
+			EigenMat4 eomega_ij = Matrix4ToEigenMat4( omega_ij );
+
+			EigenMat4 tmp = eomega_ij * eskinMat;
+
+			qmat += tmp;
+			pmat += eomega_ij;
+		}
+
+		qmat.transposeInPlace();
+		pmat.transposeInPlace();
+
+		const DDM_NUMTYPE *qmatData = qmat.data();
+		const DDM_NUMTYPE *pmatData = pmat.data();
+
+		EigenMat3 Qi = qmat.block( 0, 0, 3, 3 );
+		EigenVec3 qi = qmat.block( 0, 3, 3, 1 );
+		EigenVec3 pi_T = qmat.block( 3, 0, 1, 3 ).transpose();
+
+		const DDM_NUMTYPE *QiData = Qi.data();
+		const DDM_NUMTYPE *qiData = qi.data();
+		const DDM_NUMTYPE *pi_TData = pi_T.data();
+
+		EigenMat3 QM = Qi - ( qi * pi_T.transpose() );
+		const DDM_NUMTYPE *QMData = QM.data();
+
+		EigenMat3 Pi = pmat.block( 0, 0, 3, 3 );
+		EigenVec3 pi = pmat.block( 0, 3, 3, 1 );
+		EigenVec3 Ppi_T = pmat.block( 3, 0, 1, 3 ).transpose();
+
+		const DDM_NUMTYPE *PiData = Pi.data();
+		const DDM_NUMTYPE *piData = pi.data();
+		const DDM_NUMTYPE *Ppi_TData = Ppi_T.data();
+
+		EigenMat3 PM = Pi - ( pi * Ppi_T.transpose() );
+		const DDM_NUMTYPE *PMData = PM.data();
+
+		DDM_NUMTYPE QMdet = QM.determinant();
+		DDM_NUMTYPE PMdet = PM.determinant();
+
+		EigenMat3 QMInvTrans = QM.inverse().transpose();
+		EigenMat3 PMTrans = PM;
+
+		EigenMat3 R = ( QMdet / PMdet ) * QMInvTrans * PMTrans;
+
+		//Translation
+		EigenVec3 ti = qi - ( R * pi );
+
+		EigenMat4 gamma;
+		gamma << R, ti, 0, 0, 0, 1;
+
+		EigenVec4 pt_h( bv.x, bv.y, bv.z, 1 );
+
+		EigenVec4 final_pt = gamma * pt_h;
+
+		//pt = MPoint( final_pt[0], final_pt[1], final_pt[2] );
+
+		SkinnedVertex &sv = outSkinnedVertices[vertIndex];
+		sv.x = static_cast<float>( final_pt[0] );
+		sv.y = static_cast<float>( final_pt[1] );
+		sv.z = static_cast<float>( final_pt[2] );
+		sv.nx = 1;
+		sv.ny = 0;
+		sv.nz = 0;
+
+		//outDebug[vertIndex].qmat = EigenMat4ToFloat4x4( qmat );
+		//outDebug[vertIndex].Q_i = EigenMat3ToFloat3x3( Qi );
+		//outDebug[vertIndex].q_i = EigenVec3ToFloat3( qi );
+		//outDebug[vertIndex].p_i_T = EigenVec3ToFloat3( pi );
+		//outDebug[vertIndex].m = EigenMat3ToFloat3x3( M );
+		//outDebug[vertIndex].svdU = EigenMat3ToFloat3x3( U );
+		//outDebug[vertIndex].svdV = EigenMat3ToFloat3x3( V );
+		//float3x3 S;
+		//memset( &S, 0, sizeof( S ) );
+		//S[0][0] = static_cast<float>( svd.singularValues()[0] );
+		//S[1][1] = static_cast<float>( svd.singularValues()[1] );
+		//S[2][2] = static_cast<float>( svd.singularValues()[2] );
+		//outDebug[vertIndex].svdS = S;
+	}
 }
 
 }

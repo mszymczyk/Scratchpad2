@@ -28,8 +28,8 @@ namespace spad
 		const float aspect = (float)dx11_->getBackBufferWidth() / (float)dx11_->getBackBufferHeight();
 		projMatrixForCamera_ = perspectiveProjectionDxStyle( deg2rad( 60.0f ), aspect, 1.0f, 1000.0f );
 
-		//LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth.fbx" );
-		LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth_4.fbx" );
+		LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth.fbx" );
+		//LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth_4.fbx" );
 		//LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_smooth_32_tri.fbx" );
 		//LoadModelsWithAssimp( dxDevice, "Assets\\DirectDeltaMushSkinning\\ddm_box_rigid.fbx" );
 		PrecomputeDDM( dxDevice, meshes[0] );
@@ -226,8 +226,8 @@ namespace spad
 
 		{
 			//const HlslShaderPass& fxPass = *shader_->getPass( "cs_linear_blend_skinning" );
-			const HlslShaderPass& fxPass = *shader_->getPass( "cs_ddm_skinning_v0" );
-			//const HlslShaderPass& fxPass = *shader_->getPass( "cs_ddm_skinning_v1" );
+			//const HlslShaderPass& fxPass = *shader_->getPass( "cs_ddm_skinning_v0" );
+			const HlslShaderPass& fxPass = *shader_->getPass( "cs_ddm_skinning_v1" );
 			fxPass.setCS( deviceContext.context );
 
 			mesh.bonesBuffer.updateGpu( deviceContext.context, bonesScratch );
@@ -252,7 +252,8 @@ namespace spad
 		{
 			const DebugOutput *doutput = mesh.debugOutputBuffer.CPUReadbackStart( deviceContext.context );
 
-			DDMSkinCPU( mesh.vertices, mesh.bonesScratch, mesh.omegaRefs, mesh.omegas, mesh.transformIndices, mesh.skinnedVerticesScratch, mesh.debugOutputScratch );
+			//DDMSkinCPU( mesh.vertices, mesh.bonesScratch, mesh.omegaRefs, mesh.omegas, mesh.transformIndices, mesh.skinnedVerticesScratch, mesh.debugOutputScratch );
+			DDMSkinCPUV1( mesh.vertices, mesh.bonesScratch, mesh.omegaRefs, mesh.omegas, mesh.transformIndices, mesh.skinnedVerticesScratch, mesh.debugOutputScratch );
 			//mesh.skinnedVerticesBuffer.updateGpu( deviceContext.context, mesh.skinnedVerticesScratch.data() );
 
 			mesh.debugOutputBuffer.CPUReadbackEnd( deviceContext.context );

@@ -32,6 +32,17 @@ namespace spad
 		, std::vector<SkinnedVertex> &outSkinnedVertices
 		, std::vector<DebugOutput> &outDebug
 	);
+
+	void DDMSkinCPUV1(
+		  const std::vector<BaseVertex> &vertices
+		, const Matrix4Vector &transforms
+		, const OmegaRefVector &omegaRefs
+		, const Matrix4Vector &omegas
+		, const std::vector<uint> &transformIndices
+		, std::vector<SkinnedVertex> &outSkinnedVertices
+		, std::vector<DebugOutput> &outDebug
+	);
+
 }
 
 #endif // DIRECTDELTAMUSHSKINNINGPRECOMPUTE_H
